@@ -3,9 +3,10 @@ import type { OpsContext } from "../../src/ops/context";
 import { toCliError } from "../output";
 
 // MCP server over stdio, implemented by hand (no SDK): JSON-RPC 2.0, one
-// message per line. Tools = src/ai/tools.ts (the shared AI catalog, the
-// same list the in-admin assistant uses); resources = the schema and the
-// pipelines; prompts = sales workflows that drive those tools.
+// message per line. Tools = listAiTools() (the shared AI catalog, the same
+// list the in-admin assistant uses, plus the tools of the site's loaded
+// extension modules); resources = schema, pipelines, modules, appearance;
+// prompts = sales workflows that drive those tools.
 
 export const SUPPORTED_PROTOCOLS = ["2025-06-18", "2025-03-26", "2024-11-05"] as const;
 export const LATEST_PROTOCOL = SUPPORTED_PROTOCOLS[0];
@@ -44,7 +45,8 @@ export interface McpBackend {
 
 export interface McpServerOptions {
   readOnly?: boolean;
-  tools: AiTool[];
+  // The catalog, or a function returning it (extension tools come and go).
+  tools: AiTool[] | (() => AiTool[]);
   backend: McpBackend;
   log?: (msg: string) => void;
 }
@@ -112,6 +114,8 @@ const PROMPTS: PromptDef[] = [
 const RESOURCES = [
   { uri: "agentcrm://schema", name: "schema", title: "CRM data model", description: "Objects, fields (ids, types, select options, relations) and pipelines.", mimeType: "application/json" },
   { uri: "agentcrm://pipelines", name: "pipelines", title: "Pipelines", description: "Pipelines with stages, probabilities and the current forecast.", mimeType: "application/json" },
+  { uri: "agentcrm://modules", name: "modules", title: "Modules", description: "Workspace modules (built-in and extensions) with enabled / required state and dependencies, plus the installed extensions.", mimeType: "application/json" },
+  { uri: "agentcrm://appearance", name: "appearance", title: "Appearance", description: "The effective workspace appearance (accent, neutral, radius, density, font, sidebar, mode, theme) and the available presets / themes.", mimeType: "application/json" },
 ];
 
 function toolAnnotations(tool: AiTool) {
@@ -125,7 +129,8 @@ function toolAnnotations(tool: AiTool) {
 }
 
 export function createMcpServer(opts: McpServerOptions) {
-  const visible = opts.tools.filter((t) => !(opts.readOnly && t.mutating));
+  const all = (): AiTool[] => (typeof opts.tools === "function" ? opts.tools() : opts.tools);
+  const visible = (): AiTool[] => all().filter((t) => !(opts.readOnly && t.mutating));
   let initialized = false;
   let protocol: string = LATEST_PROTOCOL;
 
@@ -134,7 +139,7 @@ export function createMcpServer(opts: McpServerOptions) {
 
   async function callTool(id: JsonRpcId, params: Record<string, unknown>): Promise<JsonRpcResponse> {
     const name = typeof params.name === "string" ? params.name : "";
-    const tool = opts.tools.find((t) => t.name === name);
+    const tool = all().find((t) => t.name === name);
     if (!tool) return fail(id, RPC.invalidParams, `Unknown tool: ${name}`);
     if (opts.readOnly && tool.mutating) return fail(id, RPC.invalidParams, `Tool ${name} changes data and this server is read-only.`);
     const args = params.arguments && typeof params.arguments === "object" ? (params.arguments as Record<string, unknown>) : {};
@@ -162,6 +167,13 @@ export function createMcpServer(opts: McpServerOptions) {
     else if (uri === "agentcrm://pipelines") {
       const { listPipelines, forecast } = await import("../../src/ops/pipelines");
       value = listPipelines(ctx).map((p) => ({ ...p, forecast: forecast(ctx, { pipelineId: p.id }) }));
+    } else if (uri === "agentcrm://modules") {
+      const [{ listModules }, { listExtensions }] = await Promise.all([import("../../src/ops/modules"), import("../../src/ops/extensions")]);
+      value = { modules: listModules(ctx), extensions: listExtensions(ctx) };
+    } else if (uri === "agentcrm://appearance") {
+      const { getAppearance, listPresets } = await import("../../src/ops/appearance");
+      const { logo, favicon, customCss, ...rest } = getAppearance(ctx);
+      value = { appearance: { ...rest, hasLogo: !!logo, hasFavicon: !!favicon, customCss: customCss ?? null }, presets: listPresets(ctx).map((p) => ({ id: p.id, name: p.name, source: p.source, description: p.description, ...(p.enabled !== undefined ? { enabled: p.enabled } : {}) })) };
     } else return fail(id, -32002, `Resource not found: ${uri}`, { uri });
     return ok(id, { contents: [{ uri, mimeType: "application/json", text: JSON.stringify(value, null, 2) }] });
   }
@@ -195,7 +207,7 @@ export function createMcpServer(opts: McpServerOptions) {
           return ok(id, {});
         case "tools/list":
           return ok(id, {
-            tools: visible.map((t) => ({ name: t.name, title: toolAnnotations(t).title, description: t.description, inputSchema: t.inputSchema, annotations: toolAnnotations(t) })),
+            tools: visible().map((t) => ({ name: t.name, title: toolAnnotations(t).title, description: t.description, inputSchema: t.inputSchema, annotations: toolAnnotations(t) })),
           });
         case "tools/call":
           return callTool(id, params);
@@ -233,7 +245,7 @@ export function createMcpServer(opts: McpServerOptions) {
     get protocol() {
       return protocol;
     },
-    toolNames: () => visible.map((t) => t.name),
+    toolNames: () => visible().map((t) => t.name),
   };
 }
 

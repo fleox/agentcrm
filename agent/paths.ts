@@ -20,6 +20,13 @@ export function distRoot(): string {
   return isBundled() ? resolve(here, "..") : resolve(here, "..", "dist");
 }
 
+// Root of the package this CLI file belongs to, ignoring $AGENTCRM_DIST
+// (runtime stubs, types/agentcrm-runtime.d.ts).
+export function ownPackageRoot(): string {
+  const here = dirname(fileURLToPath(import.meta.url));
+  return isBundled() ? resolve(here, "..", "..") : resolve(here, "..");
+}
+
 // Root of the package (changelog.json, README…).
 export function packageRoot(): string {
   return resolve(distRoot(), "..");

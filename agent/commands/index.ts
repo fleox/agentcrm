@@ -7,6 +7,8 @@ import { readVersionInfo } from "../paths";
 import { activitiesCommand, notesCommand, tasksCommand } from "./activities";
 import { pipelinesCommand, settingsCommand, usersCommand, viewsCommand } from "./admin";
 import { credentialsCommand } from "./credentials";
+import { appearanceCommand, modulesCommand } from "./customize";
+import { extCommand } from "./ext";
 import { automationsCommand, compactCommand, exportCommand, formsCommand, importCommand, reportCommand, statsCommand } from "./data";
 import { deployAdminCommand } from "./deployAdmin";
 import { doctorCommand } from "./doctor";
@@ -22,6 +24,7 @@ import type { Command, CommandOption } from "./types";
 export const GLOBAL_OPTIONS: CommandOption[] = [
   { name: "json", type: "boolean", description: "Print one JSON object on stdout: { ok, data } or { ok: false, error: { code, message, hint } }." },
   { name: "help", type: "boolean", description: "Show the command's usage and options instead of running it." },
+  { name: "safe", type: "boolean", description: "Safe mode: don't load the site's extensions (modules / themes) in this run (also AGENTCRM_SAFE=1)." },
 ];
 
 const helpCommand: Command = {
@@ -92,6 +95,9 @@ export const COMMANDS: Command[] = [
   formsCommand,
   compactCommand,
   statsCommand,
+  modulesCommand,
+  appearanceCommand,
+  extCommand,
   toolsCommand,
   mcpCommand,
 ];

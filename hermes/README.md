@@ -6,8 +6,9 @@ Skills and Python scripts that let [Hermes Agent](https://hermes-agent.nousresea
 |---|---|
 | [`agentcrm-install`](skills/agentcrm-install/SKILL.md) | install a new CRM (data location + admin hosting + credentials) |
 | [`agentcrm-manage`](skills/agentcrm-manage/SKILL.md) | check, repair, register and update existing CRMs |
-| [`agentcrm-admin`](skills/agentcrm-admin/SKILL.md) | records, schema, pipelines, views, users, import / export, automations, forms |
+| [`agentcrm-admin`](skills/agentcrm-admin/SKILL.md) | records, schema, pipelines, views, users, import / export, automations, forms, modules, appearance, extensions |
 | [`agentcrm-sales`](skills/agentcrm-sales/SKILL.md) | pipeline review, follow-ups, meeting prep, lead qualification, weekly report |
+| [`agentcrm-extensions`](skills/agentcrm-extensions/SKILL.md) | scaffold, check, pack and install extension modules and themes |
 
 ## Install
 

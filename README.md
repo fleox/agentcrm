@@ -45,21 +45,21 @@
 
 > *"Install AgentCRM for my company, data in my OVH bucket, admin on GitHub Pages."*
 
-The `agentcrm-install` skill asks where the data lives, then where the admin is hosted, guides you through creating least-privilege keys (you type secrets in your own terminal — never in the chat), writes the install plan, installs and verifies with `doctor`. Other skills: `agentcrm-manage` (health, updates), `agentcrm-admin` (run the CRM), `agentcrm-sales` (pipeline reviews, follow-ups, lead qualification, weekly report).
+The `agentcrm-install` skill asks where the data lives, then where the admin is hosted, guides you through creating least-privilege keys (you type secrets in your own terminal — never in the chat), writes the install plan, installs and verifies with `doctor`. Other skills: `agentcrm-manage` (health, updates), `agentcrm-admin` (run the CRM), `agentcrm-sales` (pipeline reviews, follow-ups, lead qualification, weekly report), `agentcrm-extensions` (build, test and install modules and themes).
 
 **Other agents** (Codex, Cursor, Hermes…): the skills in [`plugin/skills/`](plugin/skills) are plain Markdown; Hermes gets generated skills with a Python wrapper in [`hermes/`](hermes).
 
 ### By hand
 
 ```bash
-npx -y @agent-crm/agentcrm@0.1.0 options                         # backends, locations, hostings, plan format
-npx -y @agent-crm/agentcrm@0.1.0 credentials set s3:main          # hidden prompt
-npx -y @agent-crm/agentcrm@0.1.0 install --plan plan.json --dry-run
-npx -y @agent-crm/agentcrm@0.1.0 install --plan plan.json
-npx -y @agent-crm/agentcrm@0.1.0 doctor --site acme
+npx -y @agent-crm/agentcrm@0.2.0 options                         # backends, locations, hostings, plan format
+npx -y @agent-crm/agentcrm@0.2.0 credentials set s3:main          # hidden prompt
+npx -y @agent-crm/agentcrm@0.2.0 install --plan plan.json --dry-run
+npx -y @agent-crm/agentcrm@0.2.0 install --plan plan.json
+npx -y @agent-crm/agentcrm@0.2.0 doctor --site acme
 ```
 
-Or try it without any account: `npx -y @agent-crm/agentcrm@0.1.0 serve` opens the setup wizard; pick **This browser** (optionally with demo data).
+Or try it without any account: `npx -y @agent-crm/agentcrm@0.2.0 serve` opens the setup wizard; pick **This browser** (optionally with demo data).
 
 ## Features
 
@@ -73,6 +73,53 @@ Or try it without any account: `npx -y @agent-crm/agentcrm@0.1.0 serve` opens th
 - **Roles** — admin / member / viewer, enforced in the engine (and by Firestore rules in Firebase mode).
 - **AI assistant** — in the admin, with your own Claude API key, driving the same tool catalog as the MCP server.
 - **GDPR** — soft delete + `compact` for physical erasure; encrypted by default; export everything.
+- **Customisation** — switch modules off, install extension modules and themes at runtime, brand the look (accent, grays, font, density, logo, custom CSS) — by hand or by asking your AI agent. See below.
+
+## Customisation
+
+Everything you can customise in the admin, an AI agent can do too (CLI, MCP tools, skills) — same engine, same permissions (admins only for workspace-wide changes), and every change shows a plan before it is applied.
+
+### Modules — keep only what you use
+
+Settings → **Modules** switches built-in features off for the whole workspace: dashboard, deals & pipelines, reports, lead forms, tasks, automations, email & calendar, AI assistant. Disabling hides pages, navigation, widgets and owned objects; it never deletes data. Dependencies are checked (cascade on request). [docs/modules.md](docs/modules.md)
+
+```bash
+npx -y @agent-crm/agentcrm@0.2.0 modules list --site acme
+npx -y @agent-crm/agentcrm@0.2.0 modules disable forms --site acme --yes
+```
+
+### Appearance — make it yours
+
+Settings → **Appearance**: one accent color generates the whole palette; neutral grays, radius, density, font (system or Google fonts), sidebar style, accent or neutral buttons, high contrast, default light / dark mode, logo, favicon, custom CSS, seven presets (default, ocean, forest, sunset, graphite, rose, high-contrast) and theme extensions. [docs/appearance.md](docs/appearance.md)
+
+```bash
+npx -y @agent-crm/agentcrm@0.2.0 appearance set --accent "#0f766e" --neutral stone --buttons accent --site acme --yes
+npx -y @agent-crm/agentcrm@0.2.0 appearance logo ./logo.svg --site acme --yes
+npx -y @agent-crm/agentcrm@0.2.0 appearance preset ocean --site acme --yes
+```
+
+### Extensions — add features without rebuilding
+
+Modules (pages, record tabs, dashboard widgets, settings pages, AI tools, automation actions, hooks) and themes are ZIPs installed from Settings → Modules → **Installed extensions** or the CLI, stored in the CRM's own data and loaded at runtime by every admin — and by the CLI / MCP server, so their AI tools and automation actions work there too. Installing runs code with admin rights: the admin and the CLI always show who made it and what it adds first; safe mode (`?safe=1`, or `--safe`) starts without extensions. [docs/extensions.md](docs/extensions.md)
+
+```bash
+npx -y @agent-crm/agentcrm@0.2.0 ext new module acme-projects     # scaffold (Vite + typings + en/fr)
+cd acme-projects && npm install && npm run build
+npx -y @agent-crm/agentcrm@0.2.0 ext check .                      # validate + load it like the admin
+npx -y @agent-crm/agentcrm@0.2.0 ext install . --site acme --yes  # install (plan without --yes)
+```
+
+Guides: [creating a module](docs/creating-a-module.md), [creating a theme](docs/creating-a-theme.md), [runtime API reference](docs/runtime-api-reference.md). Examples: [`external/`](external).
+
+### Ask your agent
+
+With the AgentCRM skills installed (Claude Code plugin or Hermes), just say:
+
+- *"We don't use deals or lead forms — hide what we don't need."*
+- *"Make the CRM look like our brand: here's our logo."* / *"Use #e4002b as the main color with a dark sidebar."*
+- *"Install the sales-goals extension from my Downloads folder."* (the agent shows the plan and asks first)
+- *"Build a module that adds a Renewals page and a tool to list deals renewing in the next 60 days, then install it."*
+- *"Turn off the extension that broke the dashboard."*
 
 ## How it works
 
@@ -109,7 +156,7 @@ S3 / R2 / OVH / Scaleway buckets (HTTPS), GitHub Pages, GitLab Pages, Cloudflare
 
 ## CLI
 
-`agentcrm` runs on Node.js 20+ (`npx -y @agent-crm/agentcrm@0.1.0 <command>`). Every command accepts `--json` and prints exactly one `{ ok, data }` / `{ ok: false, error: { code, message, hint } }` object; destructive commands print a plan unless `--yes`.
+`agentcrm` runs on Node.js 20+ (`npx -y @agent-crm/agentcrm@0.2.0 <command>`). Every command accepts `--json` and prints exactly one `{ ok, data }` / `{ ok: false, error: { code, message, hint } }` object; destructive commands print a plan unless `--yes`.
 
 | Area | Commands |
 |---|---|
@@ -120,6 +167,7 @@ S3 / R2 / OVH / Scaleway buckets (HTTPS), GitHub Pages, GitLab Pages, Cloudflare
 | Admin | `views list\|create\|delete`, `users list\|add\|role\|disable`, `settings get\|set` |
 | Data | `import csv`, `export csv\|json`, `report <name>`, `stats`, `compact` |
 | Automation | `automations list\|enable\|disable\|run`, `forms list\|publish\|ingest` |
+| Customisation | `modules list\|get\|enable\|disable\|config`, `appearance get\|presets\|set\|preset\|logo\|favicon\|css\|reset`, `ext new\|check\|pack\|install\|list\|enable\|disable\|uninstall\|export` |
 | AI | `tools list\|call`, `mcp` |
 
 Full reference: [docs/cli.md](docs/cli.md).
@@ -127,10 +175,10 @@ Full reference: [docs/cli.md](docs/cli.md).
 ## MCP server
 
 ```bash
-claude mcp add agentcrm -- npx -y @agent-crm/agentcrm@0.1.0 mcp --site acme
+claude mcp add agentcrm -- npx -y @agent-crm/agentcrm@0.2.0 mcp --site acme
 ```
 
-Tools = the shared AI catalog (search, list, get, create, update, delete, merge records, notes, activities, tasks, deal stages, reports, CSV import, automations…), resources = schema and pipelines, prompts = pipeline review, follow-up email, lead qualification. `--read-only` hides every tool that writes. Claude Desktop / Cursor config: [docs/mcp.md](docs/mcp.md).
+Tools = the shared AI catalog (search, list, get, create, update, delete, merge records, notes, activities, tasks, deal stages, reports, CSV import, automations…), resources = schema, pipelines, modules and appearance, plus the tools of the site's enabled extension modules; prompts = pipeline review, follow-up email, lead qualification. `--read-only` hides every tool that writes. Claude Desktop / Cursor config: [docs/mcp.md](docs/mcp.md).
 
 ## AI assistant
 

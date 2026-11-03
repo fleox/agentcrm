@@ -31,7 +31,7 @@ for (const name of readdirSync(skillsDir)) {
   }
 }
 // Docs pin the same version in their copy-paste snippets.
-for (const doc of ["README.md", "docs/mcp.md", "docs/cli.md", "docs/automations.md", "docs/templates/agentcrm-cron.yml"]) {
+for (const doc of ["README.md", "docs/mcp.md", "docs/cli.md", "docs/automations.md", "docs/templates/agentcrm-cron.yml", "docs/extensions.md", "docs/creating-a-module.md", "docs/creating-a-theme.md", "docs/modules.md", "docs/appearance.md"]) {
   const file = join(root, doc);
   if (!existsSync(file)) continue;
   const before = readFileSync(file, "utf8");

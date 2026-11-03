@@ -1,10 +1,10 @@
 ---
 name: agentcrm-admin
-description: Run an AgentCRM like its admin does - find, list, create, update, delete, restore and merge records (companies, people, deals, custom objects), log notes, calls, emails and meetings, manage tasks, move deals through pipeline stages, edit the data model (custom objects and fields), saved views, users and roles, settings, import and export CSV / JSON, reports, automations and lead forms, and call the AI tool catalog. Use when the user wants to read or change data in one of their AgentCRM CRMs.
+description: Run an AgentCRM like its admin does - find, list, create, update, delete, restore and merge records (companies, people, deals, custom objects), log notes, calls, emails and meetings, manage tasks, move deals through pipeline stages, edit the data model (custom objects and fields), saved views, users and roles, settings, turn modules on and off, change the appearance (brand color, logo, favicon, presets, themes, custom CSS), enable / disable installed extensions, import and export CSV / JSON, reports, automations and lead forms, and call the AI tool catalog. Use when the user wants to read or change data, features or the look of one of their AgentCRM CRMs.
 license: PolyForm-Noncommercial-1.0.0
 compatibility: Requires Node.js 20+.
 metadata:
-  version: "0.1.0"
+  version: "0.2.0"
   repository: "https://github.com/fleox/agentcrm"
 allowed-tools: Bash Read Write
 ---
@@ -15,25 +15,25 @@ The CLI runs the admin's own engine headless: the same validation, roles and aut
 
 **Language:** talk to the user in their language; keep commands and files in English.
 
-Every command is `npx -y @agent-crm/agentcrm@0.1.0 <command> --json`; always pass `--site <alias>` (see `agentcrm-manage` to pick one). Read `error.hint` when `ok` is false. `npx -y @agent-crm/agentcrm@0.1.0 help records --json` lists any command's actions and options.
+Every command is `npx -y @agent-crm/agentcrm@0.2.0 <command> --json`; always pass `--site <alias>` (see `agentcrm-manage` to pick one). Read `error.hint` when `ok` is false. `npx -y @agent-crm/agentcrm@0.2.0 help records --json` lists any command's actions and options.
 
 ## Rules
 
 - **Learn the model first:** `objects list`, then `objects get <object>` for field ids, types, select options and relations. Never guess field ids.
 - **Search before creating** (`records search`) to avoid duplicates.
-- **Destructive commands print a plan** (`needsConfirmation: true`) unless `--yes`: show the plan, ask, then re-run with `--yes`. This covers `records delete`, `records merge`, `objects delete`, `fields delete`, `views delete`, `import csv` (dry run by default), `compact`, `automations run`, `forms publish`, `forms ingest`.
+- **Destructive commands print a plan** (`needsConfirmation: true`) unless `--yes`: show the plan, ask, then re-run with `--yes`. This covers `records delete`, `records merge`, `objects delete`, `fields delete`, `views delete`, `import csv` (dry run by default), `compact`, `automations run`, `forms publish`, `forms ingest`, and every workspace-wide change: `modules enable|disable|config set`, `appearance set|preset|logo|favicon|css|reset`, `ext install|enable|disable|uninstall`.
 - Personal data: don't paste whole exports into the chat; summarise.
 
 ## Records
 
 ```bash
-npx -y @agent-crm/agentcrm@0.1.0 records list --site acme --object deals --filter stage:in:proposal,negotiation --filter amount:gte:10000 --sort amount:desc --limit 20 --json
-npx -y @agent-crm/agentcrm@0.1.0 records get <id> --site acme --json
-npx -y @agent-crm/agentcrm@0.1.0 records search "globex" --site acme --json
-npx -y @agent-crm/agentcrm@0.1.0 records create --site acme --object people --set firstName=Grace --set lastName=Hopper --set email=grace@globex.com --set company=<companyId> --json
-npx -y @agent-crm/agentcrm@0.1.0 records update <id> --site acme --set jobTitle=CTO --json
-npx -y @agent-crm/agentcrm@0.1.0 records delete <id> --site acme --json
-npx -y @agent-crm/agentcrm@0.1.0 records restore <id> --site acme --json
+npx -y @agent-crm/agentcrm@0.2.0 records list --site acme --object deals --filter stage:in:proposal,negotiation --filter amount:gte:10000 --sort amount:desc --limit 20 --json
+npx -y @agent-crm/agentcrm@0.2.0 records get <id> --site acme --json
+npx -y @agent-crm/agentcrm@0.2.0 records search "globex" --site acme --json
+npx -y @agent-crm/agentcrm@0.2.0 records create --site acme --object people --set firstName=Grace --set lastName=Hopper --set email=grace@globex.com --set company=<companyId> --json
+npx -y @agent-crm/agentcrm@0.2.0 records update <id> --site acme --set jobTitle=CTO --json
+npx -y @agent-crm/agentcrm@0.2.0 records delete <id> --site acme --json
+npx -y @agent-crm/agentcrm@0.2.0 records restore <id> --site acme --json
 ```
 
 - Filters: `--filter field:op:value`, repeatable. Ops: eq, neq, contains, notContains, empty, notEmpty, gt, gte, lt, lte, in, notIn, before, after, withinDays. Dates: `YYYY-MM-DD`, `today`, `+30d`. Also `id`, `ownerId`, `createdAt`, `updatedAt`.
@@ -46,13 +46,13 @@ More examples per object: references/records.md.
 ## Timeline and tasks
 
 ```bash
-npx -y @agent-crm/agentcrm@0.1.0 notes add <recordId> --site acme --body "Met at the expo; wants a demo in June." --json
-npx -y @agent-crm/agentcrm@0.1.0 activities add --site acme --type call --title "Discovery call" --record <personId> --record <dealId> --meta '{"durationMin":25}' --json
-npx -y @agent-crm/agentcrm@0.1.0 activities list --site acme --record <companyId> --related --json
-npx -y @agent-crm/agentcrm@0.1.0 tasks add --site acme --title "Send the proposal" --due 2026-11-10 --assignee me --record <dealId> --json
-npx -y @agent-crm/agentcrm@0.1.0 tasks list --site acme --assignee me --overdue --json
-npx -y @agent-crm/agentcrm@0.1.0 tasks done <taskId> --site acme --json
-npx -y @agent-crm/agentcrm@0.1.0 tasks reassign <taskId> --site acme --assignee sam@acme.com --json
+npx -y @agent-crm/agentcrm@0.2.0 notes add <recordId> --site acme --body "Met at the expo; wants a demo in June." --json
+npx -y @agent-crm/agentcrm@0.2.0 activities add --site acme --type call --title "Discovery call" --record <personId> --record <dealId> --meta '{"durationMin":25}' --json
+npx -y @agent-crm/agentcrm@0.2.0 activities list --site acme --record <companyId> --related --json
+npx -y @agent-crm/agentcrm@0.2.0 tasks add --site acme --title "Send the proposal" --due 2026-11-10 --assignee me --record <dealId> --json
+npx -y @agent-crm/agentcrm@0.2.0 tasks list --site acme --assignee me --overdue --json
+npx -y @agent-crm/agentcrm@0.2.0 tasks done <taskId> --site acme --json
+npx -y @agent-crm/agentcrm@0.2.0 tasks reassign <taskId> --site acme --assignee sam@acme.com --json
 ```
 
 Activity types: note, task, call, email, meeting. `--body @notes.md` reads a file.
@@ -60,9 +60,9 @@ Activity types: note, task, call, email, meeting. `--body @notes.md` reads a fil
 ## Pipelines
 
 ```bash
-npx -y @agent-crm/agentcrm@0.1.0 pipelines list --site acme --json
-npx -y @agent-crm/agentcrm@0.1.0 pipelines move <dealId> Negotiation --site acme --json
-npx -y @agent-crm/agentcrm@0.1.0 pipelines move <dealId> Lost --lost-reason "Budget" --site acme --json
+npx -y @agent-crm/agentcrm@0.2.0 pipelines list --site acme --json
+npx -y @agent-crm/agentcrm@0.2.0 pipelines move <dealId> Negotiation --site acme --json
+npx -y @agent-crm/agentcrm@0.2.0 pipelines move <dealId> Lost --lost-reason "Budget" --site acme --json
 ```
 
 Moving sets the deal's probability to the stage's. Adding / renaming stages is done in the admin (Settings → Data model).
@@ -71,13 +71,57 @@ Moving sets the deal's probability to the stage's. Adding / renaming stages is d
 
 See references/schema.md for objects, fields (types, options, relations), views, users and roles, and settings.
 
+## Modules: disable what you don't need
+
+Built-in modules: dashboard, deals (deals object + pipelines), reports, forms, tasks, automations, integrations (email and calendar), assistant (in-admin AI); records, search, settings, setup and customize are required. Installed extension modules are listed with `source: "extension"`. Disabling hides pages, navigation, widgets and owned objects for every user; it never deletes data, and enabling again brings everything back.
+
+```bash
+npx -y @agent-crm/agentcrm@0.2.0 modules list --site acme --json
+npx -y @agent-crm/agentcrm@0.2.0 modules disable forms --site acme --json
+npx -y @agent-crm/agentcrm@0.2.0 modules disable forms --site acme --yes --json
+npx -y @agent-crm/agentcrm@0.2.0 modules enable deals --site acme --cascade --yes --json
+```
+
+- When the user says "we only manage contacts" or "hide what we don't use": list the modules, propose which to turn off (with what each hides), and apply only after they agree.
+- A `conflict` error lists the modules that depend on it (`error.message`); `--cascade` also disables them (enable: also enables the dependencies). Show the plan's `changed` list first.
+- Module configuration (JSON, used by extensions such as sales goals): `modules config get <id>` / `modules config set <id> --value '<json>'` (plan, then `--yes`). Never store secrets there.
+
+## Appearance: make it look like our brand
+
+One accent color drives the whole palette (a 50 to 950 scale is generated). Applies live to every user.
+
+```bash
+npx -y @agent-crm/agentcrm@0.2.0 appearance get --site acme --json
+npx -y @agent-crm/agentcrm@0.2.0 appearance presets --site acme --json
+npx -y @agent-crm/agentcrm@0.2.0 appearance set --site acme --accent "#0f766e" --neutral stone --radius lg --json
+npx -y @agent-crm/agentcrm@0.2.0 appearance preset ocean --site acme --yes --json
+npx -y @agent-crm/agentcrm@0.2.0 appearance logo ./logo.svg --site acme --yes --json
+npx -y @agent-crm/agentcrm@0.2.0 appearance favicon ./favicon.png --site acme --yes --json
+npx -y @agent-crm/agentcrm@0.2.0 appearance css ./brand.css --site acme --yes --json
+npx -y @agent-crm/agentcrm@0.2.0 appearance reset --site acme --json
+```
+
+- **Brand from a hex:** `appearance set --accent <hex>`, then pick `--neutral` by temperature (blue / teal brands: slate; warm brands: stone; otherwise zinc), `--buttons accent` for a colorful brand. **From a logo:** read the dominant non-gray color of the SVG (its `fill`) or the image, propose it as the accent, and upload the logo itself with `appearance logo`.
+- Options and values: references/appearance.md. Each change prints the before / after plan; apply with `--yes`.
+- Presets: default, ocean, forest, sunset, graphite, rose, high-contrast, plus installed theme extensions. A preset keeps the logo, favicon and custom CSS.
+
+## Extensions (installed modules and themes)
+
+```bash
+npx -y @agent-crm/agentcrm@0.2.0 ext list --site acme --json
+npx -y @agent-crm/agentcrm@0.2.0 ext disable sales-goals --site acme --yes --json
+npx -y @agent-crm/agentcrm@0.2.0 ext enable sales-goals --site acme --yes --json
+```
+
+Installing, building or debugging extensions: the `agentcrm-extensions` skill. Installing runs third-party code with admin rights: always show the plan and ask. If the admin misbehaves after an extension change, `ext disable <id> --yes`, or open the admin with `?safe=1`; CLI commands accept `--safe` to skip extensions.
+
 ## Import and export
 
 ```bash
-npx -y @agent-crm/agentcrm@0.1.0 import csv contacts.csv --site acme --object people --json
-npx -y @agent-crm/agentcrm@0.1.0 import csv contacts.csv --site acme --object people --yes --json
-npx -y @agent-crm/agentcrm@0.1.0 export csv --site acme --object companies --out companies.csv --json
-npx -y @agent-crm/agentcrm@0.1.0 export json --site acme --out backup.json --json
+npx -y @agent-crm/agentcrm@0.2.0 import csv contacts.csv --site acme --object people --json
+npx -y @agent-crm/agentcrm@0.2.0 import csv contacts.csv --site acme --object people --yes --json
+npx -y @agent-crm/agentcrm@0.2.0 export csv --site acme --object companies --out companies.csv --json
+npx -y @agent-crm/agentcrm@0.2.0 export json --site acme --out backup.json --json
 ```
 
 The import is a DRY RUN until `--yes`: read the report (mapping, per-row action, errors, new select options, companies to create) with the user before applying. Mapping, dedupe and coercion rules: references/import.md.
@@ -85,36 +129,36 @@ The import is a DRY RUN until `--yes`: read the report (mapping, per-row action,
 ## Reports and stats
 
 ```bash
-npx -y @agent-crm/agentcrm@0.1.0 report pipeline --site acme --json
-npx -y @agent-crm/agentcrm@0.1.0 report forecast --site acme --json
-npx -y @agent-crm/agentcrm@0.1.0 report won-lost --site acme --months 6 --json
-npx -y @agent-crm/agentcrm@0.1.0 report activity --site acme --days 30 --json
-npx -y @agent-crm/agentcrm@0.1.0 report lead-sources --site acme --json
-npx -y @agent-crm/agentcrm@0.1.0 report stale --site acme --days 21 --json
-npx -y @agent-crm/agentcrm@0.1.0 report conversion --site acme --json
-npx -y @agent-crm/agentcrm@0.1.0 stats --site acme --json
+npx -y @agent-crm/agentcrm@0.2.0 report pipeline --site acme --json
+npx -y @agent-crm/agentcrm@0.2.0 report forecast --site acme --json
+npx -y @agent-crm/agentcrm@0.2.0 report won-lost --site acme --months 6 --json
+npx -y @agent-crm/agentcrm@0.2.0 report activity --site acme --days 30 --json
+npx -y @agent-crm/agentcrm@0.2.0 report lead-sources --site acme --json
+npx -y @agent-crm/agentcrm@0.2.0 report stale --site acme --days 21 --json
+npx -y @agent-crm/agentcrm@0.2.0 report conversion --site acme --json
+npx -y @agent-crm/agentcrm@0.2.0 stats --site acme --json
 ```
 
 ## Automations and lead forms
 
 ```bash
-npx -y @agent-crm/agentcrm@0.1.0 automations list --site acme --json
-npx -y @agent-crm/agentcrm@0.1.0 automations disable <id> --site acme --json
-npx -y @agent-crm/agentcrm@0.1.0 automations run --site acme --json
-npx -y @agent-crm/agentcrm@0.1.0 forms list --site acme --json
-npx -y @agent-crm/agentcrm@0.1.0 forms publish <formId> --site acme --json
-npx -y @agent-crm/agentcrm@0.1.0 forms ingest --site acme --json
+npx -y @agent-crm/agentcrm@0.2.0 automations list --site acme --json
+npx -y @agent-crm/agentcrm@0.2.0 automations disable <id> --site acme --json
+npx -y @agent-crm/agentcrm@0.2.0 automations run --site acme --json
+npx -y @agent-crm/agentcrm@0.2.0 forms list --site acme --json
+npx -y @agent-crm/agentcrm@0.2.0 forms publish <formId> --site acme --json
+npx -y @agent-crm/agentcrm@0.2.0 forms ingest --site acme --json
 ```
 
 Event automations (record created, field changed, stage changed) fire on every write, from the CLI too. Building automations and forms is done in the admin; the CLI enables / disables, runs the scheduled ones and ingests form submissions. For a cron, see the `agentcrm-manage` skill.
 
 ## AI tool catalog
 
-The same tools the MCP server and the in-admin assistant expose:
+The same tools the MCP server and the in-admin assistant expose, including the tools of enabled extension modules (`source: "extension"`) and the customisation tools (`list_modules`, `set_module_enabled`, `get_appearance`, `set_appearance`, `apply_appearance_preset`, `list_extensions`, `set_extension_enabled`):
 
 ```bash
-npx -y @agent-crm/agentcrm@0.1.0 tools list --site acme --json
-npx -y @agent-crm/agentcrm@0.1.0 tools call pipeline_summary --site acme --input '{}' --json
+npx -y @agent-crm/agentcrm@0.2.0 tools list --site acme --json
+npx -y @agent-crm/agentcrm@0.2.0 tools call pipeline_summary --site acme --input '{}' --json
 ```
 
 Useful when a tool returns exactly what you need in one call (`get_record` with relations and latest activities, `pipeline_summary`).

@@ -3,14 +3,15 @@
 `agentcrm` is the headless front door of AgentCRM: it runs the admin's own engine (`src/ops/`) in Node.js 20+, against the same data, with the same validation, roles and automations.
 
 ```bash
-npx -y @agent-crm/agentcrm@0.1.0 <command> [action] [options] [--json]
+npx -y @agent-crm/agentcrm@0.2.0 <command> [action] [options] [--json]
 ```
 
 ## Conventions
 
 - **`--json`** prints exactly one object on stdout: `{ "ok": true, "data": … }` or `{ "ok": false, "error": { "code", "message", "hint" } }`. Progress and notes go to stderr.
 - **Exit codes**: `0` ok, `1` failure (network, permission, not found…), `2` usage error (unknown command / option, invalid plan, validation).
-- **Plans**: destructive actions (`records delete|merge`, `objects delete`, `fields delete`, `views delete`, `compact`, `deploy-admin`, `forms publish`) and dry-run-first actions (`import csv`, `automations run`, `forms ingest`) answer `{ "needsConfirmation": true, … }` and change nothing unless `--yes`.
+- **Plans**: destructive actions (`records delete|merge`, `objects delete`, `fields delete`, `views delete`, `compact`, `deploy-admin`, `forms publish`), workspace-wide customisation (`modules enable|disable|config set`, `appearance set|preset|logo|favicon|css|reset`, `ext install|enable|disable|uninstall`) and dry-run-first actions (`import csv`, `automations run`, `forms ingest`) answer `{ "needsConfirmation": true, … }` and change nothing unless `--yes`. Customisation plans are computed by running the op on an in-memory copy of the data (`plan.changes` / `plan.changed`), so a conflict or validation error shows up before `--yes`.
+- **Extensions**: commands that open a CRM load its enabled extension modules and themes in Node (same loader as the admin): their AI tools are in `tools list|call` and `mcp`, their hooks see the command's writes, their automation actions run in `automations run`. A failing extension is a note on stderr. `--safe` (any command) or `AGENTCRM_SAFE=1` skips them.
 - **Site resolution**: `--site <alias>` > `$AGENTCRM_SITE` > `./agentcrm.json` (`{ "site": "<alias>" }`, searched upwards) > the only registered site > the default set by `site use` > error `site-required` (exit 2).
 - **Acting user**: data commands act as the site's CLI user (the install's owner, or `site credentials --user`), or `--as <email|id>`. Roles are enforced.
 - **Locking**: writes take `~/.agentcrm/locks/<alias>.lock` (one writer per site per computer; stale locks are taken over).
@@ -25,7 +26,7 @@ npx -y @agent-crm/agentcrm@0.1.0 <command> [action] [options] [--json]
 | `credentials.json` | Mode 0600. Accounts `<type>:<name>` → values. Types: `s3` (accessKeyId, secretAccessKey), `github` / `gitlab` (token), `firebase` (email, password), `passphrase`, `anthropic` (apiKey). |
 | `locks/` | One lock file per site during writes. |
 
-Environment: `AGENTCRM_HOME`, `AGENTCRM_SITE`, `AGENTCRM_DIST` (alternate dist folder), `AGENTCRM_KDF_ITERATIONS` (PBKDF2 iterations for NEW datasets — tests only).
+Environment: `AGENTCRM_HOME`, `AGENTCRM_SITE`, `AGENTCRM_DIST` (alternate dist folder), `AGENTCRM_SAFE` (`1` = safe mode, no extensions), `AGENTCRM_RUNTIME_DIR` (runtime stubs used to load extensions; default `dist/admin/runtime` of the package), `AGENTCRM_KDF_ITERATIONS` (PBKDF2 iterations for NEW datasets — tests only).
 
 ## Install plan
 
@@ -564,9 +565,99 @@ Dataset overview: records per object, activities by type, open / overdue tasks, 
 agentcrm stats [--site <alias>]
 ```
 
+### `modules`
+
+Workspace modules (Settings → Modules): built-in features (dashboard, deals, reports, forms, tasks, automations, integrations, assistant…) and installed extension modules. Disabling hides pages, navigation, widgets and owned objects for everyone without deleting data. enable / disable / config set print a plan unless --yes.
+
+```text
+agentcrm modules <list|get|enable|disable|config> …
+```
+
+| Action | Usage | What it does |
+|---|---|---|
+| `list` | `agentcrm modules list` | Modules with category, source, enabled / required state and dependencies. |
+| `get` | `agentcrm modules get <id>` | One module (dependents, missing dependencies, owned objects, settings section). |
+| `enable` | `agentcrm modules enable <id> [--cascade] [--yes]` | Enable a module (--cascade also enables its dependencies). |
+| `disable` | `agentcrm modules disable <id> [--cascade] [--yes]` | Disable a module (--cascade also disables the modules depending on it). Plan unless `--yes`. |
+| `config` | `agentcrm modules config get <id> \| modules config set <id> --value <json\|@file\|-> [--yes] \| modules config set <id> --clear [--yes]` | Read or replace a module's configuration (JSON ≤ 256 KB, never secrets). |
+
+| Option | Description |
+|---|---|
+| `--cascade` | enable / disable: also enable the dependencies / disable the dependents. |
+| `--value <value>` | config set: the new configuration as JSON, @file or - (stdin). |
+| `--clear` | config set: remove the module's configuration. |
+
+### `appearance`
+
+Workspace appearance (Settings → Appearance) for every user: accent color (a full scale is generated from one hex), neutral grays, radius, density, font, sidebar style, default light / dark mode, buttons, contrast, presets and theme extensions, logo, favicon, custom CSS. Changes print a plan (before → after) unless --yes.
+
+```text
+agentcrm appearance <get|presets|set|preset|logo|favicon|css|reset> …
+```
+
+| Action | Usage | What it does |
+|---|---|---|
+| `get` | `agentcrm appearance get [--full]` | The effective appearance (defaults ← selected theme ← workspace values). |
+| `presets` | `agentcrm appearance presets` | Built-in presets and installed theme extensions. |
+| `set` | `agentcrm appearance set [--accent <#hex>] [--neutral zinc\|slate\|stone\|gray\|neutral] [--radius none\|sm\|md\|lg\|xl] [--density compact\|comfortable] [--font <id>] [--sidebar default\|dark\|accent] [--mode system\|light\|dark] [--buttons neutral\|accent] [--contrast normal\|high] [--theme <id>] [--yes]` | Change some values ("null" resets one). |
+| `preset` | `agentcrm appearance preset <id> [--yes]` | Apply a preset (default, ocean, forest, sunset, graphite, rose, high-contrast) or an installed theme; logo, favicon and custom CSS are kept. |
+| `logo` | `agentcrm appearance logo <file.png\|svg\|jpg> [--yes] \| appearance logo --remove [--yes]` | Set or remove the workspace logo (≤ 200 KB). |
+| `favicon` | `agentcrm appearance favicon <file> [--yes] \| appearance favicon --remove [--yes]` | Set or remove the favicon (≤ 200 KB). |
+| `css` | `agentcrm appearance css <file.css\|-> [--yes] \| appearance css --remove [--yes]` | Replace the custom CSS of the workspace (≤ 50 KB, plain CSS). |
+| `reset` | `agentcrm appearance reset [--branding] [--yes]` | Back to the defaults (keeps logo / favicon unless --branding). Plan unless `--yes`. |
+
+| Option | Description |
+|---|---|
+| `--accent <value>` | set: accent color #rrggbb. |
+| `--neutral <value>` | set: zinc, slate, stone, gray or neutral. |
+| `--radius <value>` | set: none, sm, md, lg or xl. |
+| `--density <value>` | set: compact or comfortable. |
+| `--font <value>` | set: system (no network) or a Google font id (inter, geist, roboto, ibm-plex-sans…). |
+| `--sidebar <value>` | set: default, dark or accent. |
+| `--mode <value>` | set: default color mode — system, light or dark (users who never chose). |
+| `--buttons <value>` | set: primary buttons neutral or accent. |
+| `--contrast <value>` | set: normal or high. |
+| `--theme <value>` | set: installed theme extension id to use ("null" clears it). |
+| `--remove` | logo / favicon / css: remove it. |
+| `--branding` | reset: also remove the logo and favicon. |
+| `--full` | get: include the logo / favicon data URLs and the custom CSS. |
+
+### `ext`
+
+Extensions (modules and themes loaded at runtime, no rebuild): new module|theme <id> scaffolds a project (Vite, typings, i18n en/fr), check <dir|zip> validates and loads the bundle like the admin and lists what it registers (exit 1 on errors), pack <dir> builds the ZIP, install <zip|dir> adds it to a CRM (plan first; installing runs code with admin rights), list, enable / disable, uninstall, export (download as ZIP).
+
+```text
+agentcrm ext <new|check|pack|install|list|enable|disable|uninstall|export> …
+```
+
+| Action | Usage | What it does |
+|---|---|---|
+| `new` | `agentcrm ext new <module\|theme> <id> [--dir <path>] [--name <name>] [--description <text>] [--author <name>] [--force]` | Scaffold a standalone extension project (package.json, vite.config.ts, tsconfig + runtime typings, src/index.tsx, README). |
+| `check` | `agentcrm ext check [<dir\|zip>] [--kind module\|theme] [--no-call]` | Validate manifest, ids, apiVersion, sizes, imports; load the bundle in a throw-away CRM and report routes, nav, slots, AI tools, automation actions, theme values. |
+| `pack` | `agentcrm ext pack [<dir>] [--out <file.zip>]` | ZIP manifest.json + bundle.js (+ style.css) for Settings → Modules → Install or `ext install`. |
+| `install` | `agentcrm ext install <zip\|dir> [--site <alias>] [--disabled] [--yes]` | Install or upgrade an extension on a CRM. Prints the plan (id, version, author, upgrade, size) unless --yes. Plan unless `--yes`. |
+| `list` | `agentcrm ext list [--kind module\|theme]` | Installed extensions with version, enabled state and load status in this process. |
+| `enable` | `agentcrm ext enable <id> [--cascade] [--yes]` | Enable an installed extension (plan unless --yes). |
+| `disable` | `agentcrm ext disable <id> [--cascade] [--yes]` | Disable it without uninstalling (plan unless --yes). |
+| `uninstall` | `agentcrm ext uninstall <id> [--force] [--yes]` | Remove an extension (its module configuration is kept). Plan unless --yes. Plan unless `--yes`. |
+| `export` | `agentcrm ext export <id> [--out <file.zip>]` | Download an installed extension as its ZIP. |
+
+| Option | Description |
+|---|---|
+| `--dir <value>` | new: target folder (default: ./<id>). |
+| `--name <value>` | new: display name. |
+| `--description <value>` | new: one-sentence description. |
+| `--author <value>` | new: author shown in the install plan and Settings → Modules. |
+| `--force` | new: write into a non-empty folder. uninstall: even if enabled modules depend on it. |
+| `--kind <value>` | check: expected kind. list: only modules or themes. |
+| `--no-call` | check: don't smoke-call the AI tools on the demo data. |
+| `--out <value>` | pack / export: ZIP path (default: <dir>/<id>-<version>.zip, ./<id>-<version>.zip). |
+| `--disabled` | install: install it disabled. |
+| `--cascade` | enable / disable: also enable the dependencies / disable the dependents. |
+
 ### `tools`
 
-The AI tool catalog (src/ai/tools.ts) — exactly what the MCP server and the in-admin assistant expose: list the tools with their JSON schemas, or call one with a JSON input.
+The AI tool catalog (src/ai/tools.ts + the tools of the site's enabled extension modules) — exactly what the MCP server and the in-admin assistant expose: list the tools with their JSON schemas, or call one with a JSON input.
 
 ```text
 agentcrm tools <list|call> [<name>] [--input <json|@file>]
@@ -574,7 +665,7 @@ agentcrm tools <list|call> [<name>] [--input <json|@file>]
 
 | Action | Usage | What it does |
 |---|---|---|
-| `list` | `agentcrm tools list` | Tools with description, input schema and whether they write. |
+| `list` | `agentcrm tools list [--site <alias>]` | Tools with description, input schema, whether they write and their source (builtin / extension). |
 | `call` | `agentcrm tools call <name> --input <json\|@file>` | Run one tool as the site's CLI user. |
 
 | Option | Description |
@@ -583,7 +674,7 @@ agentcrm tools <list|call> [<name>] [--input <json|@file>]
 
 ### `mcp`
 
-Run the MCP server on stdio (JSON-RPC 2.0, protocol 2025-06-18 / 2024-11-05): tools = the AI catalog (read-only mode hides the ones that write), resources = schema + pipelines, prompts = pipeline review, follow-up email, lead qualification. For Claude Desktop / Claude Code / Cursor.
+Run the MCP server on stdio (JSON-RPC 2.0, protocol 2025-06-18 / 2024-11-05): tools = the AI catalog incl. the site's extension tools (read-only mode hides the ones that write; --safe skips extensions), resources = schema, pipelines, modules, appearance, prompts = pipeline review, follow-up email, lead qualification. For Claude Desktop / Claude Code / Cursor.
 
 ```text
 agentcrm mcp [--site <alias>] [--read-only] [--as <user>]
@@ -592,4 +683,3 @@ agentcrm mcp [--site <alias>] [--read-only] [--as <user>]
 | Option | Description |
 |---|---|
 | `--read-only` | Expose only the tools that don't write. |
-

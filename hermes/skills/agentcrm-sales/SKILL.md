@@ -1,14 +1,14 @@
 ---
 name: agentcrm-sales
 description: "Sales workflows on an AgentCRM - pipeline review and forecast, stale deals and next best actions, meeting prep briefs, follow-up email drafts from the timeline, lead qualification and enrichment from the public web, duplicate cleanup, importing trade show / event lead lists, and the weekly sales report. Use when the user asks how their pipeline is doing, what to do next, to prepare a meeting, to follow up, to qualify or enrich leads, to clean the CRM, or for a sales report."
-version: 0.1.0
+version: 0.2.0
 author: AgentCRM
 license: PolyForm-Noncommercial-1.0.0
 platforms: [macos, linux, windows]
 metadata:
   hermes:
     tags: [AgentCRM, CRM, Sales, Pipeline, Leads]
-    related_skills: [agentcrm-install, agentcrm-manage, agentcrm-admin]
+    related_skills: [agentcrm-install, agentcrm-manage, agentcrm-admin, agentcrm-extensions]
 ---
 
 # Sales workflows with AgentCRM

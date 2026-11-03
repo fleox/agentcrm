@@ -1,14 +1,14 @@
 ---
 name: agentcrm-admin
-description: "Run an AgentCRM like its admin does - find, list, create, update, delete, restore and merge records (companies, people, deals, custom objects), log notes, calls, emails and meetings, manage tasks, move deals through pipeline stages, edit the data model (custom objects and fields), saved views, users and roles, settings, import and export CSV / JSON, reports, automations and lead forms, and call the AI tool catalog. Use when the user wants to read or change data in one of their AgentCRM CRMs."
-version: 0.1.0
+description: "Run an AgentCRM like its admin does - find, list, create, update, delete, restore and merge records (companies, people, deals, custom objects), log notes, calls, emails and meetings, manage tasks, move deals through pipeline stages, edit the data model (custom objects and fields), saved views, users and roles, settings, turn modules on and off, change the appearance (brand color, logo, favicon, presets, themes, custom CSS), enable / disable installed extensions, import and export CSV / JSON, reports, automations and lead forms, and call the AI tool catalog. Use when the user wants to read or change data, features or the look of one of their AgentCRM CRMs."
+version: 0.2.0
 author: AgentCRM
 license: PolyForm-Noncommercial-1.0.0
 platforms: [macos, linux, windows]
 metadata:
   hermes:
-    tags: [AgentCRM, CRM, Records, Import, Reports]
-    related_skills: [agentcrm-install, agentcrm-manage, agentcrm-sales]
+    tags: [AgentCRM, CRM, Records, Import, Reports, Appearance, Modules]
+    related_skills: [agentcrm-install, agentcrm-manage, agentcrm-sales, agentcrm-extensions]
 ---
 
 # Run an AgentCRM
@@ -35,7 +35,7 @@ Every `agentcrm <command>` below runs through this skill's Python wrapper: `pyth
 
 - **Learn the model first:** `objects list`, then `objects get <object>` for field ids, types, select options and relations. Never guess field ids.
 - **Search before creating** (`records search`) to avoid duplicates.
-- **Destructive commands print a plan** (`needsConfirmation: true`) unless `--yes`: show the plan, ask, then re-run with `--yes`. This covers `records delete`, `records merge`, `objects delete`, `fields delete`, `views delete`, `import csv` (dry run by default), `compact`, `automations run`, `forms publish`, `forms ingest`.
+- **Destructive commands print a plan** (`needsConfirmation: true`) unless `--yes`: show the plan, ask, then re-run with `--yes`. This covers `records delete`, `records merge`, `objects delete`, `fields delete`, `views delete`, `import csv` (dry run by default), `compact`, `automations run`, `forms publish`, `forms ingest`, and every workspace-wide change: `modules enable|disable|config set`, `appearance set|preset|logo|favicon|css|reset`, `ext install|enable|disable|uninstall`.
 - Personal data: don't paste whole exports into the chat; summarise.
 
 ## Records
@@ -85,6 +85,50 @@ Moving sets the deal's probability to the stage's. Adding / renaming stages is d
 
 See references/schema.md for objects, fields (types, options, relations), views, users and roles, and settings.
 
+## Modules: disable what you don't need
+
+Built-in modules: dashboard, deals (deals object + pipelines), reports, forms, tasks, automations, integrations (email and calendar), assistant (in-admin AI); records, search, settings, setup and customize are required. Installed extension modules are listed with `source: "extension"`. Disabling hides pages, navigation, widgets and owned objects for every user; it never deletes data, and enabling again brings everything back.
+
+```bash
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py modules list --site acme --json
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py modules disable forms --site acme --json
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py modules disable forms --site acme --yes --json
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py modules enable deals --site acme --cascade --yes --json
+```
+
+- When the user says "we only manage contacts" or "hide what we don't use": list the modules, propose which to turn off (with what each hides), and apply only after they agree.
+- A `conflict` error lists the modules that depend on it (`error.message`); `--cascade` also disables them (enable: also enables the dependencies). Show the plan's `changed` list first.
+- Module configuration (JSON, used by extensions such as sales goals): `modules config get <id>` / `modules config set <id> --value '<json>'` (plan, then `--yes`). Never store secrets there.
+
+## Appearance: make it look like our brand
+
+One accent color drives the whole palette (a 50 to 950 scale is generated). Applies live to every user.
+
+```bash
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py appearance get --site acme --json
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py appearance presets --site acme --json
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py appearance set --site acme --accent "#0f766e" --neutral stone --radius lg --json
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py appearance preset ocean --site acme --yes --json
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py appearance logo ./logo.svg --site acme --yes --json
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py appearance favicon ./favicon.png --site acme --yes --json
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py appearance css ./brand.css --site acme --yes --json
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py appearance reset --site acme --json
+```
+
+- **Brand from a hex:** `appearance set --accent <hex>`, then pick `--neutral` by temperature (blue / teal brands: slate; warm brands: stone; otherwise zinc), `--buttons accent` for a colorful brand. **From a logo:** read the dominant non-gray color of the SVG (its `fill`) or the image, propose it as the accent, and upload the logo itself with `appearance logo`.
+- Options and values: references/appearance.md. Each change prints the before / after plan; apply with `--yes`.
+- Presets: default, ocean, forest, sunset, graphite, rose, high-contrast, plus installed theme extensions. A preset keeps the logo, favicon and custom CSS.
+
+## Extensions (installed modules and themes)
+
+```bash
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py ext list --site acme --json
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py ext disable sales-goals --site acme --yes --json
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py ext enable sales-goals --site acme --yes --json
+```
+
+Installing, building or debugging extensions: the `agentcrm-extensions` skill. Installing runs third-party code with admin rights: always show the plan and ask. If the admin misbehaves after an extension change, `ext disable <id> --yes`, or open the admin with `?safe=1`; CLI commands accept `--safe` to skip extensions.
+
 ## Import and export
 
 ```bash
@@ -124,7 +168,7 @@ Event automations (record created, field changed, stage changed) fire on every w
 
 ## AI tool catalog
 
-The same tools the MCP server and the in-admin assistant expose:
+The same tools the MCP server and the in-admin assistant expose, including the tools of enabled extension modules (`source: "extension"`) and the customisation tools (`list_modules`, `set_module_enabled`, `get_appearance`, `set_appearance`, `apply_appearance_preset`, `list_extensions`, `set_extension_enabled`):
 
 ```bash
 python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py tools list --site acme --json

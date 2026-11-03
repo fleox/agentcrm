@@ -17,7 +17,7 @@ beforeAll(() => {
 const REQUIRED = [
   "help", "version", "status", "options", "credentials", "install", "site", "doctor", "serve", "deploy-admin",
   "records", "objects", "fields", "activities", "notes", "tasks", "pipelines", "views", "users", "settings",
-  "import", "export", "report", "automations", "forms", "compact", "stats", "tools", "mcp",
+  "import", "export", "report", "automations", "forms", "compact", "stats", "modules", "appearance", "ext", "tools", "mcp",
 ];
 
 describe("CLI contract", () => {

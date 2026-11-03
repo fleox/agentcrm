@@ -9,6 +9,7 @@ import { requireCredential } from "../credentials";
 import { CliError, printResult, type Io } from "../output";
 import { lockSite, resolveSite, type SiteRecord } from "../sites";
 import type { Target } from "./plan";
+import { extensionNotes, loadSessionExtensions, type SessionExtensions } from "./extensions";
 
 // A headless CRM for one registered site (mirror of cms-ia
 // agent/ops/session.ts): the site's DataStore opened with the CLI's
@@ -27,6 +28,8 @@ export interface CrmSession {
   plugins: PluginRegistry;
   user: CrmUser | null;
   warnings: string[];
+  // Enabled external extensions loaded in this process (see ops/extensions.ts).
+  extensions: SessionExtensions;
   // The hosting connector target with secrets, or null when not hosted.
   hostingTarget(): Target | null;
   close(): Promise<void>;
@@ -37,6 +40,28 @@ export interface OpenOptions {
   lock?: boolean;
   // Act as this user (email or id) instead of the site's user.
   as?: string;
+  // Safe mode: don't load the site's extensions.
+  safe?: boolean;
+}
+
+// The session's own registry (automations engine) chained to the process
+// default registry, where loaded extension modules register their hooks
+// (src/extensions/registry.ts): an op's actions reach both.
+function chainRegistries(primary: PluginRegistry, secondary: PluginRegistry): PluginRegistry {
+  return {
+    ...primary,
+    async doAction(hook: string, ...args: unknown[]) {
+      await (primary.doAction as (h: string, ...a: unknown[]) => Promise<void>)(hook, ...args);
+      await (secondary.doAction as (h: string, ...a: unknown[]) => Promise<void>)(hook, ...args);
+    },
+    async applyFilters<T>(hook: string, value: T, ...args: unknown[]): Promise<T> {
+      return secondary.applyFilters(hook, await primary.applyFilters(hook, value, ...args), ...args);
+    },
+    applyFiltersSync<T>(hook: string, value: T, ...args: unknown[]): T {
+      return secondary.applyFiltersSync(hook, primary.applyFiltersSync(hook, value, ...args), ...args);
+    },
+    hasAction: (hook: string) => primary.hasAction(hook) || secondary.hasAction(hook),
+  } as PluginRegistry;
 }
 
 export function kdfIterations(): number | undefined {
@@ -149,17 +174,21 @@ export async function openSession(alias: string | undefined, opts: OpenOptions =
   const unlock = opts.lock ? lockSite(site.alias) : null;
   let store: DataStore | null = null;
   let uninstall: (() => void) | null = null;
+  let extensions: SessionExtensions | null = null;
   try {
     store = await openStore(site.runtime, siteSecrets(site));
     await store.ready();
-    const [{ createOpsContext }, { createPluginRegistry }, { installAutomations }] = await Promise.all([
+    const [{ createOpsContext }, { createPluginRegistry, plugins: defaultPlugins }, { installAutomations }] = await Promise.all([
       import("../../src/ops/context"),
       import("../../src/core/pluginRegistry"),
       import("../../src/ops/automations"),
     ]);
-    const plugins = createPluginRegistry((hook, err) => process.stderr.write(`[agentcrm] ${hook} handler failed: ${String((err as Error)?.message ?? err)}\n`));
-    uninstall = installAutomations(plugins);
+    const own = createPluginRegistry((hook, err) => process.stderr.write(`[agentcrm] ${hook} handler failed: ${String((err as Error)?.message ?? err)}\n`));
+    uninstall = installAutomations(own);
+    const plugins = chainRegistries(own, defaultPlugins);
     const { user, warnings } = await actingUser(store, site, opts.as);
+    extensions = await loadSessionExtensions(store, { safe: opts.safe });
+    warnings.push(...extensionNotes(extensions.report));
     const log = (msg: string) => process.stderr.write(`${msg}\n`);
     const ctx = createOpsContext(store, user, { plugins, log });
     const system = createOpsContext(store, null, { plugins, log });
@@ -206,12 +235,14 @@ export async function openSession(alias: string | undefined, opts: OpenOptions =
       plugins,
       user,
       warnings,
+      extensions: extensions!,
       hostingTarget: () => hostingTargetOf(site),
       async close() {
         if (closed) return;
         closed = true;
         try {
           uninstall?.();
+          await extensions?.close();
           await (await import("../../src/shared/storage/batch")).flushImplicitBatch();
           opened.close?.();
         } finally {
@@ -221,6 +252,7 @@ export async function openSession(alias: string | undefined, opts: OpenOptions =
     };
   } catch (err) {
     uninstall?.();
+    await extensions?.close().catch(() => undefined);
     store?.close?.();
     unlock?.();
     throw err;
@@ -240,6 +272,7 @@ export async function withSession<T>(
   const session = await openSession(typeof options.site === "string" ? options.site : undefined, {
     ...open,
     as: typeof options.as === "string" ? options.as : open.as,
+    safe: options.safe === true || open.safe,
   });
   try {
     const result = await work(session);

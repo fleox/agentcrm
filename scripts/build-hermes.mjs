@@ -28,12 +28,14 @@ const HELPERS = {
   "agentcrm-manage": ["pipeline_report.py"],
   "agentcrm-admin": ["import_csv.py", "add_lead.py"],
   "agentcrm-sales": ["pipeline_report.py", "import_csv.py", "add_lead.py"],
+  "agentcrm-extensions": [],
 };
 const TAGS = {
   "agentcrm-install": ["AgentCRM", "CRM", "Install", "S3", "Encryption"],
   "agentcrm-manage": ["AgentCRM", "CRM", "Maintenance", "Updates"],
-  "agentcrm-admin": ["AgentCRM", "CRM", "Records", "Import", "Reports"],
+  "agentcrm-admin": ["AgentCRM", "CRM", "Records", "Import", "Reports", "Appearance", "Modules"],
   "agentcrm-sales": ["AgentCRM", "CRM", "Sales", "Pipeline", "Leads"],
+  "agentcrm-extensions": ["AgentCRM", "CRM", "Extensions", "Modules", "Themes"],
 };
 
 const RUN_SKILL = "python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py";

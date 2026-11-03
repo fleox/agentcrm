@@ -36,7 +36,7 @@ src/
   components/ui/     Shared UI kit (Button, Input, Select, Modal, Drawer, Table, Badge, Avatar, Tabs, Toast, CommandPalette…)
   i18n/              core bundles en.json / fr.json; features ship their own bundles under features/<name>/i18n/
 agent/               `agentcrm` CLI (Node ≥ 20, bundled to dist/agent/agentcrm.mjs), mcp/ (stdio MCP server), testing/ fakes
-plugin/skills/       Claude Code skills (agentcrm-install, agentcrm-manage, agentcrm-admin, agentcrm-sales)
+plugin/skills/       Claude Code skills (agentcrm-install, agentcrm-manage, agentcrm-admin, agentcrm-sales, agentcrm-extensions)
 hermes/              generated Python-agent skills (scripts/build-hermes.mjs)
 docs/                user docs
 ```
@@ -440,13 +440,11 @@ checks en ⇔ fr for every bundle). The sidebar shows the workspace logo (or ini
 (mutating; patch, `null` resets), `apply_appearance_preset` (mutating), `list_extensions` (read; `kind`), `set_extension_enabled`
 (mutating). Installing code is deliberately NOT exposed as a tool (UI / CLI only).
 
-### For the CLI / skills / docs agent (next)
+### CLI, MCP, skills, docs (done in 0.2.0)
 
-Build on: `src/ops/{modules,appearance,extensions}.ts` (commands `modules list|enable|disable|config`, `appearance get|set|preset|reset|
-logo`), `src/extensions/package.ts` (`ext check|pack` — validate a folder / built bundle with `validatePackage`, pack with
-`packExtension`), `src/ops/extensions.ts` (`ext install|list|uninstall|enable|disable`), `src/extensions/loader.ts` +
-`nodeImport.ts` + `runtime.ts` (load extensions in the CLI so their AI tools / automation actions run in `tools call`, `mcp`,
-`automations run`; stubs are shipped in `dist/admin/runtime/`), `listAiTools()` instead of `AI_TOOLS`, `external/` +
-`scripts/build-examples.mjs` (`buildExample`) for `ext new` scaffolds, `types/agentcrm-runtime.d.ts` (ship it in the npm package
-`files` — already listed). Docs to write: `docs/extensions.md` (creating a module / theme, runtime API reference, ZIP format, checklist), appearance and
-modules user docs.
+- **Commands** (`agent/commands/customize.ts`, `agent/commands/ext.ts`): `modules list|get|enable|disable|config get|set`, `appearance get|presets|set|preset|logo|favicon|css|reset`, `ext new|check|pack|install|list|enable|disable|uninstall|export`. Every workspace-wide write is a plan unless `--yes`; plans run the op on an in-memory copy of the dataset (`agent/ops/dryRun.ts`), so conflicts / validation errors surface before `--yes`.
+- **Extensions in sessions** (`agent/ops/extensions.ts`, wired in `agent/ops/session.ts`): `openSession` loads the enabled extensions with `syncExtensions` + `createNodeImportBundle` (runtime stubs: `$AGENTCRM_RUNTIME_DIR` > `dist/admin/runtime` > `public/runtime`, also next to the CLI file itself), nothing is imported when no extension is enabled. The session's plugin registry is chained to the default registry (where `ModuleApi.addAction` registers) so hooks see CLI writes. Global `--safe` / `AGENTCRM_SAFE=1` skips extensions. `CrmSession.extensions.sync()` re-syncs (after `ext install`, on MCP refresh). `tools list` opens a session when a site resolves (`source: builtin|extension`); `tools call` resolves extension tools after loading.
+- **Authoring** (`agent/ops/extScaffold.ts`, `extPackage.ts`, `extCheck.ts`): `ext new` writes a standalone Vite project (typings copied from `types/agentcrm-runtime.d.ts`, scripts pinned to `npx -y @agent-crm/agentcrm@<version>`); generated sources start import lines with `${IMPORT}` so `agent/bundle.test.ts` stays green. `ext check` validates and loads the bundle in a throw-away seeded memory CRM, reports registrations and smoke-calls tools without required inputs.
+- **MCP**: tools = `listAiTools()` computed per request; resources `agentcrm://modules`, `agentcrm://appearance`.
+- **Tests**: `agent/e2e-customize.test.ts` (modules + dependency conflict, appearance, `ext new` → Vite build → check → pack → install → tools → disable → uninstall, theme flow, hooks + automation actions in sessions), `scripts/docs.test.ts` (runtime API reference lists every export).
+- **Skills**: `plugin/skills/agentcrm-extensions/` (+ references: module-recipes, theme-recipes, runtime-api, testing), `agentcrm-admin` (modules, appearance, extensions + references/appearance.md). **Docs**: `docs/{extensions,creating-a-module,creating-a-theme,runtime-api-reference,appearance,modules}.md`.

@@ -83,7 +83,13 @@ describe("MCP server", () => {
   it("serves resources and prompts", async () => {
     const t = await setup();
     const res = (await t.request("resources/list")).result as { resources: { uri: string }[] };
-    expect(res.resources.map((r) => r.uri)).toEqual(["agentcrm://schema", "agentcrm://pipelines"]);
+    expect(res.resources.map((r) => r.uri)).toEqual(["agentcrm://schema", "agentcrm://pipelines", "agentcrm://modules", "agentcrm://appearance"]);
+    const modules = JSON.parse(((await t.request("resources/read", { uri: "agentcrm://modules" })).result as { contents: { text: string }[] }).contents[0].text);
+    expect(modules.modules.map((m: { id: string }) => m.id)).toEqual(expect.arrayContaining(["records", "deals", "automations"]));
+    expect(modules.extensions).toEqual([]);
+    const appearance = JSON.parse(((await t.request("resources/read", { uri: "agentcrm://appearance" })).result as { contents: { text: string }[] }).contents[0].text);
+    expect(appearance.appearance).toMatchObject({ preset: "default", accent: "#3366ff", hasLogo: false });
+    expect(appearance.presets.map((p: { id: string }) => p.id)).toContain("ocean");
     const schema = (await t.request("resources/read", { uri: "agentcrm://schema" })).result as { contents: { text: string; mimeType: string }[] };
     expect(schema.contents[0].mimeType).toBe("application/json");
     expect(schema.contents[0].text).toContain("companies");

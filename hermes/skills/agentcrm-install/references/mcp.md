@@ -11,7 +11,7 @@ claude mcp add agentcrm -- python3 <skill dir>/scripts/agentcrm.py mcp --site <a
 Claude Desktop (`claude_desktop_config.json`) and Cursor (`.cursor/mcp.json`):
 
 ```json
-{ "mcpServers": { "agentcrm": { "command": "npx", "args": ["-y", "@agent-crm/agentcrm@0.1.0", "mcp", "--site", "<alias>"] } } }
+{ "mcpServers": { "agentcrm": { "command": "npx", "args": ["-y", "@agent-crm/agentcrm@0.2.0", "mcp", "--site", "<alias>"] } } }
 ```
 
 The server uses the credentials of this computer (`~/.agentcrm`) and acts as the site's CLI user.

@@ -1,6 +1,24 @@
 {
   "versions": [
     {
+      "version": "0.2.0",
+      "date": "2026-11-03",
+      "breaking": false,
+      "changes": [
+        "Modules: switch built-in features (dashboard, deals & pipelines, reports, lead forms, tasks, automations, email & calendar, AI assistant) on and off for the whole workspace, with dependency checks and per-module configuration. Disabling never deletes data.",
+        "Appearance: accent color with a generated palette, neutral grays, radius, density, font, sidebar style, buttons, contrast, default light / dark mode, logo, favicon, custom CSS and seven presets, applied live for every user.",
+        "Extensions: install modules (pages, record tabs, dashboard widgets, settings pages, AI tools, automation actions, hooks) and themes at runtime from a ZIP, stored in the CRM's own data; enable, disable, upgrade, export, uninstall; safe mode (?safe=1 or Shift).",
+        "CLI: modules list|get|enable|disable|config, appearance get|presets|set|preset|logo|favicon|css|reset, ext new|check|pack|install|list|enable|disable|uninstall|export; every workspace-wide change prints a plan unless --yes.",
+        "CLI and MCP sessions load the site's enabled extensions: their AI tools are in tools list / MCP tools/list, their hooks and automation actions run (automations run). --safe skips them.",
+        "MCP: new resources agentcrm://modules and agentcrm://appearance; customisation tools list_modules, set_module_enabled, get_appearance, set_appearance, apply_appearance_preset, list_extensions, set_extension_enabled.",
+        "New skill agentcrm-extensions (scaffold, recipes, check, pack, install); agentcrm-admin covers modules, appearance and extensions. Docs: extensions, creating a module / theme, runtime API reference, appearance, modules."
+      ],
+      "actions": [
+        "Update the agent skills (Claude Code: /plugin marketplace update agentcrm) to get the customisation and extension commands.",
+        "Redeploy the admin (agentcrm deploy-admin) to get Settings → Modules and Settings → Appearance."
+      ]
+    },
+    {
       "version": "0.1.0",
       "date": "2026-11-03",
       "breaking": false,
