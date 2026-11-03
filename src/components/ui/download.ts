@@ -36,3 +36,16 @@ export function toCsv(rows: unknown[][]): string {
 export function fileStamp(d = new Date()): string {
   return d.toISOString().slice(0, 10);
 }
+
+export function downloadBlob(filename: string, blob: Blob): void {
+  if (typeof document === "undefined" || typeof URL === "undefined" || typeof URL.createObjectURL !== "function") return;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}

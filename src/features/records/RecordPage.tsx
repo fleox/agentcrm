@@ -6,11 +6,12 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, CheckSquare, ChevronRight, Clock, GitMerge, Link2, MoreHorizontal, Plus, RotateCcw, StickyNote, Trash2 } from "lucide-react";
+import { ArrowLeft, CheckSquare, ChevronRight, Clock, FolderOpen, GitMerge, Link2, MoreHorizontal, Plus, RotateCcw, StickyNote, Trash2 } from "lucide-react";
 import { recordLabel } from "../../core/fields";
 import type { ActivityType, CrmRecord, ObjectDef } from "../../core/types";
-import { Avatar, Button, confirmDialog, Dropdown, EmptyState, ObjectIcon, Tabs, useFieldContext } from "../../components/ui";
+import { Button, confirmDialog, Dropdown, EmptyState, ObjectIcon, Tabs, useFieldContext, useFilesBridge } from "../../components/ui";
 import { useActivities, useCan, useCollection, useObject, useOps, useRecord } from "../../app/CrmDataContext";
+import { listFiles } from "../../ops/files";
 import { useAuth } from "../../app/AuthContext";
 import { useSlot } from "../../app/featureRegistry";
 import { paths } from "../../app/paths";
@@ -21,6 +22,8 @@ import { toast } from "../../shared/lib/toast";
 import { cn, formatRelative } from "../../shared/lib/utils";
 import { ACTIVITY_ICONS } from "./detail/activityStyle";
 import { FieldsPanel } from "./detail/FieldsPanel";
+import { FilesTab } from "./detail/FilesTab";
+import { RecordAvatarEditor } from "./detail/RecordAvatarEditor";
 import { MergeModal } from "./detail/MergeModal";
 import { NotesTab, RelatedTab, TasksTab } from "./detail/Tabs";
 import { Timeline } from "./detail/Timeline";
@@ -97,8 +100,11 @@ export function RecordPage() {
   const canDelete = useCan("records.delete");
   const canLog = useCan("activities.write");
   const [merging, setMerging] = useState(false);
+  const bridge = useFilesBridge();
+  const fileDocs = useCollection("files");
 
   const inverse = useMemo(() => (record ? inverseRelations(ops, record) : []), [ops, record, allRecords, objects]);
+  const fileCount = useMemo(() => (record && bridge ? listFiles(ops, record.id).length : 0), [ops, record, bridge, fileDocs, activities]);
 
   if (!object || !record || record.object !== object.id) {
     return (
@@ -130,6 +136,7 @@ export function RecordPage() {
     { id: "timeline", label: t("detail.timeline"), icon: <Clock />, count: activities.length || undefined },
     { id: "notes", label: t("detail.notes"), icon: <StickyNote />, count: notes || undefined },
     { id: "tasks", label: t("detail.tasks"), icon: <CheckSquare />, count: openTasks || undefined },
+    ...(bridge ? [{ id: "files", label: t("detail.files"), icon: <FolderOpen />, count: fileCount || undefined }] : []),
     ...inverse.map((inv) => ({
       id: `rel:${inv.object}:${inv.field}`,
       label: inverse.filter((x) => x.object === inv.object).length > 1 ? `${inv.label} (${inv.fieldLabel})` : inv.label,
@@ -199,7 +206,7 @@ export function RecordPage() {
           <span className="truncate">{label}</span>
         </nav>
         <div className="mt-1 flex items-center gap-2">
-          <Avatar name={label} size="lg" square={object.id === "companies"} />
+          <RecordAvatarEditor record={record} object={object} name={label} disabled={deleted} />
           <div className="min-w-0 flex-1">
             <LabelEditor record={record} object={object} canWrite={canWrite && !deleted} />
             <div className="flex flex-wrap items-center gap-x-2 px-1 text-2xs text-surface-400">
@@ -280,6 +287,7 @@ export function RecordPage() {
             {tab === "timeline" && <Timeline record={record} object={object} />}
             {tab === "notes" && <NotesTab record={record} object={object} />}
             {tab === "tasks" && <TasksTab record={record} object={object} />}
+            {tab === "files" && <FilesTab record={record} object={object} />}
             {inv && <RelatedTab record={record} inv={inv} />}
             {SlotTab && <SlotTab {...slotProps} />}
           </div>

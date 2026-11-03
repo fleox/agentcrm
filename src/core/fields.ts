@@ -15,6 +15,8 @@
 //   relation  many                     record ids (string[])
 //   user                               CrmUser id (string)
 //   address                            AddressValue object
+//   image                              file id (string) — FileMeta in `files`
+//   files                              file ids (string[])
 // Empty values are removed from the record (undefined), never stored as "".
 
 import type { AddressValue, CrmRecord, FieldDef, FieldType, ObjectDef, SelectOption } from "./types";
@@ -42,6 +44,7 @@ export type FieldErrorCode =
   | "invalidRelation"
   | "invalidUser"
   | "invalidAddress"
+  | "invalidFile"
   | "unknownField"
   | "readOnly"
   | "notUnique";
@@ -64,6 +67,7 @@ export type CoerceResult = { ok: true; value: unknown } | { ok: false; code: Fie
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^\+?[0-9 ().\-/]{5,25}(\s*(x|ext\.?)\s*\d{1,6})?$/i;
 const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+const FILE_REF_RE = /^[A-Za-z0-9_-]{1,80}$/;
 
 const TRUE_WORDS = new Set(["true", "yes", "y", "1", "oui", "on", "x", "✓"]);
 const FALSE_WORDS = new Set(["false", "no", "n", "0", "non", "off", ""]);
@@ -353,6 +357,16 @@ export function coerceFieldValue(field: FieldDef, raw: unknown, opts: CoerceOpti
       const s = String(value).trim();
       return /^[\w@.+-]{1,128}$/.test(s) ? ok(s) : fail("invalidUser", `${label}: expected a user id.`);
     }
+    case "image": {
+      const value = Array.isArray(raw) ? raw[0] : raw;
+      const s = String(value ?? "").trim();
+      return FILE_REF_RE.test(s) ? ok(s) : fail("invalidFile", `${label}: expected a file id (upload the image first).`);
+    }
+    case "files": {
+      const ids = splitList(raw);
+      if (ids.some((id) => !FILE_REF_RE.test(id))) return fail("invalidFile", `${label}: expected file id(s) (upload the files first).`);
+      return ok(ids.length ? [...new Set(ids)] : undefined);
+    }
     case "address": {
       if (typeof raw === "string") return ok({ street: raw.trim() } satisfies AddressValue);
       if (typeof raw !== "object" || Array.isArray(raw)) return fail("invalidAddress", `${label}: expected an address.`);
@@ -431,6 +445,8 @@ export interface FormatContext {
   recordLabel?: (object: string, id: string) => string | undefined;
   // Resolves a user's display name (user fields).
   userName?: (id: string) => string | undefined;
+  // Resolves a file's name (image / files fields).
+  fileName?: (id: string) => string | undefined;
 }
 
 export function formatNumber(n: number, locale = "en-US", opts: Intl.NumberFormatOptions = {}): string {
@@ -500,6 +516,9 @@ export function formatFieldValue(field: FieldDef, value: unknown, ctx: FormatCon
       return ctx.userName?.(String(value)) ?? String(value);
     case "address":
       return formatAddress(value as AddressValue);
+    case "image":
+    case "files":
+      return (Array.isArray(value) ? value : [value]).map((id) => ctx.fileName?.(String(id)) ?? String(id)).join(", ");
     default:
       return String(value);
   }
@@ -557,6 +576,9 @@ export function recordLabel(object: ObjectDef | undefined, record: Pick<CrmRecor
 export function canConvertType(from: FieldType, to: FieldType): boolean {
   if (from === to) return true;
   if (from === "relation" || to === "relation") return false;
+  // File references only convert between themselves.
+  const fileTypes: FieldType[] = ["image", "files"];
+  if (fileTypes.includes(from) || fileTypes.includes(to)) return fileTypes.includes(from) && fileTypes.includes(to);
   return true;
 }
 

@@ -13,6 +13,7 @@
 | [creating-a-theme.md](creating-a-theme.md) | Writing a theme: values, brand colors, CSS |
 | [runtime-api-reference.md](runtime-api-reference.md) | Every export of `@agent-crm/runtime` |
 | [automations.md](automations.md) | Automations, lead forms and the GitHub Actions cron ([template](templates/agentcrm-cron.yml)) |
+| [files.md](files.md) | Images & attachments: where files live per backend, encryption, limits, GDPR purge, Firebase Storage, CORS |
 | [import-export.md](import-export.md) | CSV import (mapping, dedupe, dry run), CSV / JSON export |
 | [hosting.md](hosting.md) | Hosting the admin (S3, Pages, local) |
 | [firebase.md](firebase.md) | The Firebase backend and its security rules |

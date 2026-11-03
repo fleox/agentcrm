@@ -73,6 +73,7 @@ export function companiesObject(now: number): ObjectDef {
     color: "blue",
     standard: true,
     labelField: "name",
+    imageField: "logo",
     createdAt: now,
     updatedAt: now,
     fields: [
@@ -85,6 +86,7 @@ export function companiesObject(now: number): ObjectDef {
       f({ id: "linkedin", label: "LinkedIn", type: "url" }),
       f({ id: "phone", label: "Phone", type: "phone" }),
       f({ id: "tags", label: "Tags", type: "tags" }),
+      f({ id: "logo", label: "Logo", type: "image", description: "Company logo shown next to its name." }),
     ],
   };
 }
@@ -98,6 +100,7 @@ export function peopleObject(now: number): ObjectDef {
     color: "purple",
     standard: true,
     labelField: "name",
+    imageField: "avatar",
     createdAt: now,
     updatedAt: now,
     fields: [
@@ -113,6 +116,7 @@ export function peopleObject(now: number): ObjectDef {
       f({ id: "lifecycleStage", label: "Lifecycle stage", type: "select", options: LIFECYCLE_OPTIONS.map((o) => ({ ...o })), defaultValue: "lead" }),
       f({ id: "leadSource", label: "Lead source", type: "select", options: LEAD_SOURCE_OPTIONS.map((o) => ({ ...o })) }),
       f({ id: "tags", label: "Tags", type: "tags" }),
+      f({ id: "avatar", label: "Photo", type: "image", description: "Profile picture shown next to the name." }),
     ],
   };
 }
@@ -151,6 +155,10 @@ export function stageOptions(pipelines: Pipeline[]): SelectOption[] {
 export function pipelineOptions(pipelines: Pipeline[]): SelectOption[] {
   return pipelines.map((p, i) => ({ id: p.id, label: p.name, color: colorAt(i + 1) }));
 }
+
+// Image fields added to the standard objects in 0.3.0 (migrated into
+// existing workspaces by ops/migrate.ts): object id → field id.
+export const STANDARD_IMAGE_FIELDS: Record<string, string> = { companies: "logo", people: "avatar" };
 
 export function standardObjects(now: number): ObjectDef[] {
   return [companiesObject(now), peopleObject(now), dealsObject(now)];
@@ -210,7 +218,7 @@ export function defaultViewFor(object: ObjectDef): ViewDef {
     object: object.id,
     name: `All ${object.labelPlural.toLowerCase()}`,
     type: "table",
-    columns: object.fields.filter((fd) => !fd.hidden).slice(0, 7).map((fd) => fd.id),
+    columns: object.fields.filter((fd) => !fd.hidden && fd.type !== "image").slice(0, 7).map((fd) => fd.id),
     filters: [],
     sorts: [],
     shared: true,

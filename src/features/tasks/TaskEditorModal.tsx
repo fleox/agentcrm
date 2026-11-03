@@ -4,9 +4,11 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Check, Eye, Pencil, Plus, X } from "lucide-react";
-import { Button, FieldInput, FormField, Input, Markdown, Modal, ObjectIcon, Select, Textarea } from "../../components/ui";
+import { AttachmentList, Button, FieldInput, FileDropZone, FilePickerButton, FormField, Input, Markdown, Modal, ObjectIcon, PendingUploadList, pastedFiles, Select, Textarea, usePendingUploads } from "../../components/ui";
+import { fileImageMarkdown, isImageMime } from "../../core/files";
+import type { FileMeta } from "../../core/types";
 import { useCurrentUser, useObjects, useOps, useRecordLabel } from "../../app/CrmDataContext";
-import { createTask, updateActivity } from "../../ops/activities";
+import { addActivity, updateActivity } from "../../ops/activities";
 import type { Activity, ActivityTarget, FieldDef } from "../../core/types";
 import { toast } from "../../shared/lib/toast";
 import { cn } from "../../shared/lib/utils";
@@ -43,6 +45,8 @@ export function TaskEditorModal({ open, onClose, task, defaultTargets, defaultAs
   const [pickObject, setPickObject] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [kept, setKept] = useState<string[]>([]);
+  const uploads = usePendingUploads();
 
   // Reset the form each time the modal opens.
   useEffect(() => {
@@ -58,8 +62,15 @@ export function TaskEditorModal({ open, onClose, task, defaultTargets, defaultAs
     setPickObject(initial[0]?.object ?? objects[0]?.id ?? "");
     setError(null);
     setSaving(false);
+    setKept(task?.attachments ?? []);
+    uploads.reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, task?.id]);
+
+  const insertInline = (f: FileMeta) => setBody((b) => `${b}${b && !b.endsWith("\n") ? "\n" : ""}${fileImageMarkdown(f.name, f.id)}\n`);
+  const pasted = async (files: File[]) => {
+    for (const f of await uploads.add(files)) if (isImageMime(f.mime)) insertInline(f);
+  };
 
   const objectById = useMemo(() => new Map(objects.map((o) => [o.id, o])), [objects]);
   const pickerField = useMemo<FieldDef>(() => ({ id: "x", label: "", type: "relation", relation: { object: pickObject, cardinality: "many" } }), [pickObject]);
@@ -81,13 +92,15 @@ export function TaskEditorModal({ open, onClose, task, defaultTargets, defaultAs
       setError(t("editor.titleRequired"));
       return;
     }
+    if (uploads.busy) return;
     setSaving(true);
     setError(null);
     const dueAt = fromDateTimeInputs(date, time);
+    const attachments = [...kept, ...uploads.ids.filter((id) => !kept.includes(id))];
     try {
       const saved = task
-        ? await updateActivity(ops, task.id, { title: title.trim(), body, dueAt: dueAt ?? null, assigneeId: assigneeId ?? null, targets })
-        : await createTask(ops, { title: title.trim(), body: body || undefined, dueAt: dueAt ?? null, assigneeId: assigneeId ?? null, targets });
+        ? await updateActivity(ops, task.id, { title: title.trim(), body, dueAt: dueAt ?? null, assigneeId: assigneeId ?? null, targets, attachments })
+        : await addActivity(ops, { type: "task", title: title.trim(), body: body || undefined, dueAt: dueAt ?? null, assigneeId: assigneeId ?? null, targets, ...(attachments.length ? { attachments } : {}) });
       toast.success(task ? t("toast.updated") : t("toast.created"));
       onSaved?.(saved);
       onClose();
@@ -99,6 +112,7 @@ export function TaskEditorModal({ open, onClose, task, defaultTargets, defaultAs
 
   return (
     <Modal open={open} onClose={onClose} size="lg" title={task ? t("editor.editTitle") : t("editor.newTitle")} dismissible={false}>
+      <FileDropZone onFiles={(f) => void uploads.add(f)} disabled={!uploads.available}>
       <form data-form-type="other" onSubmit={(e) => void submit(e)} className="space-y-3 text-[13px]">
         <FormField label={t("editor.title")} htmlFor="task-title" error={error ?? undefined}>
           <Input id="task-title" autoFocus value={title} placeholder={t("editor.titlePlaceholder")} onChange={(e) => setTitle(e.target.value)} invalid={!!error} />
@@ -125,7 +139,19 @@ export function TaskEditorModal({ open, onClose, task, defaultTargets, defaultAs
             </button>
           </div>
           <div className={cn(preview && "hidden")}>
-            <Textarea id="task-body" rows={4} value={body} placeholder={t("editor.descriptionPlaceholder")} onChange={(e) => setBody(e.target.value)} />
+            <Textarea
+              id="task-body"
+              rows={4}
+              value={body}
+              placeholder={t("editor.descriptionPlaceholder")}
+              onChange={(e) => setBody(e.target.value)}
+              onPaste={(e) => {
+                const files = uploads.available ? pastedFiles(e) : [];
+                if (!files.length) return;
+                e.preventDefault();
+                void pasted(files);
+              }}
+            />
           </div>
           <div className={cn("min-h-[92px] rounded-md border border-surface-200 px-2.5 py-1.5 dark:border-surface-700", !preview && "hidden")}>
             {body.trim() ? <Markdown source={body} /> : <span className="text-sm text-surface-400">{t("editor.nothingToPreview")}</span>}
@@ -182,15 +208,26 @@ export function TaskEditorModal({ open, onClose, task, defaultTargets, defaultAs
           </div>
         </FormField>
 
+        {uploads.available && (
+          <FormField label={t("editor.attachments")}>
+            <div className="space-y-2" data-testid="task-attachments">
+              <AttachmentList ids={kept} size="sm" onRemove={(f) => setKept((ids) => ids.filter((x) => x !== f.id))} />
+              <PendingUploadList uploads={uploads} onInsertInline={insertInline} />
+              <FilePickerButton size="xs" variant="outline" onFiles={(f) => void uploads.add(f)} label={t("editor.attach")} testId="task-file-input" />
+            </div>
+          </FormField>
+        )}
+
         <div className="-mx-5 -mb-4 mt-4 flex items-center justify-end gap-2 border-t border-surface-100 px-5 py-3 dark:border-surface-800">
           <Button variant="ghost" onClick={onClose}>
             {t("editor.cancel")}
           </Button>
-          <Button type="submit" variant="primary" icon={task ? <Check /> : <Plus />} loading={saving}>
+          <Button type="submit" variant="primary" icon={task ? <Check /> : <Plus />} loading={saving} disabled={uploads.busy}>
             {task ? t("editor.save") : t("editor.create")}
           </Button>
         </div>
       </form>
+      </FileDropZone>
     </Modal>
   );
 }

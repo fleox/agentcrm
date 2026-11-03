@@ -1,6 +1,6 @@
 // Typed read helpers over the DataStore collections (internal to ops/).
 
-import type { Activity, Automation, AutomationRun, CrmRecord, CrmSettings, CrmUser, LeadForm, ObjectDef, Pipeline, ViewDef } from "../core/types";
+import type { Activity, Automation, AutomationRun, CrmRecord, CrmSettings, CrmUser, FileMeta, LeadForm, ObjectDef, Pipeline, ViewDef } from "../core/types";
 import type { DataStore, StoredDoc } from "../data/types";
 import { OpsError } from "./context";
 import type { ExtensionDoc } from "../extensions/types";
@@ -101,4 +101,19 @@ export function extensionDocsOf(store: DataStore): ExtensionDoc[] {
 
 export function extensionDocOf(store: DataStore, id: string): ExtensionDoc | undefined {
   return store.get("extensions", id) as unknown as ExtensionDoc | undefined;
+}
+
+export function filesOf(store: DataStore, opts: { includeDeleted?: boolean } = {}): FileMeta[] {
+  const all = store.list("files") as unknown as FileMeta[];
+  return opts.includeDeleted ? all : all.filter((f) => !f.deletedAt);
+}
+
+export function fileOf(store: DataStore, id: string): FileMeta | undefined {
+  return store.get("files", id) as unknown as FileMeta | undefined;
+}
+
+export function requireFile(store: DataStore, id: string, opts: { includeDeleted?: boolean } = {}): FileMeta {
+  const f = fileOf(store, id);
+  if (!f || (f.deletedAt && !opts.includeDeleted)) throw new OpsError("notFound", `File "${id}" not found.`);
+  return f;
 }

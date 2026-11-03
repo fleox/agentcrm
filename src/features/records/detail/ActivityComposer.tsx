@@ -5,7 +5,9 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Send } from "lucide-react";
 import type { ActivityTarget, ActivityType } from "../../../core/types";
-import { Button, FieldInput, Input, Select } from "../../../components/ui";
+import { Button, FieldInput, FileDropZone, FilePickerButton, Input, PendingUploadList, Select, usePendingUploads } from "../../../components/ui";
+import { fileImageMarkdown, isImageMime } from "../../../core/files";
+import type { FileMeta } from "../../../core/types";
 import { useCan, useCurrentUser, useOps } from "../../../app/CrmDataContext";
 import { addActivity } from "../../../ops/activities";
 import { toast } from "../../../shared/lib/toast";
@@ -38,17 +40,28 @@ export function ActivityComposer({ targets, defaultType = "note", types = COMPOS
   const [start, setStart] = useState(() => localInput(Date.now()));
   const [length, setLength] = useState("30");
   const [busy, setBusy] = useState(false);
+  const uploads = usePendingUploads();
   if (!canWrite) return null;
 
   const reset = () => {
     setTitle("");
     setBody("");
     setDue("");
+    uploads.reset();
+  };
+  const insertInline = (f: FileMeta) => setBody((b) => `${b}${b && !b.endsWith("\n") ? "\n" : ""}${fileImageMarkdown(f.name, f.id)}\n`);
+  // Pasted images go inline (like a chat); other files become attachments.
+  const pasted = async (files: File[]) => {
+    for (const f of await uploads.add(files)) if (isImageMime(f.mime)) insertInline(f);
   };
 
   const submit = async () => {
-    if (!title.trim() && !body.trim()) {
+    if (!title.trim() && !body.trim() && !uploads.ids.length) {
       toast.error(t("composer.empty"));
+      return;
+    }
+    if (uploads.busy) {
+      toast.info(t("composer.waitUploads"));
       return;
     }
     setBusy(true);
@@ -64,7 +77,8 @@ export function ActivityComposer({ targets, defaultType = "note", types = COMPOS
       if (type === "task" && due) dueAt = due;
       await addActivity(ops, {
         type,
-        title: title.trim() || (type === "note" ? "" : t(`composer.defaultTitle.${type}`)),
+        title: title.trim() || (type === "note" ? (body.trim() ? "" : t("composer.defaultTitle.attachment")) : t(`composer.defaultTitle.${type}`)),
+        ...(uploads.ids.length ? { attachments: uploads.ids } : {}),
         body: body.trim() || undefined,
         targets,
         ...(dueAt ? { dueAt } : {}),
@@ -82,6 +96,7 @@ export function ActivityComposer({ targets, defaultType = "note", types = COMPOS
   };
 
   return (
+    <FileDropZone onFiles={(f) => void uploads.add(f)} disabled={!uploads.available} testId="composer-dropzone">
     <form
       data-form-type="other"
       data-testid="activity-composer"
@@ -134,13 +149,16 @@ export function ActivityComposer({ targets, defaultType = "note", types = COMPOS
           <FieldInput field={{ id: "assignee", label: t("composer.assignee"), type: "user" }} value={assignee} onChange={(v) => setAssignee(v as string | undefined)} />
         </div>
       )}
-      <MarkdownEditor value={body} onChange={setBody} rows={type === "note" ? 4 : 3} placeholder={t(`composer.bodyPlaceholder.${type}`)} onSubmit={() => void submit()} label={t("composer.body")} />
+      <MarkdownEditor value={body} onChange={setBody} rows={type === "note" ? 4 : 3} placeholder={t(`composer.bodyPlaceholder.${type}`)} onSubmit={() => void submit()} label={t("composer.body")} onPasteFiles={uploads.available ? (f) => void pasted(f) : undefined} />
+      <PendingUploadList uploads={uploads} onInsertInline={insertInline} />
       <div className="flex items-center justify-end gap-2">
+        {uploads.available && <FilePickerButton onFiles={(f) => void uploads.add(f)} testId="composer-file-input" />}
         <span className="mr-auto text-2xs text-surface-400">{t("composer.submitHint")}</span>
-        <Button type="submit" size="sm" variant="primary" loading={busy} icon={<Send />}>
+        <Button type="submit" size="sm" variant="primary" loading={busy} disabled={uploads.busy} icon={<Send />}>
           {t("composer.submit", { type: tc(`activityTypes.${type}`) })}
         </Button>
       </div>
     </form>
+    </FileDropZone>
   );
 }

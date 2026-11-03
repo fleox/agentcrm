@@ -6,7 +6,14 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNod
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ArrowRight, Calendar, CheckSquare, Clock, CornerDownLeft, Languages, Mail, Moon, Phone, Plus, Search, StickyNote, Sun } from "lucide-react";
-import { Kbd, Modal, ObjectIcon } from "../../components/ui";
+import { Kbd, Modal, ObjectIcon, RecordAvatar, useFieldContext } from "../../components/ui";
+
+// A record's image when it has one, else its object's icon tile.
+function RecordIcon({ id, label, object }: { id: string; label: string; object?: { id: string; icon: string; color: string } }) {
+  const ctx = useFieldContext();
+  if (ctx.recordImage?.(id)) return <RecordAvatar recordId={id} name={label} size="md" square={object?.id === "companies"} />;
+  return <ObjectIcon name={object?.icon} color={object?.color} tile />;
+}
 import { useActivities, useCan, useCurrentUser, useObjects, useRecordLabel, useSearchIndex } from "../../app/CrmDataContext";
 import { emitShellEvent, useShellEvent } from "../../app/shellEvents";
 import { useFeatures } from "../../app/featureRegistry";
@@ -185,7 +192,7 @@ export function CommandPalette() {
         const label = labelOf(r.id);
         const o = objectById.get(r.object);
         if (label === undefined || !o) continue;
-        out.push({ key: `recent:${r.id}`, group: "recent", label, sub: o.labelSingular, icon: <ObjectIcon name={o.icon} color={o.color} tile />, run: go(paths.record(r.object, r.id)) });
+        out.push({ key: `recent:${r.id}`, group: "recent", label, sub: o.labelSingular, icon: <RecordIcon id={r.id} label={label} object={o} />, run: go(paths.record(r.object, r.id)) });
       }
     }
     if (!commandMode && text) {
@@ -198,7 +205,7 @@ export function CommandPalette() {
           group: "records",
           label: h.label || t("untitled"),
           sub: h.sub ?? o?.labelSingular,
-          icon: <ObjectIcon name={o?.icon} color={o?.color} tile />,
+          icon: <RecordIcon id={h.id} label={h.label || t("untitled")} object={o} />,
           run: go(paths.record(h.object, h.id)),
         });
       }

@@ -10,6 +10,8 @@ import { defaultPipeline, defaultViews, standardObjects } from "../core/schema/s
 import type { Activity, ActivityType, CrmRecord, CrmSettings, CrmUser } from "../core/types";
 import type { DocMutation } from "../data/types";
 import { assertCan, type OpsContext } from "./context";
+import { seedDemoFiles } from "./demoFiles";
+import { SCHEMA_MIGRATIONS } from "./migrate";
 import { DEFAULT_SETTINGS } from "./settings";
 import { asDoc, objectOf, settingsDoc, usersOf } from "./store";
 
@@ -42,6 +44,8 @@ export async function seedCrm(ctx: OpsContext, opts: SeedOptions = {}): Promise<
     if (objectOf(ctx.store, o.id)) continue;
     const obj = {
       ...o,
+      // Fresh install: already at the current schema (ops/migrate.ts).
+      migrations: [...SCHEMA_MIGRATIONS],
       fields: o.fields.map((f) => (f.type === "currency" ? { ...f, currency } : f)),
     };
     mutations.push({ op: "set", collection: "objects", doc: asDoc(obj) });
@@ -163,6 +167,8 @@ export interface DemoReport {
   deals: number;
   activities: number;
   users: number;
+  // Demo images / attachments (when the backend can store files).
+  files?: number;
 }
 
 // Deterministic for a given `now` (ctx.now()).
@@ -307,5 +313,12 @@ export async function seedDemoData(ctx: OpsContext, opts: { ownerId?: string; cu
   for (const r of [...companies, ...people, ...deals]) mutations.push({ op: "set", collection: "records", doc: asDoc(r) });
   for (const a of activities) mutations.push({ op: "set", collection: "activities", doc: asDoc(a) });
   await ctx.store.write(mutations, { message: "Add demo data" });
-  return { companies: companies.length, people: people.length, deals: deals.length, activities: activities.length, users: teammates.length };
+  let files = 0;
+  try {
+    files = (await seedDemoFiles(ctx, { companies, people, activities, ownerId: opts.ownerId })).files;
+  } catch (err) {
+    // e.g. Firebase Storage not enabled: the demo works without images.
+    ctx.log?.(`Demo files skipped: ${(err as Error).message}`);
+  }
+  return { companies: companies.length, people: people.length, deals: deals.length, activities: activities.length, users: teammates.length, files };
 }

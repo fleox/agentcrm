@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Markdown, Textarea } from "../../../components/ui";
+import { Markdown, pastedFiles, Textarea } from "../../../components/ui";
 import { cn } from "../../../shared/lib/utils";
 
 // Markdown textarea with a Write / Preview toggle (marked + DOMPurify).
@@ -14,6 +14,7 @@ export function MarkdownEditor({
   onCancel,
   id,
   label,
+  onPasteFiles,
 }: {
   value: string;
   onChange(v: string): void;
@@ -25,6 +26,8 @@ export function MarkdownEditor({
   onCancel?(): void;
   id?: string;
   label?: string;
+  // Files pasted into the textarea (screenshots…).
+  onPasteFiles?(files: File[]): void;
 }) {
   const { t } = useTranslation("records");
   const [mode, setMode] = useState<"write" | "preview">("write");
@@ -53,6 +56,13 @@ export function MarkdownEditor({
           value={value}
           placeholder={placeholder}
           onChange={(e) => onChange(e.target.value)}
+          onPaste={(e) => {
+            if (!onPasteFiles) return;
+            const files = pastedFiles(e);
+            if (!files.length) return;
+            e.preventDefault();
+            onPasteFiles(files);
+          }}
           onKeyDown={(e) => {
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && onSubmit) {
               e.preventDefault();

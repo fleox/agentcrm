@@ -2,6 +2,8 @@
 // CLI dry runs (`--plan` previews) and as a scratch store for imports.
 
 import { createStoreCore, snapshotFromDocs } from "./core";
+import { withFileStore } from "./files";
+import { createMemoryFileStore } from "./files/memory";
 import type { CollectionName, DataStore, StoreIdentity, StoredDoc } from "./types";
 
 export interface MemoryStoreOptions {
@@ -9,10 +11,12 @@ export interface MemoryStoreOptions {
   identity?: StoreIdentity | null;
   // Simulates a backend failure on the next persist (tests).
   failNextWrite?: () => Error | null;
+  // Initial file blobs (id → bytes).
+  blobs?: Map<string, Uint8Array>;
 }
 
 export function createMemoryStore(opts: MemoryStoreOptions = {}): DataStore {
-  return createStoreCore({
+  const store = createStoreCore({
     kind: "memory",
     async load() {
       return snapshotFromDocs(opts.initial ?? {});
@@ -27,4 +31,5 @@ export function createMemoryStore(opts: MemoryStoreOptions = {}): DataStore {
         : opts.identity;
     },
   });
+  return withFileStore(store, createMemoryFileStore(opts.blobs));
 }

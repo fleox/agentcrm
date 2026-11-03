@@ -4,8 +4,9 @@
 
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { CalendarDays, CheckSquare, MoreHorizontal, Pencil, Trash2, UserRound, X } from "lucide-react";
-import { Avatar, Checkbox, confirmDialog, Dropdown, EmptyState, IconButton, Input, ObjectIcon, Popover, usePopover } from "../../components/ui";
+import { CalendarDays, CheckSquare, MoreHorizontal, Paperclip, Pencil, Trash2, UserRound, X } from "lucide-react";
+import { AttachmentList, Avatar, Checkbox, confirmDialog, Dropdown, EmptyState, IconButton, Input, ObjectIcon, Popover, useFilesBridge, usePopover } from "../../components/ui";
+import { deleteFile } from "../../ops/files";
 import { useCan, useObjects, useOps, useRecordLabel, useUsers } from "../../app/CrmDataContext";
 import { completeTask, deleteActivity, updateActivity } from "../../ops/activities";
 import type { Activity, CrmUser } from "../../core/types";
@@ -73,6 +74,9 @@ function TaskRow({ task, now, showTargets, onEdit }: { task: Activity; now: numb
   const users = useUsers({ includeDisabled: true });
   const assignee = users.find((u) => u.id === task.assigneeId);
   const done = !!task.doneAt;
+  const bridge = useFilesBridge();
+  const [showFiles, setShowFiles] = useState(false);
+  const attachments = bridge ? (task.attachments ?? []).filter((id) => { const m = bridge.meta(id); return !!m && !m.deletedAt; }) : [];
 
   const run = async (fn: () => Promise<unknown>) => {
     try {
@@ -92,7 +96,8 @@ function TaskRow({ task, now, showTargets, onEdit }: { task: Activity; now: numb
   };
 
   return (
-    <li className="group flex min-h-[40px] items-center gap-3 px-4 py-1.5 hover:bg-surface-50 dark:hover:bg-surface-900/60" data-task-id={task.id}>
+    <li className="group px-4 py-1.5 hover:bg-surface-50 dark:hover:bg-surface-900/60" data-task-id={task.id}>
+      <div className="flex min-h-[28px] items-center gap-3">
       <Checkbox checked={done} disabled={!canWrite} onChange={() => void toggle()} aria-label={done ? t("list.reopen", { title: task.title }) : t("list.complete", { title: task.title })} />
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
         <button
@@ -120,6 +125,18 @@ function TaskRow({ task, now, showTargets, onEdit }: { task: Activity; now: numb
               </a>
             );
           })}
+        {attachments.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setShowFiles((v) => !v)}
+            aria-expanded={showFiles}
+            title={t("list.attachments", { count: attachments.length })}
+            className="inline-flex items-center gap-0.5 rounded px-1 py-px text-xs text-surface-500 hover:bg-surface-100 hover:text-surface-800 dark:hover:bg-surface-800 dark:hover:text-surface-100"
+          >
+            <Paperclip className="h-3 w-3" />
+            {attachments.length}
+          </button>
+        )}
       </div>
       <DueChip task={task} now={now} disabled={!canWrite || done} onChange={(dueAt) => run(() => updateActivity(ops, task.id, { dueAt }))} />
       <AssigneeButton assignee={assignee} users={users} disabled={!canWrite} onChange={(id) => run(() => updateActivity(ops, task.id, { assigneeId: id }))} />
@@ -138,6 +155,8 @@ function TaskRow({ task, now, showTargets, onEdit }: { task: Activity; now: numb
       ) : (
         <span className="w-6" />
       )}
+      </div>
+      {showFiles && attachments.length > 0 && <AttachmentList ids={attachments} size="sm" className="ml-7 mt-1.5 pb-1" onRemove={canWrite ? (f) => run(() => deleteFile(ops, f.id)) : undefined} />}
     </li>
   );
 }

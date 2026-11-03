@@ -4,6 +4,8 @@ import type { AddressValue, FieldDef } from "../../core/types";
 import { cn } from "../../shared/lib/utils";
 import { Avatar, Badge } from "./Display";
 import { useFieldContext } from "./fieldContext";
+import { FileFieldValue } from "./files/FileFields";
+import { RecordAvatar } from "./files/RecordAvatar";
 
 export interface FieldValueProps {
   field: FieldDef;
@@ -71,7 +73,7 @@ export function FieldValue({ field, value, compact, className, emptyText = "" }:
               onClick={stop}
               className="inline-flex max-w-full items-center gap-1 truncate rounded border border-surface-200 bg-white px-1.5 py-px text-xs text-surface-700 hover:border-surface-300 hover:bg-surface-50 dark:border-surface-700 dark:bg-surface-900 dark:text-surface-200 dark:hover:bg-surface-800"
             >
-              <Avatar name={ctx.recordLabel(id) ?? "?"} size="xs" square={target === "companies"} />
+              <RecordAvatar recordId={id} name={ctx.recordLabel(id) ?? "?"} size="xs" square={target === "companies"} />
               <span className="truncate">{ctx.recordLabel(id) ?? id}</span>
             </a>
           ))}
@@ -135,6 +137,9 @@ export function FieldValue({ field, value, compact, className, emptyText = "" }:
     }
     case "address":
       return <span className={cn(compact ? "truncate" : "whitespace-pre-line", className)}>{formatAddress(value as AddressValue)}</span>;
+    case "image":
+    case "files":
+      return <FileFieldValue field={field} value={value} compact={compact} className={className} />;
     case "longText":
       return <span className={cn(compact ? "truncate" : "whitespace-pre-wrap", className)}>{String(value)}</span>;
     default:

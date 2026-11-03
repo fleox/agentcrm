@@ -10,6 +10,8 @@ import { useFieldContext } from "./fieldContext";
 import { Input, inputBase, Textarea } from "./Input";
 import { Popover, usePopover } from "./Popover";
 import { chipClass, dotClass } from "./colors";
+import { FileFieldInput } from "./files/FileFields";
+import { RecordAvatar } from "./files/RecordAvatar";
 
 export interface FieldInputProps {
   field: FieldDef;
@@ -59,6 +61,9 @@ export function FieldInput(props: FieldInputProps) {
       return <RatingInput {...props} />;
     case "address":
       return <AddressInput {...props} />;
+    case "image":
+    case "files":
+      return <FileFieldInput {...props} />;
     default:
       return <TextInput {...props} />;
   }
@@ -483,7 +488,7 @@ function RelationPicker({ field, value, onChange, onCommit, onCancel, autoFocus,
         {selected.length === 0 && <span className="text-surface-400">{placeholder ?? t("common.select")}</span>}
         {selected.map((id) => (
           <span key={id} className="inline-flex max-w-full items-center gap-1 truncate rounded border border-surface-200 px-1.5 py-px text-xs dark:border-surface-700">
-            <Avatar name={ctx.recordLabel(id) ?? "?"} size="xs" square={target === "companies"} />
+            <RecordAvatar recordId={id} name={ctx.recordLabel(id) ?? "?"} size="xs" square={target === "companies"} />
             <span className="truncate">{ctx.recordLabel(id) ?? id}</span>
           </span>
         ))}

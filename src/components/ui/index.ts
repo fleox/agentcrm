@@ -18,3 +18,4 @@ export * from "./colors";
 export * from "./ObjectIcon";
 export * from "./download";
 export * from "./Markdown";
+export * from "./files";

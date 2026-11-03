@@ -76,6 +76,7 @@ export function FieldsEditor({ object }: { object: ObjectDef }) {
                         <span className="truncate text-[13px] font-medium text-surface-900 dark:text-white">{f.label}</span>
                         {f.required && <span className="text-xs text-red-500" title={t("fields.required")}>*</span>}
                         {f.id === object.labelField && <Badge color="blue">{t("fields.labelField")}</Badge>}
+                        {f.id === object.imageField && <Badge color="purple">{t("fields.imageField")}</Badge>}
                         {f.hidden && <EyeOff className="h-3.5 w-3.5 text-surface-400" aria-label={t("fields.hidden")} />}
                       </span>
                       <span className="block truncate text-xs text-surface-500">

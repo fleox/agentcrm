@@ -194,7 +194,8 @@
     "emptyValue": "Empty",
     "showEmpty_one": "Show {{count}} empty field",
     "showEmpty_other": "Show {{count}} empty fields",
-    "hideEmpty": "Hide empty fields"
+    "hideEmpty": "Hide empty fields",
+    "files": "Files"
   },
   "timeline": {
     "log": "Log a note, call, email, meeting or task…",
@@ -260,8 +261,10 @@
       "call": "Call",
       "email": "Email",
       "meeting": "Meeting",
-      "task": "Task"
-    }
+      "task": "Task",
+      "attachment": "Attachment"
+    },
+    "waitUploads": "Wait for the uploads to finish."
   },
   "markdown": {
     "write": "Write",
@@ -339,5 +342,44 @@
   },
   "errors": {
     "generic": "Something went wrong."
+  },
+  "avatar": {
+    "add": "Add a picture",
+    "change": "Change the picture",
+    "replace": "Replace the picture",
+    "replaceLogo": "Replace the logo",
+    "remove": "Remove",
+    "crop": "Adjust the picture",
+    "cropLogo": "Adjust the logo",
+    "saved": "Picture updated",
+    "logoSaved": "Logo updated",
+    "notImage": "Choose an image file (PNG, JPEG, WebP, SVG…)."
+  },
+  "files": {
+    "unavailable": "This data backend can't store files.",
+    "search": "Search files",
+    "sort": "Sort",
+    "sortBy": {
+      "newest": "Newest",
+      "oldest": "Oldest",
+      "name": "Name",
+      "size": "Size"
+    },
+    "layout": "Layout",
+    "grid": "Grid",
+    "list": "List",
+    "upload": "Upload",
+    "includeRelated": "Include files of activities and related records",
+    "empty": "No files yet",
+    "emptyHint": "Drop files here or use Upload. Files attached to notes and tasks show up here too.",
+    "noMatch": "No file matches",
+    "onActivity": "On “{{title}}”",
+    "fromRelated": "From {{name}}",
+    "open": "Open",
+    "download": "Download",
+    "delete": "Delete",
+    "deleteTitle": "Delete “{{name}}”?",
+    "deleteHint": "It disappears from the CRM now; its bytes are erased from the storage at the next compaction.",
+    "deleted": "{{name}} deleted"
   }
 }

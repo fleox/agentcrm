@@ -59,7 +59,24 @@
       "journal": "Instantané chiffré + journal sur votre propre stockage.",
       "git-json": "Un fichier JSON par document, un commit par modification.",
       "firebase": "Firestore avec des comptes Firebase Auth."
-    }
+    },
+    "files": "Fichiers et images",
+    "maxUpload": "Taille max. par fichier (Mo)",
+    "maxUploadHelp": "Par fichier. Les photos sont redimensionnées dans le navigateur avant l’envoi (2560 px).",
+    "storageUsage": "Stockage utilisé",
+    "fileCount_one": "{{count}} fichier",
+    "fileCount_other": "{{count}} fichiers",
+    "deletedFiles_one": "{{count}} fichier supprimé ({{size}}) en attente de la prochaine compaction.",
+    "deletedFiles_other": "{{count}} fichiers supprimés ({{size}}) en attente de la prochaine compaction.",
+    "filesWhere": {
+      "journal": "Les fichiers sont stockés à côté des données (dossier files/), chiffrés avec la même phrase secrète.",
+      "local": "Les fichiers sont conservés dans ce navigateur (IndexedDB) — sauvegardez-les avec Paramètres → Export → ZIP.",
+      "git-json": "Les fichiers sont commités dans le dépôt de données (dossier files/).",
+      "firebase": "Les fichiers sont stockés dans votre bucket Firebase Storage (files/).",
+      "memory": "Les fichiers sont gardés en mémoire (perdus au rechargement)."
+    },
+    "firebaseStorageHint": "Firebase Storage doit être activé (Build → Storage), `storageBucket` présent dans la config web, le fichier storage.rules généré déployé et le CORS du bucket autorisé pour cet admin (voir docs/files.md).",
+    "gitFilesHint": "L’historique git garde chaque fichier envoyé pour toujours, même supprimé, et les gros fichiers ralentissent le dépôt. Préférez le stockage journal chiffré pour de nombreux fichiers ou des fichiers personnels."
   },
   "name": "Nom du CRM",
   "currency": "Devise par défaut",
@@ -103,7 +120,11 @@
     "recordCount_many": "{{count}} fiches",
     "pipelineCount_many": "{{count}} pipelines",
     "objectDeleted_many": "{{name}} supprimé ({{count}} fiches supprimées)",
-    "deleteObjectConfirm_many": "Ses {{count}} fiches, ses vues et tous les champs relation qui pointent vers lui seront définitivement supprimés. Action irréversible."
+    "deleteObjectConfirm_many": "Ses {{count}} fiches, ses vues et tous les champs relation qui pointent vers lui seront définitivement supprimés. Action irréversible.",
+    "imageField": "Champ image (photo / logo)",
+    "imageFieldHelp": "Affiché à côté du nom de la fiche partout : en-tête, tableaux, kanban, liens, recherche.",
+    "imageFieldNone": "Ajoutez un champ de type Image pour afficher des images sur ces fiches.",
+    "imageFieldInitials": "Aucun (initiales)"
   },
   "fields": {
     "title_one": "{{count}} champ",
@@ -173,7 +194,8 @@
     "typeChangeWarning_many": "Changer le type convertit les {{count}} valeurs existantes de {{from}} en {{to}}. Les valeurs non convertibles sont effacées.",
     "typeChangeConfirm_many": "{{count}} fiches ont une valeur pour ce champ. Elles seront converties ; les valeurs non convertibles sont effacées. Action irréversible.",
     "deleted_many": "Champ {{name}} supprimé ({{count}} valeurs effacées)",
-    "deleteConfirm_many": "{{count}} fiches ont une valeur pour ce champ. Les valeurs et le champ sont retirés de toutes les vues. Action irréversible."
+    "deleteConfirm_many": "{{count}} fiches ont une valeur pour ce champ. Les valeurs et le champ sont retirés de toutes les vues. Action irréversible.",
+    "imageField": "Avatar"
   },
   "pipelines": {
     "title": "Pipelines",
@@ -356,7 +378,12 @@
     "restoreKeyword": "RESTAURER",
     "typeToConfirm": "Tapez {{keyword}} pour confirmer",
     "restored": "Sauvegarde restaurée : {{written}} documents écrits, {{deleted}} supprimés",
-    "csvDone_many": "{{count}} lignes exportées"
+    "csvDone_many": "{{count}} lignes exportées",
+    "downloadZip": "Télécharger le ZIP (données + fichiers)",
+    "zipHelp": "Le ZIP contient la sauvegarde JSON et toutes les images / pièces jointes, déchiffrées : rangez-le en lieu sûr. Restaurez-le ci-dessous (choisissez le .zip).",
+    "zipDone": "Sauvegarde téléchargée : {{count}} fichier(s), {{size}}.",
+    "zipMissing": "{{count}} fichier(s) illisible(s) dans le stockage ne sont pas dans le ZIP.",
+    "zipFiles": "{{count}} fichier(s)"
   },
   "danger": {
     "title": "Zone de danger",

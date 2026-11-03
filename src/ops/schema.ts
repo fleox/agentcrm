@@ -34,6 +34,7 @@ export function describeSchema(ctx: OpsContext, objectId?: string) {
     label: o.labelPlural,
     singular: o.labelSingular,
     labelField: o.labelField,
+    ...(o.imageField ? { imageField: o.imageField } : {}),
     standard: o.standard,
     count: recordsOf(ctx.store, o.id).length,
     fields: o.fields.map((f) => ({
@@ -102,7 +103,7 @@ export async function createObject(ctx: OpsContext, input: ObjectInput): Promise
 export async function updateObject(
   ctx: OpsContext,
   id: string,
-  patch: Partial<Pick<ObjectDef, "labelSingular" | "labelPlural" | "icon" | "color" | "labelField">>,
+  patch: Partial<Pick<ObjectDef, "labelSingular" | "labelPlural" | "icon" | "color" | "labelField">> & { imageField?: string | null },
 ): Promise<ObjectDef> {
   assertCan(ctx, "schema.write");
   const object = thaw(requireObject(ctx.store, id));
@@ -114,6 +115,14 @@ export async function updateObject(
     const f = object.fields.find((x) => x.id === patch.labelField);
     if (!f || !["text", "email", "url", "phone"].includes(f.type)) throw new OpsError("validation", `"${patch.labelField}" can't be the label field (needs a text field).`);
     object.labelField = patch.labelField;
+  }
+  if (patch.imageField !== undefined) {
+    if (patch.imageField === null || patch.imageField === "") delete object.imageField;
+    else {
+      const f = object.fields.find((x) => x.id === patch.imageField);
+      if (!f || f.type !== "image") throw new OpsError("validation", `"${patch.imageField}" can't be the image field (needs an image field).`);
+      object.imageField = patch.imageField;
+    }
   }
   await ctx.store.write([saveObject(ctx, object)], { message: `Update object ${object.labelPlural}` });
   return requireObject(ctx.store, id);
@@ -209,7 +218,9 @@ export async function createField(ctx: OpsContext, objectId: string, input: Fiel
   assertCan(ctx, "schema.write");
   const object = requireObject(ctx.store, objectId);
   const field = buildField(ctx, object, input);
-  await ctx.store.write([saveObject(ctx, { ...object, fields: [...object.fields, field] })], { message: `Add field ${field.label}` });
+  // The first image field of an object becomes its record avatar.
+  const imageField = object.imageField ?? (field.type === "image" ? field.id : undefined);
+  await ctx.store.write([saveObject(ctx, { ...object, ...(imageField ? { imageField } : {}), fields: [...object.fields, field] })], { message: `Add field ${field.label}` });
   return field;
 }
 
@@ -319,7 +330,10 @@ export async function updateField(ctx: OpsContext, objectId: string, fieldId: st
   }
 
   const fields = object.fields.map((f) => (f.id === fieldId ? field : f));
-  mutations.unshift(saveObject(ctx, { ...object, fields }));
+  const nextObject: ObjectDef = { ...object, fields };
+  // The record image must stay an image field.
+  if (object.imageField === fieldId && field.type !== "image") delete nextObject.imageField;
+  mutations.unshift(saveObject(ctx, nextObject));
   await ctx.store.write(mutations, { message: `Update field ${field.label}` });
   return { field: requireField(requireObject(ctx.store, objectId), fieldId), ...(converted !== undefined ? { converted, cleared } : {}) };
 }
@@ -343,7 +357,9 @@ export async function deleteField(ctx: OpsContext, objectId: string, fieldId: st
   if (fieldId === object.labelField) throw new OpsError("invalid", "The label field can't be deleted.");
   if (isPipelineManaged(ctx, objectId, fieldId)) throw new OpsError("invalid", `${field.label} holds pipeline stages.`);
   const clears = clearFieldValues(ctx, objectId, fieldId);
-  const mutations: DocMutation[] = [saveObject(ctx, { ...object, fields: object.fields.filter((f) => f.id !== fieldId) }), ...clears];
+  const rest: ObjectDef = { ...object, fields: object.fields.filter((f) => f.id !== fieldId) };
+  if (rest.imageField === fieldId) delete rest.imageField;
+  const mutations: DocMutation[] = [saveObject(ctx, rest), ...clears];
   for (const v of viewsOf(ctx.store, objectId)) {
     const usesField = v.columns.includes(fieldId) || v.filters.some((f) => f.field === fieldId) || v.sorts.some((s) => s.field === fieldId) || v.groupBy === fieldId;
     if (!usesField) continue;

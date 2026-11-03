@@ -29,7 +29,7 @@ interface RemovedOption {
   replaceWith: string;
 }
 
-const NO_DEFAULT_TYPES: FieldType[] = ["relation", "address"];
+const NO_DEFAULT_TYPES: FieldType[] = ["relation", "address", "image", "files"];
 const isOptionType = (type: FieldType) => type === "select" || type === "multiSelect";
 
 let keySeq = 0;

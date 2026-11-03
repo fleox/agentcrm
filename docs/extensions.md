@@ -35,13 +35,13 @@ Settings → **Modules** → tab **Installed extensions**:
 ### With the CLI
 
 ```bash
-npx -y @agent-crm/agentcrm@0.2.0 ext install ./sales-goals-1.0.0.zip --site acme          # plan
-npx -y @agent-crm/agentcrm@0.2.0 ext install ./sales-goals-1.0.0.zip --site acme --yes    # install + load
-npx -y @agent-crm/agentcrm@0.2.0 ext list --site acme
-npx -y @agent-crm/agentcrm@0.2.0 ext disable sales-goals --site acme --yes
-npx -y @agent-crm/agentcrm@0.2.0 ext enable sales-goals --site acme --cascade --yes
-npx -y @agent-crm/agentcrm@0.2.0 ext export sales-goals --site acme --out backup.zip
-npx -y @agent-crm/agentcrm@0.2.0 ext uninstall sales-goals --site acme --yes
+npx -y @agent-crm/agentcrm@0.3.0 ext install ./sales-goals-1.0.0.zip --site acme          # plan
+npx -y @agent-crm/agentcrm@0.3.0 ext install ./sales-goals-1.0.0.zip --site acme --yes    # install + load
+npx -y @agent-crm/agentcrm@0.3.0 ext list --site acme
+npx -y @agent-crm/agentcrm@0.3.0 ext disable sales-goals --site acme --yes
+npx -y @agent-crm/agentcrm@0.3.0 ext enable sales-goals --site acme --cascade --yes
+npx -y @agent-crm/agentcrm@0.3.0 ext export sales-goals --site acme --out backup.zip
+npx -y @agent-crm/agentcrm@0.3.0 ext uninstall sales-goals --site acme --yes
 ```
 
 `ext install` accepts a ZIP, an unpacked folder or a built project folder. A module whose dependencies are disabled is installed disabled (the plan says so); `ext enable <id> --cascade` turns the dependencies on.
@@ -110,10 +110,10 @@ In the CRM's own data, collection `extensions` (one document per extension: mani
 
 ## Checklist for authors
 
-1. `npx -y @agent-crm/agentcrm@0.2.0 ext new module|theme <id>` — then `npm install`.
+1. `npx -y @agent-crm/agentcrm@0.3.0 ext new module|theme <id>` — then `npm install`.
 2. Code against `@agent-crm/runtime` ([reference](runtime-api-reference.md)); strings in English **and** French.
 3. `npm run typecheck && npm run build`.
-4. `npx -y @agent-crm/agentcrm@0.2.0 ext check .` — no errors, read the warnings.
-5. `npx -y @agent-crm/agentcrm@0.2.0 ext pack .` → `<id>-<version>.zip`.
+4. `npx -y @agent-crm/agentcrm@0.3.0 ext check .` — no errors, read the warnings.
+5. `npx -y @agent-crm/agentcrm@0.3.0 ext pack .` → `<id>-<version>.zip`.
 6. Try it on a test CRM (`ext install … --yes`), in light and dark mode, in French, as an admin and as a member / viewer.
 7. Bump `version` for every release.

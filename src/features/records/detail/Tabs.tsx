@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { Link2, Plus, Search, StickyNote, Unlink } from "lucide-react";
 import { recordLabel } from "../../../core/fields";
 import type { CrmRecord, ObjectDef } from "../../../core/types";
-import { Avatar, Button, EmptyState, FieldValue, IconButton, Popover, useFieldContext, usePopover } from "../../../components/ui";
+import { Button, EmptyState, FieldValue, IconButton, Popover, RecordAvatar, useFieldContext, usePopover } from "../../../components/ui";
 import { useActivities, useCan, useCollection, useOps } from "../../../app/CrmDataContext";
 import { paths } from "../../../app/paths";
 import { emitShellEvent } from "../../../app/shellEvents";
@@ -72,7 +72,7 @@ function LinkPicker({ inv, record, onPick }: { inv: InverseRelation; record: Crm
         {results.length === 0 && <div className="px-3 py-2 text-sm text-surface-400">{t("related.noMatch")}</div>}
         {results.map((r) => (
           <button key={r.id} type="button" onClick={() => onPick(r.id)} className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[13px] hover:bg-surface-100 dark:hover:bg-surface-800">
-            <Avatar name={r.label} size="sm" square={inv.object === "companies"} />
+            <RecordAvatar recordId={r.id} name={r.label} size="sm" square={inv.object === "companies"} />
             <span className="min-w-0 flex-1 truncate">{r.label}</span>
             {r.sub && <span className="truncate text-2xs text-surface-400">{r.sub}</span>}
           </button>
@@ -156,7 +156,7 @@ export function RelatedTab({ record, inv }: { record: CrmRecord; inv: InverseRel
                 <tr key={r.id} className="group hover:bg-surface-50 dark:hover:bg-surface-900">
                   <td className="h-9 border-b border-surface-100 px-3 dark:border-surface-800/70">
                     <button type="button" onClick={() => navigate(paths.record(object.id, r.id))} className="flex min-w-0 items-center gap-2 font-medium hover:underline">
-                      <Avatar name={recordLabel(object, r)} size="sm" square={object.id === "companies"} />
+                      <RecordAvatar recordId={r.id} name={recordLabel(object, r)} size="sm" square={object.id === "companies"} />
                       <span className="truncate">{recordLabel(object, r)}</span>
                     </button>
                   </td>

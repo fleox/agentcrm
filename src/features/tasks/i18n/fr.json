@@ -67,7 +67,9 @@
     "assignedTo": "Assignée à {{name}}",
     "searchUsers": "Assigner à…",
     "noUsers": "Aucun utilisateur correspondant",
-    "unassign": "Retirer l'assignation"
+    "unassign": "Retirer l'assignation",
+    "attachments_one": "{{count}} pièce jointe",
+    "attachments_other": "{{count}} pièces jointes"
   },
   "editor": {
     "newTitle": "Nouvelle tâche",
@@ -90,7 +92,9 @@
     "removeTarget": "Retirer",
     "cancel": "Annuler",
     "save": "Enregistrer",
-    "create": "Créer la tâche"
+    "create": "Créer la tâche",
+    "attachments": "Pièces jointes",
+    "attach": "Joindre des fichiers"
   },
   "toast": {
     "created": "Tâche créée",

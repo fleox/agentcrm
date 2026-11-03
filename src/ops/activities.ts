@@ -6,7 +6,36 @@ import { paginate, type Page } from "../core/query";
 import { ACTIVITY_TYPES, type Activity, type ActivityTarget, type ActivityType } from "../core/types";
 import { actorId, assertCan, emit, OpsError, type OpsContext } from "./context";
 import { relationFields, relationIds } from "./relations";
-import { activitiesOf, asDoc, objectsOf, recordOf, recordsOf, requireActivity, userOf } from "./store";
+import { activitiesOf, asDoc, fileOf, objectsOf, recordOf, recordsOf, requireActivity, userOf } from "./store";
+import { fileCleanupMutations, fileTargetPatch } from "./fileRefs";
+import type { DocMutation } from "../data/types";
+
+function normalizeAttachments(ctx: OpsContext, ids: string[] | undefined): string[] {
+  const out: string[] = [];
+  for (const id of ids ?? []) {
+    const f = fileOf(ctx.store, id);
+    if (!f || f.deletedAt) throw new OpsError("validation", `Attachment "${id}" not found (upload it first).`);
+    if (!out.includes(f.id)) out.push(f.id);
+  }
+  return out;
+}
+
+// File metadata patches keeping `targets` in sync with an activity's attachments.
+function attachmentTargetMutations(ctx: OpsContext, activityId: string, added: string[], removed: string[]): DocMutation[] {
+  const out: DocMutation[] = [];
+  const target = { kind: "activity" as const, id: activityId };
+  for (const id of added) {
+    const f = fileOf(ctx.store, id);
+    const m = f && fileTargetPatch(ctx, f, [target]);
+    if (m) out.push(m);
+  }
+  for (const id of removed) {
+    const f = fileOf(ctx.store, id);
+    const m = f && fileTargetPatch(ctx, f, [], [target]);
+    if (m) out.push(m);
+  }
+  return out;
+}
 
 export interface ActivityInput {
   type: ActivityType;
@@ -17,6 +46,8 @@ export interface ActivityInput {
   doneAt?: number | null;
   assigneeId?: string | null;
   meta?: Record<string, unknown>;
+  // File ids (uploaded with ops/files.uploadFile) attached to the activity.
+  attachments?: string[];
 }
 
 export interface ListActivitiesOptions {
@@ -113,6 +144,7 @@ export async function addActivity(ctx: OpsContext, input: ActivityInput, opts: {
   const title = (input.title ?? "").trim() || (input.body ?? "").trim().split("\n")[0].slice(0, 80);
   if (!title) throw new OpsError("validation", "An activity needs a title.");
   checkAssignee(ctx, input.assigneeId);
+  const attachments = normalizeAttachments(ctx, input.attachments);
   const now = ctx.now();
   const activity: Activity = {
     id: opts.id ?? newId(now),
@@ -124,11 +156,12 @@ export async function addActivity(ctx: OpsContext, input: ActivityInput, opts: {
     ...(input.doneAt ? { doneAt: input.doneAt } : {}),
     ...(input.assigneeId ? { assigneeId: input.assigneeId } : input.type === "task" && actorId(ctx) ? { assigneeId: actorId(ctx) } : {}),
     ...(input.meta ? { meta: input.meta } : {}),
+    ...(attachments.length ? { attachments } : {}),
     createdAt: now,
     updatedAt: now,
     ...(actorId(ctx) ? { createdBy: actorId(ctx) } : {}),
   };
-  await ctx.store.write([{ op: "set", collection: "activities", doc: asDoc(activity) }], { message: `Add ${activity.type}` });
+  await ctx.store.write([{ op: "set", collection: "activities", doc: asDoc(activity) }, ...attachmentTargetMutations(ctx, activity.id, attachments, [])], { message: `Add ${activity.type}` });
   const stored = requireActivity(ctx.store, activity.id);
   if (!opts.silent) await emit(ctx, "activity.created", { activity: stored });
   return stored;
@@ -174,7 +207,17 @@ export async function updateActivity(ctx: OpsContext, id: string, patch: Partial
     fields.assigneeId = patch.assigneeId ?? undefined;
   }
   if (patch.meta !== undefined) for (const [k, v] of Object.entries(patch.meta)) fields[`meta.${k}`] = v;
-  await ctx.store.write([{ op: "patch", collection: "activities", id, fields }], { message: "Update activity" });
+  const extra: DocMutation[] = [];
+  if (patch.attachments !== undefined) {
+    const prev = before.attachments ?? [];
+    // Files already attached stay valid even if since soft-deleted elsewhere.
+    const next = normalizeAttachments(ctx, patch.attachments.filter((x) => !prev.includes(x)));
+    const kept = prev.filter((x) => patch.attachments!.includes(x));
+    const all = [...kept, ...next];
+    fields.attachments = all.length ? all : undefined;
+    extra.push(...attachmentTargetMutations(ctx, id, next, prev.filter((x) => !all.includes(x))));
+  }
+  await ctx.store.write([{ op: "patch", collection: "activities", id, fields }, ...extra], { message: "Update activity" });
   const activity = requireActivity(ctx.store, id);
   await emit(ctx, "activity.updated", { activity, before });
   if (!before.doneAt && activity.doneAt) await emit(ctx, "activity.completed", { activity });
@@ -189,7 +232,9 @@ export async function deleteActivity(ctx: OpsContext, id: string, opts: { hard?:
   assertCan(ctx, "activities.write");
   requireActivity(ctx.store, id);
   await ctx.store.write(
-    [opts.hard ? { op: "delete", collection: "activities", id } : { op: "patch", collection: "activities", id, fields: { deletedAt: ctx.now(), updatedAt: ctx.now() } }],
+    opts.hard
+      ? [{ op: "delete", collection: "activities", id }, ...fileCleanupMutations(ctx, { activities: [id] })]
+      : [{ op: "patch", collection: "activities", id, fields: { deletedAt: ctx.now(), updatedAt: ctx.now() } }],
     { message: "Delete activity" },
   );
   return { id };

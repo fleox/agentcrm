@@ -7,7 +7,7 @@ import { IconButton } from "./Button";
 // Escape closes the top-most overlay only.
 const stack: Array<() => void> = [];
 
-function useEscape(open: boolean, onClose: () => void) {
+export function useEscape(open: boolean, onClose: () => void) {
   const ref = useRef(onClose);
   ref.current = onClose;
   useEffect(() => {

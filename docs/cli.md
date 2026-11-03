@@ -3,7 +3,7 @@
 `agentcrm` is the headless front door of AgentCRM: it runs the admin's own engine (`src/ops/`) in Node.js 20+, against the same data, with the same validation, roles and automations.
 
 ```bash
-npx -y @agent-crm/agentcrm@0.2.0 <command> [action] [options] [--json]
+npx -y @agent-crm/agentcrm@0.3.0 <command> [action] [options] [--json]
 ```
 
 ## Conventions
@@ -187,7 +187,7 @@ agentcrm deploy-admin [--site <alias> | --all] [--yes] [--allow-downgrade]
 Records of any object (companies, people, deals, custom objects): list with filters / sorts / pagination, get with relations and timeline counts, create, update (only the given fields), soft delete / restore, full-text search, find and merge duplicates.
 
 ```text
-agentcrm records <list|get|create|update|delete|restore|search|duplicates|merge> …
+agentcrm records <list|get|create|update|delete|restore|search|duplicates|merge|image> …
 ```
 
 | Action | Usage | What it does |
@@ -201,6 +201,7 @@ agentcrm records <list|get|create|update|delete|restore|search|duplicates|merge>
 | `search` | `agentcrm records search <query> [--object <id>]… [--limit n]` | Full-text search (names, emails, domains, phones). |
 | `duplicates` | `agentcrm records duplicates --object <id> [--by email,domain,name,phone]` | Groups of likely duplicates (same email / domain / name / phone). |
 | `merge` ⚠ | `agentcrm records merge <primaryId> <duplicateId>… [--yes]` | Merge duplicates into the primary (empty fields filled, relations and activities moved). Plan unless --yes. |
+| `image` | `agentcrm records image <recordId> <path> \| --remove [--field <imageFieldId>]` | Set the record's avatar / logo from a local image (the object's image field), or --remove it. |
 
 | Option | Description |
 |---|---|
@@ -218,6 +219,8 @@ agentcrm records <list|get|create|update|delete|restore|search|duplicates|merge>
 | `--set <value>` (repeatable) | create / update: key=value (repeatable; numbers / true / null / JSON parsed). |
 | `--hard` | delete: remove immediately (no restore). |
 | `--by <value>` | duplicates: email,domain,name,phone. |
+| `--remove` | image: remove the record's image. |
+| `--field <value>` | image: image field id (default: the object's image field). |
 
 ### `objects`
 
@@ -284,7 +287,7 @@ agentcrm activities <add|list|done> …
 
 | Action | Usage | What it does |
 |---|---|---|
-| `add` | `agentcrm activities add --type <note\|task\|call\|email\|meeting> --title <t> [--body <md\|@file>] --record <id>… [--meta <json>] [--due <date>] [--assignee <user>]` | Log an activity. |
+| `add` | `agentcrm activities add --type <note\|task\|call\|email\|meeting> --title <t> [--body <md\|@file>] --record <id>… [--meta <json>] [--due <date>] [--assignee <user>] [--attach <path>]…` | Log an activity (with attachments). |
 | `list` | `agentcrm activities list [--record <id>] [--type <t>]… [--related] [--limit n]` | Timeline, most recent first. |
 | `done` | `agentcrm activities done <id> [--undo]` | Mark a task done (or reopen). |
 
@@ -300,23 +303,25 @@ agentcrm activities <add|list|done> …
 | `--related` | list: include activities of linked records. |
 | `--limit <value>` | Max items (default 50). |
 | `--undo` | done: reopen the task. |
+| `--attach <value>` (repeatable) | Attach a local file (repeatable; images are uploaded as they are). |
 
 ### `notes`
 
-Add a note (Markdown) to a record's timeline.
+Add a note (Markdown, optional attachments) to a record's timeline.
 
 ```text
-agentcrm notes add <recordId> --body <markdown|@file> [--title <t>]
+agentcrm notes add <recordId> --body <markdown|@file> [--title <t>] [--attach <path>]…
 ```
 
 | Action | Usage | What it does |
 |---|---|---|
-| `add` | `agentcrm notes add <recordId> --body <markdown\|@file> [--title <t>]` | Add a note. |
+| `add` | `agentcrm notes add <recordId> --body <markdown\|@file> [--title <t>] [--attach <path>]…` | Add a note. |
 
 | Option | Description |
 |---|---|
 | `--body <value>` | Markdown, or @file. |
 | `--title <value>` | Title (default: first line). |
+| `--attach <value>` (repeatable) | Attach a local file (repeatable; images are uploaded as they are). |
 
 ### `tasks`
 
@@ -329,7 +334,7 @@ agentcrm tasks <list|add|done|reassign> …
 | Action | Usage | What it does |
 |---|---|---|
 | `list` | `agentcrm tasks list [--assignee <user\|me>] [--record <id>] [--status open\|done\|all] [--overdue] [--due-within <days>] [--limit n]` | Tasks sorted by due date. |
-| `add` | `agentcrm tasks add --title <t> [--due <date>] [--assignee <user\|me>] [--record <id>]… [--body <md>]` | Create a task. |
+| `add` | `agentcrm tasks add --title <t> [--due <date>] [--assignee <user\|me>] [--record <id>]… [--body <md>] [--attach <path>]…` | Create a task. |
 | `done` | `agentcrm tasks done <id> [--undo]` | Complete (or reopen) a task. |
 | `reassign` | `agentcrm tasks reassign <id> --assignee <user>` | Change the assignee. |
 
@@ -345,6 +350,36 @@ agentcrm tasks <list|add|done|reassign> …
 | `--due-within <value>` | list: due within N days. |
 | `--limit <value>` | Max items (default 50). |
 | `--undo` | done: reopen. |
+| `--attach <value>` (repeatable) | Attach a local file (repeatable; images are uploaded as they are). |
+
+### `files`
+
+Images and attachments: list a record's / activity's files (metadata), upload local files to a record or an activity, download one, soft-delete (bytes purged by `compact`), storage usage.
+
+```text
+agentcrm files <list|upload|get|delete|usage> …
+```
+
+| Action | Usage | What it does |
+|---|---|---|
+| `list` | `agentcrm files list [--record <id> \| --activity <id>] [--related] [--kind image\|pdf\|document\|…] [--search <name>] [--limit n]` | Files of a record (its own, its activities', --related: linked records') or of an activity; all files without a target. |
+| `upload` | `agentcrm files upload <path>… (--record <id> \| --activity <id>)` | Upload local files and attach them to a record or an activity (CRM size limit applies). |
+| `get` | `agentcrm files get <id> --out <path> [--thumb]` | Download a file's bytes (decrypted) to a local path. |
+| `delete` ⚠ | `agentcrm files delete <id> [--yes]` | Soft-delete a file (removed from its records / activities; bytes purged by `compact`). Plan unless --yes. |
+| `usage` | `agentcrm files usage` | Number of files and total size. |
+
+| Option | Description |
+|---|---|
+| `--record <value>` | Record id. |
+| `--activity <value>` | Activity id (note, task, call, email, meeting). |
+| `--related` | list: include files of related records. |
+| `--kind <value>` | list: image, pdf, document, spreadsheet, presentation, archive, text, audio, video, other. |
+| `--search <value>` | list: part of the file name. |
+| `--limit <value>` | list: max items (default 100). |
+| `--out <value>` | get: local path to write. |
+| `--thumb` | get: the thumbnail when there is one. |
+
+Bytes are read from / written to local paths; the CRM limit (`settings.maxUploadMb`, 25 MB by default) applies; images are uploaded as they are (the admin resizes, the CLI doesn't). See [files.md](files.md).
 
 ### `pipelines`
 
@@ -442,6 +477,7 @@ agentcrm import csv <file|-> --object <id> [--map <json|Header=field,…>] [--de
 | Action | Usage | What it does |
 |---|---|---|
 | `csv` | `agentcrm import csv <file\|-> --object <id> [--map …] [--dedupe update\|skip\|create] [--yes]` | Dry run (default) or apply (--yes). |
+| `zip` ⚠ | `agentcrm import zip <backup.zip> [--replace] [--yes]` | Restore a backup ZIP (data + files; merge, or --replace). Plan unless --yes. |
 
 | Option | Description |
 |---|---|
@@ -453,19 +489,21 @@ agentcrm import csv <file|-> --object <id> [--map <json|Header=field,…>] [--de
 | `--no-create-options` | Don't add unknown select values as new options. |
 | `--dry-run` | Explicit dry run (the default without --yes). |
 | `--rows <value>` | Rows shown in the report (default 100). |
+| `--replace` | zip: also delete documents absent from the backup. |
 
 ### `export`
 
-Export one object as CSV (labels or raw values, filters, columns), or the whole dataset as JSON (backup / migration, re-importable).
+Export one object as CSV (labels or raw values, filters, columns), the whole dataset as JSON (backup / migration, re-importable), or a ZIP backup with data + files.
 
 ```text
-agentcrm export <csv|json> …
+agentcrm export <csv|json|zip> …
 ```
 
 | Action | Usage | What it does |
 |---|---|---|
 | `csv` | `agentcrm export csv --object <id> [--out <file>] [--filter f:op:v]… [--sort f] [--columns a,b] [--view <id>] [--raw] [--deleted]` | CSV of one object. |
 | `json` | `agentcrm export json [--out <file>] [--collections records,activities,…]` | Whole dataset (or some collections) as JSON. |
+| `zip` | `agentcrm export zip --out <file.zip> [--no-files]` | Backup ZIP: data.json + the (decrypted) bytes of every file. Not encrypted: keep it safe. |
 
 | Option | Description |
 |---|---|
@@ -478,6 +516,7 @@ agentcrm export <csv|json> …
 | `--raw` | Stored values (ids, ISO dates) instead of labels. |
 | `--deleted` | Include soft-deleted records. |
 | `--collections <value>` | json: collections to export. |
+| `--no-files` | zip: data only (no file bytes). |
 
 ### `report`
 
@@ -546,7 +585,7 @@ agentcrm forms <list|publish|ingest> …
 
 ### `compact`
 
-Physical purge (GDPR erasure): hard-deletes soft-deleted records and activities and old automation runs, then rewrites the storage without history (journal: new snapshot, merged segments deleted). Plan unless --yes.
+Physical purge (GDPR erasure): hard-deletes soft-deleted records and activities and old automation runs, deletes the bytes of deleted / orphan files, then rewrites the storage without history (journal: new snapshot, merged segments deleted). Plan unless --yes.
 
 ```text
 agentcrm compact [--older-than <days>] [--keep-runs <n>] [--yes]

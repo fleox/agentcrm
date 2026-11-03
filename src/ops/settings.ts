@@ -31,6 +31,9 @@ export async function updateSettings(ctx: OpsContext, patch: Partial<Omit<CrmSet
   if (patch.staleDealDays !== undefined && (!Number.isFinite(patch.staleDealDays) || patch.staleDealDays < 1)) {
     throw new OpsError("validation", "Stale deal days must be a positive number.");
   }
+  if (patch.maxUploadMb !== undefined && (!Number.isFinite(patch.maxUploadMb) || patch.maxUploadMb < 1 || patch.maxUploadMb > 1024)) {
+    throw new OpsError("validation", "Max upload size must be between 1 and 1024 MB.");
+  }
   const current = getSettings(ctx);
   const next: CrmSettings = {
     ...current,

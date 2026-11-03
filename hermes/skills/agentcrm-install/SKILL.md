@@ -1,7 +1,7 @@
 ---
 name: agentcrm-install
 description: "Install a new AgentCRM (static, AI-drivable CRM) for the user - ask where the CRM data lives (encrypted files on an S3-compatible bucket, a private GitHub / GitLab repo or a local folder, or Firebase / a private git repo as JSON), then where the admin app is hosted (S3, GitHub / GitLab / Cloudflare Pages, local folder), help create the keys and tokens without ever asking for secrets in the chat, write the install plan, install and verify with doctor. Use when the user wants to create, set up or install a CRM with AgentCRM."
-version: 0.2.0
+version: 0.3.0
 author: AgentCRM
 license: PolyForm-Noncommercial-1.0.0
 platforms: [macos, linux, windows]

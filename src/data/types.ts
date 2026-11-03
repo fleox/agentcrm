@@ -19,7 +19,9 @@ export type CollectionName =
   | "config"
   | "automationRuns"
   // Installed external extensions (src/ops/extensions.ts).
-  | "extensions";
+  | "extensions"
+  // File metadata (FileMeta); the bytes live in DataStore.files.
+  | "files";
 
 export const COLLECTIONS: readonly CollectionName[] = [
   "objects",
@@ -34,6 +36,7 @@ export const COLLECTIONS: readonly CollectionName[] = [
   "config",
   "automationRuns",
   "extensions",
+  "files",
 ];
 
 export function isCollectionName(value: unknown): value is CollectionName {
@@ -104,6 +107,30 @@ export interface DataStore {
 
   // Stops timers / listeners.
   close?(): void;
+
+  // Binary storage of the backend (images, attachments) — see
+  // src/data/files/. Absent when the backend can't hold files.
+  readonly files?: FileStore;
+}
+
+// Bytes of uploaded files, per backend (src/data/files/): ids are
+// path-safe ([A-Za-z0-9_-]). Metadata lives in the `files` collection.
+export interface FileBlobMeta {
+  name?: string;
+  mime?: string;
+}
+
+export interface FileStore {
+  readonly kind: string;
+  put(id: string, bytes: Uint8Array, meta?: FileBlobMeta): Promise<void>;
+  // Several blobs at once (git: one commit). Optional.
+  putMany?(items: { id: string; bytes: Uint8Array; meta?: FileBlobMeta }[]): Promise<void>;
+  // null when missing.
+  get(id: string): Promise<Uint8Array | null>;
+  // Resolves when already gone.
+  delete(id: string): Promise<void>;
+  // Every stored blob id, when the backend can list (purge of orphans).
+  list?(): Promise<string[]>;
 }
 
 export class DocConflictError extends Error {

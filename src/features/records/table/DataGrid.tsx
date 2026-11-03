@@ -9,7 +9,7 @@ import { ArrowDown, ArrowUp, ArrowUpRight, EyeOff, Plus } from "lucide-react";
 import { recordLabel } from "../../../core/fields";
 import { getRecordValue } from "../../../core/query";
 import type { CrmRecord, FieldDef, ObjectDef, Sort } from "../../../core/types";
-import { Avatar, Checkbox, Dropdown, FieldValue, ObjectIcon, useFieldContext } from "../../../components/ui";
+import { RecordAvatar, Checkbox, Dropdown, FieldValue, ObjectIcon, useFieldContext } from "../../../components/ui";
 import { cn } from "../../../shared/lib/utils";
 import { columnField } from "../lib/viewModel";
 import { CellEditor } from "./CellEditor";
@@ -316,7 +316,7 @@ export function DataGrid(props: DataGridProps) {
                     >
                       {i === 0 ? (
                         <div className="flex min-w-0 items-center gap-1.5">
-                          <Avatar name={recordLabel(object, r)} size="sm" square={object.id === "companies"} />
+                          <RecordAvatar recordId={r.id} name={recordLabel(object, r)} size="sm" square={object.id === "companies"} />
                           <button
                             type="button"
                             className="min-w-0 truncate text-left hover:underline"

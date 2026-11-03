@@ -448,3 +448,31 @@ checks en ⇔ fr for every bundle). The sidebar shows the workspace logo (or ini
 - **MCP**: tools = `listAiTools()` computed per request; resources `agentcrm://modules`, `agentcrm://appearance`.
 - **Tests**: `agent/e2e-customize.test.ts` (modules + dependency conflict, appearance, `ext new` → Vite build → check → pack → install → tools → disable → uninstall, theme flow, hooks + automation actions in sessions), `scripts/docs.test.ts` (runtime API reference lists every export).
 - **Skills**: `plugin/skills/agentcrm-extensions/` (+ references: module-recipes, theme-recipes, runtime-api, testing), `agentcrm-admin` (modules, appearance, extensions + references/appearance.md). **Docs**: `docs/{extensions,creating-a-module,creating-a-theme,runtime-api-reference,appearance,modules}.md`.
+
+## Images & attachments (v0.3)
+
+Full user doc: `docs/files.md`. Contracts (additive):
+
+- **Domain** (`src/core/types.ts`): FieldTypes `image` (file id) and `files` (file ids); `ObjectDef.imageField?` (the record avatar,
+  standard: `people.avatar`, `companies.logo`); `Activity.attachments?: string[]`; `FileTarget { kind: "record"|"activity", object?, id }`;
+  `FileMeta { id, name, mime, size, width?, height?, thumbId?, sha256, createdAt, updatedAt?, createdBy?, targets, deletedAt? }`;
+  `CrmSettings.maxUploadMb?`. Pure helpers `src/core/files.ts` (limits, `guessMime`, `fileKind`, `isPreviewable`, `formatBytes`,
+  `sanitizeFileName`, `sha256Hex`, `imageDimensions`, `fileImageMarkdown`, `inlineFileIds`, `thumbIdOf`).
+- **Data**: collection `files` (metadata, every backend + Firestore rules); bytes in `DataStore.files?: FileStore { kind, put, putMany?, get,
+  delete, list? }` (`src/data/files/`: `fileStoreOf`, `withFileStore`, `FILE_ID_RE`) — journal `<root>/files/<id>.bin` encrypted with the
+  dataset key (`files/journal.ts`), local IndexedDB `agentcrm-local-files`, git-json `files/<id>.bin` (one commit per batch, in
+  `gitJson/store.ts`), Firebase Storage `files/<id>` (`FirebaseApi.storage?`, `firebaseFileStore`, `STORAGE_NOT_ENABLED`), memory map.
+- **Ops** `src/ops/files.ts` (`uploadFile`, `attachFile`, `detachFile`, `listFiles`, `getFile`, `getFileBytes`, `renameFile`, `deleteFile`
+  (soft, removes references), `restoreFile`, `purgeFiles` (called by `compactData`), `setRecordImage`, `clearRecordImage`, `recordImageId`,
+  `fileUsage`, `maxUploadBytes`), `fileRefs.ts` (hard delete / merge keep targets in sync), `backup.ts` (`exportBackupZip`,
+  `importBackupZip`, `readBackupZipInfo`), `migrate.ts` (`migrateSchema` — run on admin boot (App.tsx) and in writing CLI sessions),
+  `demoFiles.ts` (generated SVG portraits / logos, PNG chart, PDF). Activities take `attachments` (`addActivity`, `updateActivity`).
+  Permissions: read = `records.read`, write = `records.write`, purge = `compact`. `firebaseRules.ts`: `buildStorageRules`, `buildStorageCors`.
+- **AI**: `src/ai/fileTools.ts` — `list_files`, `describe_attachments` (metadata only; no URL fetching). **CLI**: `agent/commands/files.ts`
+  (`files list|upload|get|delete|usage`, `records image`, `--attach` on `activities add` / `notes add` / `tasks add`), `export zip`, `import zip`.
+- **UI kit** `src/components/ui/files/`: `FilesContext` / `useFilesBridge()` (provided by `CrmDataProvider`), `useFileUrl(id, { thumb })`
+  (shared blob URL cache, revoked 60 s after the last user), `prepareUpload` / `cropToSquare` (browser image processing), `AttachmentList`,
+  `ImageThumb`, `FileChip`, `Lightbox`, `FileDropZone`, `FilePickerButton`, `pastedFiles`, `usePendingUploads` + `PendingUploadList`,
+  `FileAvatar`, `RecordAvatar` (via `FieldContextValue.recordImage?`), `ImageCropModal`, `FileFieldValue` / `FileFieldInput`.
+  `Markdown` renders `![x](file:<id>)` through the store (only `file:` and `https:` image sources survive). Record page: header
+  `RecordAvatarEditor`, tab `files` (`detail/FilesTab.tsx`); `useFiles()` in CrmDataContext.

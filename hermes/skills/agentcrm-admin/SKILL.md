@@ -1,7 +1,7 @@
 ---
 name: agentcrm-admin
-description: "Run an AgentCRM like its admin does - find, list, create, update, delete, restore and merge records (companies, people, deals, custom objects), log notes, calls, emails and meetings, manage tasks, move deals through pipeline stages, edit the data model (custom objects and fields), saved views, users and roles, settings, turn modules on and off, change the appearance (brand color, logo, favicon, presets, themes, custom CSS), enable / disable installed extensions, import and export CSV / JSON, reports, automations and lead forms, and call the AI tool catalog. Use when the user wants to read or change data, features or the look of one of their AgentCRM CRMs."
-version: 0.2.0
+description: "Run an AgentCRM like its admin does - find, list, create, update, delete, restore and merge records (companies, people, deals, custom objects), log notes, calls, emails and meetings, manage tasks, set contact photos / company logos and attach files (images, PDFs, documents) to records, notes and tasks, move deals through pipeline stages, edit the data model (custom objects and fields), saved views, users and roles, settings, turn modules on and off, change the appearance (brand color, logo, favicon, presets, themes, custom CSS), enable / disable installed extensions, import and export CSV / JSON, reports, automations and lead forms, and call the AI tool catalog. Use when the user wants to read or change data, features or the look of one of their AgentCRM CRMs."
+version: 0.3.0
 author: AgentCRM
 license: PolyForm-Noncommercial-1.0.0
 platforms: [macos, linux, windows]
@@ -35,7 +35,7 @@ Every `agentcrm <command>` below runs through this skill's Python wrapper: `pyth
 
 - **Learn the model first:** `objects list`, then `objects get <object>` for field ids, types, select options and relations. Never guess field ids.
 - **Search before creating** (`records search`) to avoid duplicates.
-- **Destructive commands print a plan** (`needsConfirmation: true`) unless `--yes`: show the plan, ask, then re-run with `--yes`. This covers `records delete`, `records merge`, `objects delete`, `fields delete`, `views delete`, `import csv` (dry run by default), `compact`, `automations run`, `forms publish`, `forms ingest`, and every workspace-wide change: `modules enable|disable|config set`, `appearance set|preset|logo|favicon|css|reset`, `ext install|enable|disable|uninstall`.
+- **Destructive commands print a plan** (`needsConfirmation: true`) unless `--yes`: show the plan, ask, then re-run with `--yes`. This covers `records delete`, `records merge`, `files delete`, `objects delete`, `fields delete`, `views delete`, `import csv` (dry run by default), `compact`, `automations run`, `forms publish`, `forms ingest`, and every workspace-wide change: `modules enable|disable|config set`, `appearance set|preset|logo|favicon|css|reset`, `ext install|enable|disable|uninstall`.
 - Personal data: don't paste whole exports into the chat; summarise.
 
 ## Records
@@ -70,6 +70,32 @@ python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py tasks reassign <taskId> --site a
 ```
 
 Activity types: note, task, call, email, meeting. `--body @notes.md` reads a file.
+
+## Images and attachments
+
+People have a **photo** (`avatar` field) and companies a **logo** (`logo`), shown next to the name everywhere; custom objects get one by adding an `image` field (the first becomes the object's image). Files (any type: images, PDFs, Office documents…) attach to a record or to an activity (note, task, call, email, meeting).
+
+```bash
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py records image <personId> ./ada.jpg --site acme --json
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py records image <companyId> ./logo.svg --site acme --json
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py records image <personId> --remove --site acme --json
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py notes add <recordId> --body "Signed contract attached." --attach ./contract.pdf --site acme --json
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py tasks add --title "Review the quote" --record <dealId> --attach ./quote.xlsx --attach ./scope.pdf --site acme --json
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py activities add --type meeting --title "Workshop" --record <companyId> --attach ./whiteboard.png --site acme --json
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py files upload ./brochure.pdf ./photo.png --record <companyId> --site acme --json
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py files upload ./minutes.docx --activity <noteId> --site acme --json
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py files list --record <companyId> --related --site acme --json
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py files get <fileId> --out ./contract.pdf --site acme --json
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py files delete <fileId> --site acme --json
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py files usage --site acme --json
+```
+
+- Files live next to the data and are **encrypted with the same passphrase** on the journal backend; IndexedDB in local mode; the data repo (`files/`) for git-json (warn: history keeps them); Firebase Storage for Firebase (Storage must be enabled, see docs/files.md).
+- Limit: 25 MB per file by default (`settings set --set maxUploadMb=50`). The admin resizes photos (2560 px) and makes thumbnails; the CLI uploads files as they are — resize big photos before uploading when you can.
+- `files list` returns metadata only (name, type, size, what it is attached to); `files get` writes the decrypted bytes to a local file — never paste file contents into the chat.
+- `files delete` is a soft delete (plan, then `--yes`): the file disappears from records and activities; `compact --yes` physically erases the bytes (also of files whose record / activity was purged) — GDPR erasure.
+- In Markdown bodies an image can be shown inline with `![name](file:<fileId>)` (upload it with `files upload --activity <id>` or `--attach` first).
+- AI tools: `list_files`, `describe_attachments` (metadata only; nothing fetches a URL into the CRM). Backups with files: `export zip --out backup.zip` / `import zip backup.zip` (plan, then `--yes`).
 
 ## Pipelines
 
@@ -136,6 +162,7 @@ python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py import csv contacts.csv --site a
 python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py import csv contacts.csv --site acme --object people --yes --json
 python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py export csv --site acme --object companies --out companies.csv --json
 python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py export json --site acme --out backup.json --json
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py export zip --site acme --out backup.zip --json
 ```
 
 The import is a DRY RUN until `--yes`: read the report (mapping, per-row action, errors, new select options, companies to create) with the user before applying. Mapping, dedupe and coercion rules: references/import.md.
@@ -168,7 +195,7 @@ Event automations (record created, field changed, stage changed) fire on every w
 
 ## AI tool catalog
 
-The same tools the MCP server and the in-admin assistant expose, including the tools of enabled extension modules (`source: "extension"`) and the customisation tools (`list_modules`, `set_module_enabled`, `get_appearance`, `set_appearance`, `apply_appearance_preset`, `list_extensions`, `set_extension_enabled`):
+The same tools the MCP server and the in-admin assistant expose, including the tools of enabled extension modules (`source: "extension"`) the customisation tools (`list_modules`, `set_module_enabled`, `get_appearance`, `set_appearance`, `apply_appearance_preset`, `list_extensions`, `set_extension_enabled`) and the file tools (`list_files`, `describe_attachments`):
 
 ```bash
 python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py tools list --site acme --json

@@ -113,7 +113,9 @@
     "user": "User",
     "rating": "Rating",
     "address": "Address",
-    "tags": "Tags"
+    "tags": "Tags",
+    "image": "Image",
+    "files": "Files"
   },
   "fieldInput": {
     "empty": "Empty",
@@ -180,5 +182,36 @@
   },
   "setupRequired": {
     "title": "Set up AgentCRM"
+  },
+  "files": {
+    "counter": "{{index}} of {{total}}",
+    "download": "Download",
+    "openNewTab": "Open in a new tab",
+    "loadError": "This file could not be loaded.",
+    "previous": "Previous",
+    "next": "Next",
+    "delete": "Delete file",
+    "deleteTitle": "Delete “{{name}}”?",
+    "deleteHint": "It disappears from the CRM now; its bytes are erased from the storage at the next compaction.",
+    "dropHere": "Drop files to attach them",
+    "attach": "Attach",
+    "failed": "Upload failed",
+    "status": {
+      "processing": "Preparing…",
+      "uploading": "Uploading…"
+    },
+    "insertInline": "Insert in the text",
+    "removeUpload": "Remove",
+    "notAnImage": "This file is not an image this browser can read.",
+    "cropTitle": "Adjust the picture",
+    "zoom": "Zoom",
+    "cropHint": "Drag to move the picture inside the frame.",
+    "uploadImage": "Upload an image",
+    "replaceImage": "Replace",
+    "removeImage": "Remove",
+    "addFiles": "Add files",
+    "noFiles": "No files",
+    "unavailable": "This data backend can't store files.",
+    "tooLarge": "{{name}} is too large ({{size}} > {{max}})."
   }
 }

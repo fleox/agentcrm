@@ -3,7 +3,7 @@
 `agentcrm mcp` turns a CRM into a [Model Context Protocol](https://modelcontextprotocol.io) server on stdio, so Claude Desktop, Claude Code, Cursor or any MCP client can search, read and update it.
 
 ```bash
-npx -y @agent-crm/agentcrm@0.2.0 mcp --site acme [--read-only] [--as <user email>]
+npx -y @agent-crm/agentcrm@0.3.0 mcp --site acme [--read-only] [--as <user email>]
 ```
 
 The server uses this computer's AgentCRM state (`~/.agentcrm`: the registered site and its credentials) — install or register the CRM first (`agentcrm install` / `agentcrm site add`). It acts as the site's CLI user; roles apply.
@@ -13,9 +13,9 @@ The server uses this computer's AgentCRM state (`~/.agentcrm`: the registered si
 **Claude Code**
 
 ```bash
-claude mcp add agentcrm -- npx -y @agent-crm/agentcrm@0.2.0 mcp --site acme
+claude mcp add agentcrm -- npx -y @agent-crm/agentcrm@0.3.0 mcp --site acme
 # read-only:
-claude mcp add agentcrm-ro -- npx -y @agent-crm/agentcrm@0.2.0 mcp --site acme --read-only
+claude mcp add agentcrm-ro -- npx -y @agent-crm/agentcrm@0.3.0 mcp --site acme --read-only
 ```
 
 **Claude Desktop** — `claude_desktop_config.json` (Settings → Developer → Edit config):
@@ -25,7 +25,7 @@ claude mcp add agentcrm-ro -- npx -y @agent-crm/agentcrm@0.2.0 mcp --site acme -
   "mcpServers": {
     "agentcrm": {
       "command": "npx",
-      "args": ["-y", "@agent-crm/agentcrm@0.2.0", "mcp", "--site", "acme"]
+      "args": ["-y", "@agent-crm/agentcrm@0.3.0", "mcp", "--site", "acme"]
     }
   }
 }
@@ -51,6 +51,7 @@ Exactly the AI catalog of `src/ai/tools.ts` (also used by the in-admin assistant
 - `--read-only` hides every mutating tool and refuses calls to them.
 - Before each call the server pulls remote changes (at most every 5 s) and re-syncs the site's extensions; mutating calls take the site lock.
 - **Extensions:** the tools of the site's enabled extension modules are listed and callable next to the built-ins (`tools/list` is computed on each request). `agentcrm mcp --safe` starts without extensions. Installing extensions is not exposed as a tool (CLI `ext install` / the admin only).
+- **File tools (metadata only):** `list_files` (a record's / activity's files, storage usage), `describe_attachments` (what is attached to an activity or to a record's activities, inline images). File contents never go to the model, and no tool fetches a URL into the CRM — uploads go through the admin or `agentcrm files upload` ([files.md](files.md)).
 - **Customisation tools:** `list_modules`, `set_module_enabled`, `get_appearance`, `set_appearance`, `apply_appearance_preset`, `list_extensions`, `set_extension_enabled` (writes are admin-only).
 
 ## Resources

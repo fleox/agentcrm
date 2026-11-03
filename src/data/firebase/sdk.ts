@@ -29,7 +29,38 @@ import {
   writeBatch,
   type Firestore,
 } from "firebase/firestore";
-import { DELETE_FIELD, type FirebaseApi, type FirebaseAuthUser, type FirestoreDocData, type FirestoreWriteOp } from "./api";
+import { DELETE_FIELD, type FirebaseApi, type FirebaseAuthUser, type FirebaseStorageApi, type FirestoreDocData, type FirestoreWriteOp } from "./api";
+
+// Firebase Storage, loaded on first use (its SDK chunk only ships to
+// those who upload / view files). Reading needs the bucket's CORS
+// configured for the admin's origin (docs/files.md).
+function sdkStorage(app: FirebaseApp): FirebaseStorageApi {
+  const mod = () => import("firebase/storage");
+  const code = (err: unknown) => (err as { code?: string } | null)?.code ?? "";
+  return {
+    async put(path, bytes, contentType) {
+      const m = await mod();
+      await m.uploadBytes(m.ref(m.getStorage(app), path), bytes, contentType ? { contentType } : undefined);
+    },
+    async get(path) {
+      const m = await mod();
+      try {
+        return new Uint8Array(await m.getBytes(m.ref(m.getStorage(app), path)));
+      } catch (err) {
+        if (code(err) === "storage/object-not-found") return null;
+        throw err;
+      }
+    },
+    async delete(path) {
+      const m = await mod();
+      try {
+        await m.deleteObject(m.ref(m.getStorage(app), path));
+      } catch (err) {
+        if (code(err) !== "storage/object-not-found") throw err;
+      }
+    },
+  };
+}
 
 function appName(options: FirebaseOptions): string {
   return `agentcrm-${options.projectId ?? "default"}`;
@@ -83,6 +114,7 @@ export function createSdkFirebaseApi(options: FirebaseOptions): FirebaseApi {
   });
 
   return {
+    ...(options.storageBucket ? { storage: sdkStorage(app) } : {}),
     async listCollection(name) {
       const snap = await getDocs(collection(db, name));
       return snap.docs.map((d) => ({ id: d.id, data: fromFirestore(d.data()) as Record<string, unknown> }));

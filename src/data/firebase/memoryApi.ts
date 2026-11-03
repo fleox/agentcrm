@@ -26,6 +26,8 @@ export interface MemoryFirebaseApi extends FirebaseApi {
   // Users the fake Auth accepts with signInWithPassword.
   accounts: Map<string, { password: string; user: FirebaseAuthUser }>;
   failNextCommit?: Error | null;
+  // Fake Firebase Storage objects (path → bytes).
+  objects: Map<string, Uint8Array>;
 }
 
 export function createMemoryFirebaseApi(opts: { rules?: MemoryFirestoreRules; user?: FirebaseAuthUser | null } = {}): MemoryFirebaseApi {
@@ -51,8 +53,25 @@ export function createMemoryFirebaseApi(opts: { rules?: MemoryFirestoreRules; us
     for (const w of watchers.get(c) ?? []) w(docsOf(c));
   };
 
+  const objects = new Map<string, Uint8Array>();
   const api: MemoryFirebaseApi = {
     db,
+    objects,
+    storage: {
+      async put(path, bytes) {
+        if (!user) throw denied();
+        objects.set(path, new Uint8Array(bytes));
+      },
+      async get(path) {
+        if (!user) throw denied();
+        const b = objects.get(path);
+        return b ? new Uint8Array(b) : null;
+      },
+      async delete(path) {
+        if (!user) throw denied();
+        objects.delete(path);
+      },
+    },
     commits: [],
     accounts: new Map(),
     failNextCommit: null,
@@ -177,6 +196,7 @@ export function crmRulesModel(adminEmail: string, opts: { signup?: "invite" | "o
         return false;
       }
       if (["records", "activities", "automationRuns"].includes(op.collection)) return role === "admin" || role === "member";
+      if (op.collection === "files") return op.type === "delete" ? role === "admin" : role === "admin" || role === "member";
       if (op.collection === "views") {
         if (role === "admin") return true;
         if (role !== "member") return false;

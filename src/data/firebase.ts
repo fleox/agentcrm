@@ -26,6 +26,7 @@ import { createStoreCore, emptySnapshot, type Snapshot } from "./core";
 import {
   chunk,
   DELETE_FIELD,
+  errorCode,
   FIRESTORE_BATCH_LIMIT,
   isPermissionDenied,
   type FirebaseApi,
@@ -33,9 +34,10 @@ import {
   type FirestoreDocData,
   type FirestoreWriteOp,
 } from "./firebase/api";
+import { assertFileId, FileStoreUnavailableError, withFileStore } from "./files";
 import { normalizeDoc, plainCopy } from "./patch";
 import type { BackendOptions } from "./registry";
-import { COLLECTIONS, type CollectionName, type DataStore, type DocMutation, type StoreIdentity, type StoredDoc } from "./types";
+import { COLLECTIONS, type CollectionName, type DataStore, type DocMutation, type FileStore, type StoreIdentity, type StoredDoc } from "./types";
 
 export * from "./firebase/api";
 
@@ -210,6 +212,43 @@ export function mutationOps(mutations: DocMutation[], before: Snapshot): Firesto
     }
   }
   return ops;
+}
+
+// ─── Files (Firebase Storage) ────────────────────────────────────────────
+
+export const STORAGE_FILES_DIR = "files";
+export const STORAGE_NOT_ENABLED =
+  "Firebase Storage isn't enabled for this project: enable it in the Firebase console (Build → Storage), add `storageBucket` to the web config and deploy the storage rules (docs/files.md).";
+
+// FileStore over Firebase Storage: files/<id>. Access control = the
+// storage rules (src/ops/firebaseRules.ts buildStorageRules).
+export function firebaseFileStore(api: FirebaseApi): FileStore {
+  const storage = () => {
+    if (!api.storage) throw new FileStoreUnavailableError(STORAGE_NOT_ENABLED);
+    return api.storage;
+  };
+  const path = (id: string) => {
+    assertFileId(id);
+    return `${STORAGE_FILES_DIR}/${id}`;
+  };
+  const wrap = async <T,>(fn: () => Promise<T>): Promise<T> => {
+    try {
+      return await fn();
+    } catch (err) {
+      const code = errorCode(err);
+      if (code === "storage/unknown" || code === "storage/bucket-not-found" || code === "storage/no-default-bucket") throw new FileStoreUnavailableError(STORAGE_NOT_ENABLED);
+      throw err;
+    }
+  };
+  return {
+    kind: "firebase",
+    put: (id, bytes, meta) => wrap(() => storage().put(path(id), bytes, meta?.mime)),
+    async putMany(items) {
+      for (const it of items) await wrap(() => storage().put(path(it.id), it.bytes, it.meta?.mime));
+    },
+    get: (id) => wrap(() => storage().get(path(id))),
+    delete: (id) => wrap(() => storage().delete(path(id))),
+  };
 }
 
 // ─── Store ───────────────────────────────────────────────────────────────
@@ -454,6 +493,7 @@ export function createFirebaseStoreWith(opts: FirebaseStoreOptions): FirebaseDat
     }
   }
 
+  withFileStore(core, firebaseFileStore(api));
   return Object.assign(core as FirebaseDataStore, {
     api,
     accessError: () => lastAccessError,

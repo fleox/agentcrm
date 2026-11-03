@@ -1,7 +1,7 @@
 ---
 name: agentcrm-extensions
 description: "Create, test and ship AgentCRM extensions - scaffold a module or theme project, write pages, record tabs, dashboard widgets, settings pages with module config, AI tools, automation actions and hooks against the @agent-crm/runtime API, validate the bundle exactly as the admin loads it, pack the ZIP and install / enable / disable / uninstall / export it on a CRM. Use when the user wants a new module or theme for AgentCRM, wants to change or debug one, or asks how AgentCRM extensions work."
-version: 0.2.0
+version: 0.3.0
 author: AgentCRM
 license: PolyForm-Noncommercial-1.0.0
 platforms: [macos, linux, windows]

@@ -89,3 +89,18 @@ describe("firestore rules generator", () => {
     expect(() => buildInboxSubmission("f", Object.fromEntries(Array.from({ length: INBOX_LIMITS.maxFields + 1 }, (_, i) => [`f${i}`, 1])))).toThrow();
   });
 });
+
+describe("storage rules (files)", () => {
+  it("members write, active users read, admins delete; size and id bounded", async () => {
+    const { buildStorageRules, buildStorageCors, buildFirestoreRules } = await import("./firebaseRules");
+    const rules = buildStorageRules({ adminEmail: "Boss@Acme.io", maxUploadMb: 30 });
+    expect(rules).toContain("service firebase.storage");
+    expect(rules).toContain('request.auth.token.email.lower() == "boss@acme.io"');
+    expect(rules).toContain("match /files/{fileId}");
+    expect(rules).toContain("allow read: if signedIn() && role() in ['admin', 'member', 'viewer'];");
+    expect(rules).toContain("request.resource.size < 30 * 1024 * 1024");
+    expect(rules).toContain("allow delete: if signedIn() && role() == 'admin';");
+    expect(JSON.parse(buildStorageCors(["https://crm.acme.io"]))[0]).toMatchObject({ origin: ["https://crm.acme.io"], method: ["GET"] });
+    expect(buildFirestoreRules({ adminEmail: "boss@acme.io" })).toContain("match /files/{id}");
+  });
+});

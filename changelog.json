@@ -1,6 +1,28 @@
 {
   "versions": [
     {
+      "version": "0.3.0",
+      "date": "2026-11-03",
+      "breaking": false,
+      "changes": [
+        "Images: people get a photo and companies a logo (new image fields, added automatically to existing workspaces), shown next to the name everywhere — record header (click or drop an image, square crop with zoom), tables, kanban cards, relation chips, search. Any custom object can get one with an Image field.",
+        "Attachments: attach images, PDFs and documents to notes, tasks, calls, emails, meetings and records — button, drag & drop or paste; pasted images go inline in the Markdown (![name](file:<id>)); thumbnails with a lightbox, document chips with open / download / delete.",
+        "New record tab Files: every file of the record and, optionally, of its activities and related records; grid / list, sort, search, preview, upload drop zone.",
+        "New field types image and files for custom fields; Settings → Data model chooses an object's image field.",
+        "Files live next to your data: encrypted with the dataset passphrase on the journal backend (bucket, repo, folder), IndexedDB in local mode, the data repo for git-json, Firebase Storage for Firebase (generated storage.rules). Photos are resized in the browser (2560 px, WebP) with 320 px thumbnails; upload limit per file in Settings → General (25 MB by default) with a storage usage summary.",
+        "GDPR: deleting a file removes it everywhere at once; compact physically erases the bytes of deleted files and of files whose records / activities are gone. Merging records moves their files.",
+        "Backups: Settings → Export → ZIP with data + files, restorable from the same page; CLI export zip / import zip.",
+        "CLI: files list|upload|get|delete|usage, records image <id> <path>|--remove, --attach <path> on activities add, notes add and tasks add.",
+        "AI tools (MCP + assistant): list_files and describe_attachments (metadata only).",
+        "Demo data comes with generated portraits, company logos, a chart and a PDF on a note."
+      ],
+      "actions": [
+        "Redeploy the admin (agentcrm deploy-admin) to get photos, logos, attachments and the Files tab; the image fields are added to your workspace on the next admin sign-in.",
+        "Update the agent skills (Claude Code: /plugin marketplace update agentcrm) to get the files commands.",
+        "Firebase: enable Storage, add storageBucket to the web config, deploy the new storage.rules (and the updated firestore.rules, which cover the files collection) and set the bucket CORS — see docs/firebase.md."
+      ]
+    },
+    {
       "version": "0.2.0",
       "date": "2026-11-03",
       "breaking": false,

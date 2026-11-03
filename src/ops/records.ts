@@ -12,6 +12,7 @@ import { buildSearchIndex } from "../core/search";
 import type { CrmRecord, Filter, ObjectDef, Sort } from "../core/types";
 import type { DocMutation } from "../data/types";
 import { actorId, assertCan, emit, OpsError, type OpsContext } from "./context";
+import { fileCleanupMutations } from "./fileRefs";
 import { expandRelations, inverseRelations, labelOf, rewriteReferences, validateRelationValue, type InverseRelation, type RecordRef } from "./relations";
 import { activitiesOf, asDoc, objectsOf, pipelinesOf, recordOf, recordsOf, requireObject, requireRecord, userOf } from "./store";
 
@@ -299,12 +300,17 @@ export function hardDeleteMutations(ctx: OpsContext, ids: string[]): DocMutation
   const doomed = new Set(ids);
   const out: DocMutation[] = ids.map((id) => ({ op: "delete", collection: "records", id }));
   out.push(...rewriteReferences(ctx, ids, null));
+  const doomedActivities: string[] = [];
   for (const a of activitiesOf(ctx.store, { includeDeleted: true })) {
     if (!a.targets.some((t) => doomed.has(t.id))) continue;
     const rest = a.targets.filter((t) => !doomed.has(t.id));
-    if (rest.length === 0) out.push({ op: "delete", collection: "activities", id: a.id });
-    else out.push({ op: "patch", collection: "activities", id: a.id, fields: { targets: rest, updatedAt: ctx.now() } });
+    if (rest.length === 0) {
+      out.push({ op: "delete", collection: "activities", id: a.id });
+      doomedActivities.push(a.id);
+    } else out.push({ op: "patch", collection: "activities", id: a.id, fields: { targets: rest, updatedAt: ctx.now() } });
   }
+  // Their files lose these targets (orphans are purged by compact).
+  out.push(...fileCleanupMutations(ctx, { records: ids, activities: doomedActivities }));
   return out;
 }
 

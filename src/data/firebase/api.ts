@@ -40,7 +40,19 @@ export function isPermissionDenied(err: unknown): boolean {
   return code === "permission-denied" || code === "firestore/permission-denied";
 }
 
+// Firebase Storage (file bytes). Absent when the project has no Storage
+// bucket configured (storageBucket missing from the web config).
+export interface FirebaseStorageApi {
+  put(path: string, bytes: Uint8Array, contentType?: string): Promise<void>;
+  // null when the object doesn't exist.
+  get(path: string): Promise<Uint8Array | null>;
+  // Resolves when already gone.
+  delete(path: string): Promise<void>;
+}
+
 export interface FirebaseApi {
+  // Firebase Storage of the project (optional, see FirebaseStorageApi).
+  storage?: FirebaseStorageApi;
   listCollection(collection: string): Promise<FirestoreDocData[]>;
   // Fires with the full content of the collection on every change.
   watchCollection(collection: string, onDocs: (docs: FirestoreDocData[]) => void, onError: (err: Error) => void): () => void;

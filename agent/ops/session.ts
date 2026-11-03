@@ -192,6 +192,12 @@ export async function openSession(alias: string | undefined, opts: OpenOptions =
     const log = (msg: string) => process.stderr.write(`${msg}\n`);
     const ctx = createOpsContext(store, user, { plugins, log });
     const system = createOpsContext(store, null, { plugins, log });
+    // Writing sessions of an admin bring an older dataset up to the current
+    // schema (additive, idempotent — same as the admin on boot).
+    if (opts.lock && (!user || user.role === "admin") && store.list("objects").length) {
+      const { migrateSchema } = await import("../../src/ops/migrate");
+      await migrateSchema(ctx).catch((err: unknown) => warnings.push(`Schema migration skipped: ${(err as Error).message}`));
+    }
     // Forms publishing / siteFiles write to the site's hosting.
     if (site.hosting) {
       const target = (() => {

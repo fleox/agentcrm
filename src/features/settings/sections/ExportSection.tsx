@@ -3,8 +3,10 @@
 
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Download, FileJson, RotateCcw, Upload } from "lucide-react";
-import { Button, Card, Checkbox, FormField, Input, Modal, Select, downloadCsv, downloadJson, fileStamp } from "../../../components/ui";
+import { Download, FileArchive, FileJson, RotateCcw, Upload } from "lucide-react";
+import { Button, Card, Checkbox, FormField, Input, Modal, Select, downloadBlob, downloadCsv, downloadJson, fileStamp } from "../../../components/ui";
+import { exportBackupZip, importBackupZip, readBackupZipInfo } from "../../../ops/backup";
+import { formatBytes } from "../../../core/files";
 import { useCan, useObjects, useOps, useSettings } from "../../../app/CrmDataContext";
 import { exportCsv, exportJson, importJson, type JsonExport } from "../../../ops/exportCsv";
 import { slugify } from "../../../shared/lib/utils";
@@ -40,6 +42,21 @@ export function ExportSection() {
       toast.success(t("export.csvDone", { count: Math.max(0, text.split("\n").length - 1) }));
     } catch (err) {
       toast.error(errorMessage(err));
+    }
+  };
+
+  const [zipping, setZipping] = useState(false);
+  const zip = async () => {
+    setZipping(true);
+    try {
+      const { zip: bytes, report } = await exportBackupZip(ops);
+      downloadBlob(`${base}-backup-${fileStamp()}.zip`, new Blob([bytes as BlobPart], { type: "application/zip" }));
+      toast.success(t("export.zipDone", { count: report.files, size: formatBytes(bytes.length) }));
+      if (report.missing.length) toast.warn(t("export.zipMissing", { count: report.missing.length }));
+    } catch (err) {
+      toast.error(errorMessage(err));
+    } finally {
+      setZipping(false);
     }
   };
 
@@ -85,11 +102,15 @@ export function ExportSection() {
       </Card>
       <Card title={t("export.jsonTitle")}>
         <p className="mb-3 text-[13px] text-surface-600 dark:text-surface-300">{t("export.jsonHelp")}</p>
-        <div className="flex justify-end">
+        <div className="flex flex-wrap justify-end gap-2">
           <Button icon={<FileJson />} onClick={json}>
             {t("export.downloadJson")}
           </Button>
+          <Button variant="primary" icon={<FileArchive />} loading={zipping} onClick={() => void zip()} data-testid="export-zip">
+            {t("export.downloadZip")}
+          </Button>
         </div>
+        <p className="mt-2 text-xs text-surface-500">{t("export.zipHelp")}</p>
       </Card>
       {canRestore && <RestoreCard />}
     </div>
@@ -102,6 +123,8 @@ function RestoreCard() {
   const ops = useOps();
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [data, setData] = useState<JsonExport | null>(null);
+  const [zipBytes, setZipBytes] = useState<Uint8Array | null>(null);
+  const [zipFiles, setZipFiles] = useState(0);
   const [fileName, setFileName] = useState("");
   const [mode, setMode] = useState<"merge" | "replace">("merge");
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -111,6 +134,17 @@ function RestoreCard() {
 
   const load = async (file: File) => {
     try {
+      if (/\.zip$/i.test(file.name) || file.type === "application/zip") {
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        const info = await readBackupZipInfo(bytes);
+        setData(info.data);
+        setZipBytes(bytes);
+        setZipFiles(info.files);
+        setFileName(file.name);
+        return;
+      }
+      setZipBytes(null);
+      setZipFiles(0);
       const parsed = JSON.parse(await file.text()) as JsonExport;
       if (parsed?.format !== "agentcrm-export") throw new Error(t("export.notAnExport"));
       setData(parsed);
@@ -129,7 +163,7 @@ function RestoreCard() {
         <input
           ref={fileRef}
           type="file"
-          accept=".json,application/json"
+          accept=".json,application/json,.zip,application/zip"
           className="hidden"
           onChange={(e) => {
             const f = e.target.files?.[0];
@@ -155,7 +189,7 @@ function RestoreCard() {
           {t("export.restore")}
         </Button>
       </div>
-      {data && <p className="mt-2 text-xs text-surface-500">{t("export.backupInfo", { date: data.exportedAt, counts: counts.join(" · ") })}</p>}
+      {data && <p className="mt-2 text-xs text-surface-500">{t("export.backupInfo", { date: data.exportedAt, counts: counts.join(" · ") })}{zipBytes ? ` · ${t("export.zipFiles", { count: zipFiles })}` : ""}</p>}
       <Modal
         open={confirmOpen}
         onClose={() => setConfirmOpen(false)}
@@ -175,10 +209,11 @@ function RestoreCard() {
                 if (!data) return;
                 setBusy(true);
                 try {
-                  const r = await importJson(ops, data, { mode });
+                  const r = zipBytes ? await importBackupZip(ops, zipBytes, { mode }) : await importJson(ops, data, { mode });
                   toast.success(t("export.restored", { written: r.written, deleted: r.deleted }));
                   setConfirmOpen(false);
                   setData(null);
+                  setZipBytes(null);
                   setFileName("");
                   setTyped("");
                 } catch (err) {

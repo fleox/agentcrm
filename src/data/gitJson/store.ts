@@ -18,7 +18,10 @@
 //   - poll: compares the branch head every ~30 s (10 s for a local
 //     folder) and reloads when it moved.
 
-import { GitConflictError, joinRepoPath, type GitChange, type GitPermissions, type GitTransport } from "../../shared/git";
+import { GitConflictError, joinRepoPath, type GitChange, type GitPermissions, type GitTransport, type GitTreeEntry } from "../../shared/git";
+import { bytesToBase64 } from "../../shared/git/encoding";
+import { assertFileId, withFileStore } from "../files";
+import type { FileStore } from "../types";
 import { applyMutations, createStoreCore, type Snapshot } from "../core";
 import { getPath, splitPath } from "../patch";
 import { DocConflictError, type CollectionName, type DataStore, type DocMutation, type StoreIdentity, type StoredDoc } from "../types";
@@ -77,8 +80,16 @@ export function defaultGitIdentity(p: GitPermissions, t: GitTransport, email?: s
   };
 }
 
+// Uploaded file bytes: files/<id>.bin in the data folder (metadata is the
+// files/<id>.json document). Plain bytes: the repo must be private, and
+// its history keeps every file ever uploaded (warned in the UI).
+export const GIT_FILES_DIR = "files";
+export const GIT_LARGE_FILE_WARN_BYTES = 5 * 1024 * 1024;
+
 interface RemoteState {
   head: string;
+  // Blob entries of files/*.bin (path relative to the data folder).
+  blobs: Map<string, GitTreeEntry>;
   files: Map<string, string>;
   index: LayoutIndex;
   snapshot: Snapshot;
@@ -157,7 +168,13 @@ export function createGitJsonStoreWith(opts: GitJsonStoreOptions): GitJsonDataSt
     for (const [path, text] of texts) files.set(rel(path), text);
     const { snapshot, index, errors } = filesToSnapshot(files, secrets.read());
     if (errors.length) console.warn("[git-json] unreadable files:", errors);
-    return { head: tree.headSha, files, index, snapshot, errors };
+    const blobs = new Map<string, GitTreeEntry>();
+    for (const e of tree.entries) {
+      if (!inDir(e.path)) continue;
+      const r = rel(e.path);
+      if (r.startsWith(`${GIT_FILES_DIR}/`) && r.endsWith(".bin")) blobs.set(r, e);
+    }
+    return { head: tree.headSha, blobs, files, index, snapshot, errors };
   }
 
   async function persist(mutations: DocMutation[], before: Snapshot, _after: Snapshot, message: string): Promise<void> {
@@ -181,7 +198,7 @@ export function createGitJsonStoreWith(opts: GitJsonStoreOptions): GitJsonDataSt
       try {
         const head = await t.commit(changes, { message: `${message}${suffix}`, expectedHeadSha: base.head });
         secrets.write(plan.secrets);
-        state = { head, files: plan.files, index: plan.index, snapshot: next, errors: base.errors };
+        state = { head, blobs: base.blobs, files: plan.files, index: plan.index, snapshot: next, errors: base.errors };
         if (base.snapshot !== before && attempt > 0) stale = true;
         return;
       } catch (err) {
@@ -239,6 +256,80 @@ export function createGitJsonStoreWith(opts: GitJsonStoreOptions): GitJsonDataSt
       return identityPromise;
     },
   });
+
+  // ─── Files ────────────────────────────────────────────────────────────
+  const blobPath = (id: string) => `${GIT_FILES_DIR}/${id}.bin`;
+  // Commits blob changes in ONE commit. Based on our head when we have
+  // one (so the next data write doesn't need a rebase), else / on a
+  // conflict last-writer-wins (blobs never conflict: ids are unique).
+  async function commitBlobs(changes: GitChange[], message: string): Promise<void> {
+    const t = await requireTransport();
+    const full: GitChange[] = changes.map((c) => ({ ...c, path: joinRepoPath(dir, c.path) }));
+    const msg = `${message}${suffix}`;
+    if (state) {
+      try {
+        const head = await t.commit(full, { message: msg, expectedHeadSha: state.head });
+        const blobs = new Map(state.blobs);
+        for (const c of changes) {
+          if (c.type === "put") blobs.set(c.path, { path: joinRepoPath(dir, c.path), sha: "" });
+          else blobs.delete(c.path);
+        }
+        state = { ...state, head, blobs };
+        return;
+      } catch (err) {
+        if (!(err instanceof GitConflictError)) throw err;
+      }
+    }
+    await t.commit(full, { message: msg });
+    stale = true;
+  }
+  async function findBlob(id: string): Promise<GitTreeEntry | null> {
+    const p = blobPath(id);
+    let e = state?.blobs.get(p);
+    if (!e || !e.sha) {
+      // Unknown or just uploaded by us (no sha yet): list the tree again.
+      const t = await requireTransport();
+      const tree = await t.listTree();
+      const full = joinRepoPath(dir, p);
+      e = tree.entries.find((x) => x.path === full);
+      if (e && state) state.blobs.set(p, e);
+    }
+    return e ?? null;
+  }
+  const files: FileStore = {
+    kind: "git-json",
+    async put(id, bytes) {
+      await files.putMany!([{ id, bytes }]);
+    },
+    async putMany(items) {
+      if (!items.length) return;
+      for (const it of items) assertFileId(it.id);
+      const total = items.reduce((n, it) => n + it.bytes.length, 0);
+      if (total > GIT_LARGE_FILE_WARN_BYTES) console.warn(`[git-json] committing ${Math.round(total / 1024)} KB of files: git history keeps them forever and large repos get slow.`);
+      await commitBlobs(
+        items.map((it) => ({ type: "put", path: blobPath(it.id), content: bytesToBase64(it.bytes), encoding: "base64" })),
+        `Upload ${items.length === 1 ? (items[0].meta?.name ?? "a file") : `${items.length} files`}`,
+      );
+    },
+    async get(id) {
+      assertFileId(id);
+      const entry = await findBlob(id);
+      if (!entry) return null;
+      return (await requireTransport()).readBytes(entry);
+    },
+    async delete(id) {
+      assertFileId(id);
+      if (!(await findBlob(id))) return;
+      await commitBlobs([{ type: "delete", path: blobPath(id) }], "Purge a file");
+    },
+    async list() {
+      const t = await requireTransport();
+      const tree = await t.listTree();
+      const prefix = joinRepoPath(dir, `${GIT_FILES_DIR}/`);
+      return tree.entries.filter((e) => e.path.startsWith(prefix) && e.path.endsWith(".bin")).map((e) => e.path.slice(prefix.length, -".bin".length)).filter((id) => !id.includes("/")).sort();
+    },
+  };
+  withFileStore(core, files);
 
   return Object.assign(core as GitJsonDataStore, {
     resetSession() {

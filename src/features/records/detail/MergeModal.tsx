@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { GitMerge, Search } from "lucide-react";
 import type { CrmRecord, ObjectDef } from "../../../core/types";
-import { Avatar, Badge, Button, Checkbox, Input, Modal, useFieldContext } from "../../../components/ui";
+import { RecordAvatar, Badge, Button, Checkbox, Input, Modal, useFieldContext } from "../../../components/ui";
 import { useOps, useRecords } from "../../../app/CrmDataContext";
 import { findDuplicates, mergeRecords } from "../../../ops/dedupe";
 import { toast } from "../../../shared/lib/toast";
@@ -52,7 +52,7 @@ export function MergeModal({ open, onClose, record, object }: { open: boolean; o
   const row = (id: string, label: string, badge?: string) => (
     <label key={id} className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-surface-50 dark:hover:bg-surface-800">
       <Checkbox checked={picked.has(id)} onChange={() => toggle(id)} />
-      <Avatar name={label} size="sm" square={object.id === "companies"} />
+      <RecordAvatar recordId={id} name={label} size="sm" square={object.id === "companies"} />
       <span className="min-w-0 flex-1 truncate text-[13px]">{label}</span>
       {badge && <Badge color="yellow">{t(`merge.reasons.${badge}`, { defaultValue: badge })}</Badge>}
     </label>

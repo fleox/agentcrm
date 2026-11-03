@@ -12,6 +12,8 @@ export interface FieldContextValue {
   users: CrmUser[];
   // Link to a record page ("#/objects/<object>/<id>").
   recordHref(object: string, id: string): string;
+  // File id of a record's image (its object's imageField), for avatars.
+  recordImage?(recordId: string): string | undefined;
 }
 
 export const FieldContext = createContext<FieldContextValue>({

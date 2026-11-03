@@ -59,7 +59,24 @@
       "journal": "Encrypted snapshot + journal on your own storage.",
       "git-json": "One JSON file per document, one commit per change.",
       "firebase": "Firestore with Firebase Auth accounts."
-    }
+    },
+    "files": "Files & images",
+    "maxUpload": "Max upload size (MB)",
+    "maxUploadHelp": "Per file. Photos are resized in the browser before upload (2560 px).",
+    "storageUsage": "Storage used",
+    "fileCount_one": "{{count}} file",
+    "fileCount_other": "{{count}} files",
+    "deletedFiles_one": "{{count}} deleted file ({{size}}) waiting for the next compaction.",
+    "deletedFiles_other": "{{count}} deleted files ({{size}}) waiting for the next compaction.",
+    "filesWhere": {
+      "journal": "Files are stored next to the data (files/ folder), encrypted with the same passphrase.",
+      "local": "Files are kept in this browser (IndexedDB) — back them up with Settings → Export → ZIP.",
+      "git-json": "Files are committed to the data repository (files/ folder).",
+      "firebase": "Files are stored in your Firebase Storage bucket (files/).",
+      "memory": "Files are kept in memory (lost on reload)."
+    },
+    "firebaseStorageHint": "Firebase Storage must be enabled (Build → Storage), `storageBucket` present in the web config, the generated storage.rules deployed and the bucket CORS set for this admin (see docs/files.md).",
+    "gitFilesHint": "Git history keeps every uploaded file forever, even after deletion, and large files slow the repository down. Prefer the encrypted journal backend for many or personal files."
   },
   "name": "CRM name",
   "currency": "Default currency",
@@ -98,7 +115,11 @@
     "objectDeleted_one": "{{name}} deleted ({{count}} record removed)",
     "objectDeleted_other": "{{name}} deleted ({{count}} records removed)",
     "deleteObjectConfirm_one": "Its {{count}} record, its views and every relation field pointing to it will be permanently deleted. This can't be undone.",
-    "deleteObjectConfirm_other": "Its {{count}} records, its views and every relation field pointing to it will be permanently deleted. This can't be undone."
+    "deleteObjectConfirm_other": "Its {{count}} records, its views and every relation field pointing to it will be permanently deleted. This can't be undone.",
+    "imageField": "Image field (avatar / logo)",
+    "imageFieldHelp": "Shown next to the record name everywhere: header, tables, kanban, links, search.",
+    "imageFieldNone": "Add a field of type Image to show pictures for these records.",
+    "imageFieldInitials": "None (initials)"
   },
   "fields": {
     "title_one": "{{count}} field",
@@ -162,7 +183,8 @@
     "deleted_one": "Field {{name}} deleted ({{count}} value cleared)",
     "deleted_other": "Field {{name}} deleted ({{count}} values cleared)",
     "deleteConfirm_one": "{{count}} record has a value for this field. The values and the field are removed from every view. This can't be undone.",
-    "deleteConfirm_other": "{{count}} records have a value for this field. The values and the field are removed from every view. This can't be undone."
+    "deleteConfirm_other": "{{count}} records have a value for this field. The values and the field are removed from every view. This can't be undone.",
+    "imageField": "Avatar"
   },
   "pipelines": {
     "title": "Pipelines",
@@ -338,7 +360,12 @@
     "restoreReplaceWarning": "The CRM will match the backup exactly: everything created since is permanently deleted.",
     "restoreKeyword": "RESTORE",
     "typeToConfirm": "Type {{keyword}} to confirm",
-    "restored": "Backup restored: {{written}} documents written, {{deleted}} deleted"
+    "restored": "Backup restored: {{written}} documents written, {{deleted}} deleted",
+    "downloadZip": "Download ZIP (data + files)",
+    "zipHelp": "The ZIP holds the JSON backup and every image / attachment, decrypted: store it somewhere safe. Restore it below (choose the .zip).",
+    "zipDone": "Backup downloaded: {{count}} file(s), {{size}}.",
+    "zipMissing": "{{count}} file(s) could not be read from the storage and are not in the ZIP.",
+    "zipFiles": "{{count}} file(s)"
   },
   "danger": {
     "title": "Danger zone",

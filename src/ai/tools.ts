@@ -22,6 +22,7 @@ import { createField, describeSchema } from "../ops/schema";
 import { objectOf, userOf } from "../ops/store";
 import { AUTOMATION_FORM_TOOLS } from "./automationTools";
 import { CUSTOMIZE_TOOLS } from "./customizeTools";
+import { FILE_TOOLS } from "./fileTools";
 
 export type JsonSchema = {
   type?: string | string[];
@@ -81,6 +82,10 @@ export function summarizeRecord(ctx: OpsContext, record: CrmRecord, opts: { full
       const ids = Array.isArray(v) ? v : [v];
       values[k] = ids.map((id) => ({ id, label: qctx.recordLabel("", String(id)) ?? String(id) }));
       if (field.relation?.cardinality === "one") values[k] = (values[k] as unknown[])[0];
+    } else if (field.type === "image" || field.type === "files") {
+      const ids = (Array.isArray(v) ? v : [v]).map(String);
+      const files = ids.map((id) => ({ id, name: (ctx.store.get("files", id) as { name?: string } | undefined)?.name ?? id }));
+      values[k] = field.type === "image" ? files[0] : files;
     } else if (field.type === "select" || field.type === "multiSelect" || field.type === "user") {
       values[k] = { value: v, label: formatFieldValue(field, v, qctx) };
     } else {
@@ -108,6 +113,7 @@ function summarizeActivity(a: Activity): Record<string, unknown> {
     ...(a.dueAt ? { dueAt: new Date(a.dueAt).toISOString() } : {}),
     ...(a.doneAt ? { doneAt: new Date(a.doneAt).toISOString() } : {}),
     ...(a.assigneeId ? { assigneeId: a.assigneeId } : {}),
+    ...(a.attachments?.length ? { attachments: a.attachments.length } : {}),
     createdAt: new Date(a.createdAt).toISOString(),
   };
 }
@@ -418,6 +424,8 @@ export const AI_TOOLS: AiTool[] = [
   ...AUTOMATION_FORM_TOOLS,
   // Modules, appearance, extensions (src/ai/customizeTools.ts).
   ...CUSTOMIZE_TOOLS,
+  // Files metadata (src/ai/fileTools.ts).
+  ...FILE_TOOLS,
 ];
 
 // ─── Dynamic catalog (extension modules) ────────────────────────────────

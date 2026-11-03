@@ -1,7 +1,7 @@
 ---
 name: agentcrm-manage
 description: "Check, repair and update existing AgentCRM CRMs - list the CRMs this computer manages, register one installed elsewhere (another computer, the setup wizard), attach credentials, run the health check (data access, passphrase, dataset, hosted admin, config.js, CORS, data exposure) and apply its fixes, detect newer AgentCRM releases and offer to update hosted admins, compact the data, set up scheduled automations. Use when the user asks about one of their CRMs, says something is broken, or wants to update."
-version: 0.2.0
+version: 0.3.0
 author: AgentCRM
 license: PolyForm-Noncommercial-1.0.0
 platforms: [macos, linux, windows]

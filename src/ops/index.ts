@@ -21,3 +21,7 @@ export * from "./forms";
 export * from "./modules";
 export * from "./extensions";
 export * from "./appearance";
+export * from "./files";
+export * from "./fileRefs";
+export * from "./migrate";
+export * from "./backup";

@@ -3,9 +3,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Database, Save } from "lucide-react";
+import { Database, HardDrive, Save } from "lucide-react";
 import { Badge, Button, Card, FormField, Input, Select } from "../../../components/ui";
-import { useCan, useOps, useSettings } from "../../../app/CrmDataContext";
+import { useCan, useFiles, useOps, useSettings } from "../../../app/CrmDataContext";
+import { DEFAULT_MAX_UPLOAD_MB, formatBytes } from "../../../core/files";
+import { fileUsage } from "../../../ops/files";
 import { useAuth } from "../../../app/AuthContext";
 import { updateSettings } from "../../../ops/settings";
 import { ReadOnlyNote, SectionHeader, runOp } from "../components/common";
@@ -62,7 +64,10 @@ export function GeneralSection() {
   const [weekStartsOn, setWeekStartsOn] = useState<0 | 1>(settings.weekStartsOn ?? 1);
   const [staleDealDays, setStaleDealDays] = useState(String(settings.staleDealDays));
   const [timezone, setTimezone] = useState(settings.timezone ?? "");
+  const [maxUploadMb, setMaxUploadMb] = useState(String(settings.maxUploadMb ?? DEFAULT_MAX_UPLOAD_MB));
   const [saving, setSaving] = useState(false);
+  const files = useFiles({ includeDeleted: true });
+  const usage = useMemo(() => fileUsage(ops), [ops, files]);
 
   useEffect(() => {
     setName(settings.name);
@@ -71,6 +76,7 @@ export function GeneralSection() {
     setWeekStartsOn(settings.weekStartsOn ?? 1);
     setStaleDealDays(String(settings.staleDealDays));
     setTimezone(settings.timezone ?? "");
+    setMaxUploadMb(String(settings.maxUploadMb ?? DEFAULT_MAX_UPLOAD_MB));
   }, [settings]);
 
   const tzList = useMemo(() => timezones(), []);
@@ -100,6 +106,7 @@ export function GeneralSection() {
                 weekStartsOn,
                 staleDealDays: Number(staleDealDays),
                 timezone: timezone || undefined,
+                maxUploadMb: Number(maxUploadMb) || DEFAULT_MAX_UPLOAD_MB,
               }),
             t("saved"),
           );
@@ -184,6 +191,27 @@ export function GeneralSection() {
             <Badge color="blue">{t(`general.backends.${backend}`, { defaultValue: backend })}</Badge>
             <span className="text-surface-500">{t(`general.backendHelp.${backend}`, { defaultValue: "" })}</span>
           </div>
+        </Card>
+
+        <Card title={t("general.files")}>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField label={t("general.maxUpload")} htmlFor="crm-max-upload" help={t("general.maxUploadHelp")}>
+              <Input id="crm-max-upload" type="number" min={1} max={1024} value={maxUploadMb} disabled={!canEdit} onChange={(e) => setMaxUploadMb(e.target.value)} />
+            </FormField>
+            <div className="text-[13px]" data-testid="storage-usage">
+              <div className="mb-1 text-xs font-medium text-surface-600 dark:text-surface-300">{t("general.storageUsage")}</div>
+              <div className="flex items-center gap-2 text-surface-700 dark:text-surface-200">
+                <HardDrive className="h-4 w-4 text-surface-400" />
+                <span className="font-medium tabular-nums">{t("general.fileCount", { count: usage.count })}</span>
+                <span className="text-surface-400">·</span>
+                <span className="tabular-nums">{formatBytes(usage.totalBytes)}</span>
+              </div>
+              {usage.deleted > 0 && <p className="mt-1 text-xs text-surface-500">{t("general.deletedFiles", { count: usage.deleted, size: formatBytes(usage.deletedBytes) })}</p>}
+            </div>
+          </div>
+          <p className="mt-3 text-xs text-surface-500">{t(`general.filesWhere.${backend}`, { defaultValue: "" })}</p>
+          {backend === "firebase" && <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">{t("general.firebaseStorageHint")}</p>}
+          {backend === "git-json" && <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">{t("general.gitFilesHint")}</p>}
         </Card>
 
         {canEdit && (

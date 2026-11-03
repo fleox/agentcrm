@@ -11,7 +11,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { ArrowRight, MoreHorizontal, Plus, Trophy, XCircle } from "lucide-react";
 import { formatCurrency, recordLabel } from "../../../core/fields";
 import type { CrmRecord, FieldDef, Filter, ObjectDef, Pipeline, ViewDef } from "../../../core/types";
-import { Avatar, Badge, Button, confirmDialog, dotClass, Dropdown, EmptyState, FieldValue, FormField, Input, Modal, useFieldContext } from "../../../components/ui";
+import { Avatar, Badge, Button, confirmDialog, dotClass, Dropdown, EmptyState, FieldValue, FormField, Input, Modal, RecordAvatar, useFieldContext } from "../../../components/ui";
 import { useOps, useSettings, useUsers } from "../../../app/CrmDataContext";
 import { createRecord, updateRecord } from "../../../ops/records";
 import { moveStage } from "../../../ops/pipelines";
@@ -84,6 +84,7 @@ function CardBody({ record, object, fields, columns, currentKey, canWrite, onOpe
   return (
     <>
       <div className="flex items-start gap-1.5">
+        {object.imageField && <RecordAvatar recordId={record.id} name={label} size="sm" square={object.id === "companies"} className="mt-px" />}
         <button type="button" onClick={onOpen} className="min-w-0 flex-1 truncate text-left text-[13px] font-medium text-surface-900 hover:underline dark:text-white">
           {label}
         </button>

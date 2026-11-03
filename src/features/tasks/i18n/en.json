@@ -67,7 +67,9 @@
     "assignedTo": "Assigned to {{name}}",
     "searchUsers": "Assign to…",
     "noUsers": "No matching user",
-    "unassign": "Unassign"
+    "unassign": "Unassign",
+    "attachments_one": "{{count}} attachment",
+    "attachments_other": "{{count}} attachments"
   },
   "editor": {
     "newTitle": "New task",
@@ -90,7 +92,9 @@
     "removeTarget": "Remove",
     "cancel": "Cancel",
     "save": "Save",
-    "create": "Create task"
+    "create": "Create task",
+    "attachments": "Attachments",
+    "attach": "Attach files"
   },
   "toast": {
     "created": "Task created",

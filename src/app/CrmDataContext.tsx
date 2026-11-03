@@ -13,6 +13,10 @@ import { intlLocale } from "../i18n";
 import { can as canDo, createOpsContext, type OpsAction, type OpsContext } from "../ops/context";
 import { DEFAULT_SETTINGS } from "../ops/settings";
 import { FieldContext, type FieldContextValue } from "../components/ui/fieldContext";
+import { FilesContext, type FilesBridge } from "../components/ui/files/context";
+import { prepareUpload } from "../components/ui/files/imageProcessing";
+import { deleteFile, getFileBytes, maxUploadBytes, uploadFile } from "../ops/files";
+import type { FileMeta } from "../core/types";
 import { recordHref } from "./paths";
 import { useModuleStates } from "./featureRegistry";
 
@@ -85,7 +89,9 @@ export function CrmDataProvider({ store, user, children }: { store: DataStore; u
   }, [store, live, user]);
   return (
     <CrmContext.Provider value={value}>
-      <FieldContextBridge>{children}</FieldContextBridge>
+      <FieldContextBridge>
+        <FilesBridgeProvider>{children}</FilesBridgeProvider>
+      </FieldContextBridge>
     </CrmContext.Provider>
   );
 }
@@ -265,7 +271,14 @@ function FieldContextBridge({ children }: { children: ReactNode }) {
   const objects = useCollection<ObjectDef>("objects");
   const value = useMemo<FieldContextValue>(() => {
     const byObject = new Map(objects.map((o) => [o.id, o]));
+    const byId = new Map(records.map((r) => [r.id, r]));
     return {
+      recordImage(id) {
+        const r = byId.get(id);
+        const field = r ? byObject.get(r.object)?.imageField : undefined;
+        const v = field ? r!.fields[field] : undefined;
+        return typeof v === "string" && v ? v : undefined;
+      },
       locale: intlLocale(),
       currency: settings.defaultCurrency,
       users,
@@ -288,4 +301,52 @@ function FieldContextBridge({ children }: { children: ReactNode }) {
     };
   }, [labelOf, users, settings.defaultCurrency, records, objects]);
   return <FieldContext.Provider value={value}>{children}</FieldContext.Provider>;
+}
+
+// ─── Files bridge (src/components/ui/files) ─────────────────────────────
+
+let bridgeSeq = 0;
+
+// Live file metadata of the store.
+export function useFiles(opts: { includeDeleted?: boolean } = {}): FileMeta[] {
+  const all = useCollection<FileMeta>("files");
+  const includeDeleted = !!opts.includeDeleted;
+  return useMemo(() => (includeDeleted ? all : all.filter((f) => !f.deletedAt)), [all, includeDeleted]);
+}
+
+function FilesBridgeProvider({ children }: { children: ReactNode }) {
+  const { store, ops, can } = useCrm();
+  const files = useCollection<FileMeta>("files");
+  const settings = useSettings();
+  const keyRef = useRef<{ store: DataStore; key: string } | null>(null);
+  if (!keyRef.current || keyRef.current.store !== store) keyRef.current = { store, key: `s${++bridgeSeq}` };
+  const key = keyRef.current.key;
+  const value = useMemo<FilesBridge | null>(() => {
+    if (!store.files) return null;
+    const byId = new Map(files.map((f) => [f.id, f]));
+    return {
+      key,
+      canWrite: can("records.write"),
+      canDelete: can("records.write"),
+      maxUploadBytes: maxUploadBytes(ops),
+      meta: (id) => byId.get(id) ?? (store.get("files", id) as unknown as FileMeta | undefined),
+      async load(id, opts) {
+        const meta = (store.get("files", id) as unknown as FileMeta | undefined) ?? undefined;
+        const bytes = await getFileBytes(ops, id, { thumb: opts?.thumb });
+        const usedThumb = !!opts?.thumb && !!meta?.thumbId;
+        // Thumbnails are WebP (or the browser's fallback); sniffing works for <img>.
+        return new Blob([bytes as BlobPart], { type: usedThumb ? "" : (meta?.mime ?? "application/octet-stream") });
+      },
+      async upload(file, opts = {}) {
+        const prepared = opts.prepared ?? (await prepareUpload(file, { name: opts.name ?? (file as File).name, keepOriginal: opts.keepOriginal }));
+        return uploadFile(ops, { ...prepared, targets: opts.targets });
+      },
+      async remove(id) {
+        await deleteFile(ops, id);
+      },
+    };
+    // settings: maxUploadMb changes the limit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [store, ops, can, files, key, settings.maxUploadMb]);
+  return <FilesContext.Provider value={value}>{children}</FilesContext.Provider>;
 }

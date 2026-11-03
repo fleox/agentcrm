@@ -2,6 +2,7 @@ import { ACTIVITY_TYPES, type Activity, type ActivityType } from "../../src/core
 import type { OpsContext } from "../../src/ops/context";
 import { withSession } from "../ops/session";
 import type { Command } from "./types";
+import { ATTACH_OPTION, readLocalFile, uploadLocalFiles } from "./files";
 import { AS_OPTION, boolOpt, jsonObjectOpt, listOpt, multiOpt, numOpt, positional, readTextValue, requireStr, SITE_OPTION, strOpt, table, usage } from "./util";
 
 function activityOut(a: Activity) {
@@ -15,6 +16,7 @@ function activityOut(a: Activity) {
     ...(a.doneAt ? { doneAt: new Date(a.doneAt).toISOString() } : {}),
     ...(a.assigneeId ? { assigneeId: a.assigneeId } : {}),
     ...(a.meta ? { meta: a.meta } : {}),
+    ...(a.attachments?.length ? { attachments: a.attachments } : {}),
     createdAt: new Date(a.createdAt).toISOString(),
   };
 }
@@ -35,6 +37,20 @@ async function userRef(ctx: OpsContext, ref: string | undefined): Promise<string
   return u.id;
 }
 
+// --attach <path> (repeatable): checked before the session opens,
+// uploaded inside it, then attached to the new activity.
+function attachPaths(options: Record<string, unknown>): string[] {
+  const v = options.attach;
+  const paths = Array.isArray(v) ? (v as string[]) : typeof v === "string" ? [v] : [];
+  for (const p of paths) readLocalFile(p);
+  return paths;
+}
+
+async function attachments(ctx: OpsContext, paths: string[]): Promise<string[] | undefined> {
+  if (!paths.length) return undefined;
+  return (await uploadLocalFiles(ctx, paths)).map((f) => f.id);
+}
+
 const RECORD_OPT = { name: "record", type: "string" as const, description: "Record id the activity is attached to (repeatable).", multiple: true };
 
 export const activitiesCommand: Command = {
@@ -42,7 +58,7 @@ export const activitiesCommand: Command = {
   usage: "activities <add|list|done> …",
   summary: "Timeline entries: log calls, emails, meetings and notes on records; list a record's timeline (optionally with its related records' activities).",
   subcommands: [
-    { name: "add", usage: `activities add --type <${ACTIVITY_TYPES.join("|")}> --title <t> [--body <md|@file>] --record <id>… [--meta <json>] [--due <date>] [--assignee <user>]`, summary: "Log an activity.", writes: true },
+    { name: "add", usage: `activities add --type <${ACTIVITY_TYPES.join("|")}> --title <t> [--body <md|@file>] --record <id>… [--meta <json>] [--due <date>] [--assignee <user>] [--attach <path>]…`, summary: "Log an activity (with attachments).", writes: true },
     { name: "list", usage: "activities list [--record <id>] [--type <t>]… [--related] [--limit n]", summary: "Timeline, most recent first." },
     { name: "done", usage: "activities done <id> [--undo]", summary: "Mark a task done (or reopen).", writes: true },
   ],
@@ -59,11 +75,13 @@ export const activitiesCommand: Command = {
     { name: "related", type: "boolean", description: "list: include activities of linked records." },
     { name: "limit", type: "string", description: "Max items (default 50)." },
     { name: "undo", type: "boolean", description: "done: reopen the task." },
+    ATTACH_OPTION,
   ],
   async run({ io, options, positionals }) {
     const [action, id] = positionals;
     switch (action) {
       case "add": {
+        const files = attachPaths(options);
         const type = requireStr(options, "type") as ActivityType;
         if (!ACTIVITY_TYPES.includes(type)) usage(`Unknown activity type "${type}".`, `Types: ${ACTIVITY_TYPES.join(", ")}.`);
         const title = requireStr(options, "title");
@@ -80,6 +98,7 @@ export const activitiesCommand: Command = {
               meta: jsonObjectOpt(options, "meta"),
               ...(strOpt(options, "due") ? { dueAt: strOpt(options, "due") } : {}),
               ...(strOpt(options, "assignee") ? { assigneeId: await userRef(ctx, strOpt(options, "assignee")) } : {}),
+              attachments: await attachments(ctx, files),
             }),
           );
         });
@@ -103,10 +122,10 @@ export const activitiesCommand: Command = {
 
 export const notesCommand: Command = {
   name: "notes",
-  usage: "notes add <recordId> --body <markdown|@file> [--title <t>]",
-  summary: "Add a note (Markdown) to a record's timeline.",
-  subcommands: [{ name: "add", usage: "notes add <recordId> --body <markdown|@file> [--title <t>]", summary: "Add a note.", writes: true }],
-  options: [SITE_OPTION, AS_OPTION, { name: "body", type: "string", description: "Markdown, or @file." }, { name: "title", type: "string", description: "Title (default: first line)." }],
+  usage: "notes add <recordId> --body <markdown|@file> [--title <t>] [--attach <path>]…",
+  summary: "Add a note (Markdown, optional attachments) to a record's timeline.",
+  subcommands: [{ name: "add", usage: "notes add <recordId> --body <markdown|@file> [--title <t>] [--attach <path>]…", summary: "Add a note.", writes: true }],
+  options: [SITE_OPTION, AS_OPTION, { name: "body", type: "string", description: "Markdown, or @file." }, { name: "title", type: "string", description: "Title (default: first line)." }, ATTACH_OPTION],
   async run({ io, options, positionals }) {
     const [action, recordId] = positionals;
     if (action !== "add") usage(`Unknown notes action "${action ?? ""}".`, "Use: notes add <recordId> --body …");
@@ -114,7 +133,14 @@ export const notesCommand: Command = {
     void recordId;
     const text = body(options);
     if (!text?.trim()) usage("notes add needs --body.");
-    return withSession(io, options, { lock: true }, async ({ ctx }) => activityOut(await (await import("../../src/ops/activities")).addNote(ctx, id, text, strOpt(options, "title"))));
+    const files = attachPaths(options);
+    return withSession(io, options, { lock: true }, async ({ ctx }) => {
+      const ops = await import("../../src/ops/activities");
+      const { recordOf } = await import("../../src/ops/store");
+      const r = recordOf(ctx.store, id);
+      if (!files.length || !r) return activityOut(await ops.addNote(ctx, id, text, strOpt(options, "title")));
+      return activityOut(await ops.addActivity(ctx, { type: "note", title: strOpt(options, "title") ?? "", body: text, targets: [{ object: r.object, id: r.id }], attachments: await attachments(ctx, files) }));
+    });
   },
 };
 
@@ -124,7 +150,7 @@ export const tasksCommand: Command = {
   summary: "Tasks: list (open by default; by assignee, record, overdue, due soon), add with due date and assignee, mark done, reassign.",
   subcommands: [
     { name: "list", usage: "tasks list [--assignee <user|me>] [--record <id>] [--status open|done|all] [--overdue] [--due-within <days>] [--limit n]", summary: "Tasks sorted by due date." },
-    { name: "add", usage: "tasks add --title <t> [--due <date>] [--assignee <user|me>] [--record <id>]… [--body <md>]", summary: "Create a task.", writes: true },
+    { name: "add", usage: "tasks add --title <t> [--due <date>] [--assignee <user|me>] [--record <id>]… [--body <md>] [--attach <path>]…", summary: "Create a task.", writes: true },
     { name: "done", usage: "tasks done <id> [--undo]", summary: "Complete (or reopen) a task.", writes: true },
     { name: "reassign", usage: "tasks reassign <id> --assignee <user>", summary: "Change the assignee.", writes: true },
   ],
@@ -141,6 +167,7 @@ export const tasksCommand: Command = {
     { name: "due-within", type: "string", description: "list: due within N days." },
     { name: "limit", type: "string", description: "Max items (default 50)." },
     { name: "undo", type: "boolean", description: "done: reopen." },
+    ATTACH_OPTION,
   ],
   async run({ io, options, positionals }) {
     const [action, id] = positionals;
@@ -160,9 +187,10 @@ export const tasksCommand: Command = {
         }, (r) => `${r.total} task(s)\n${table(r.tasks, ["id", "title", "dueAt", "assigneeId"])}`);
       case "add": {
         const title = requireStr(options, "title");
+        const files = attachPaths(options);
         return withSession(io, options, { lock: true }, async ({ ctx }) => {
-          const { createTask } = await import("../../src/ops/activities");
-          return activityOut(await createTask(ctx, { title, body: body(options), dueAt: strOpt(options, "due"), assigneeId: (await assignee(ctx)) ?? ctx.user?.id, targets: targets(multiOpt(options, "record")) }));
+          const { addActivity } = await import("../../src/ops/activities");
+          return activityOut(await addActivity(ctx, { type: "task", title, body: body(options), dueAt: strOpt(options, "due"), assigneeId: (await assignee(ctx)) ?? ctx.user?.id, targets: targets(multiOpt(options, "record")), attachments: await attachments(ctx, files) }));
         });
       }
       case "done":

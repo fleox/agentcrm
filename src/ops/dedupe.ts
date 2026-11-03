@@ -8,6 +8,7 @@ import { isEmptyFieldValue, normalizeDomain, normalizeEmail, recordLabel } from 
 import type { CrmRecord, ObjectDef } from "../core/types";
 import type { DocMutation } from "../data/types";
 import { actorId, assertCan, emit, OpsError, type OpsContext } from "./context";
+import { fileMergeMutations } from "./fileRefs";
 import { rewriteReferences } from "./relations";
 import { activitiesOf, asDoc, recordsOf, requireObject, requireRecord } from "./store";
 
@@ -94,7 +95,7 @@ function mergedFields(object: ObjectDef, primary: CrmRecord, others: CrmRecord[]
       }
       continue;
     }
-    const isArray = field.type === "tags" || field.type === "multiSelect" || (field.type === "relation" && field.relation?.cardinality === "many");
+    const isArray = field.type === "tags" || field.type === "multiSelect" || field.type === "files" || (field.type === "relation" && field.relation?.cardinality === "many");
     if (isArray) {
       const union = [...new Set(all.flatMap((r) => (Array.isArray(r.fields[field.id]) ? (r.fields[field.id] as unknown[]) : [])))];
       if (union.length) out[field.id] = union;
@@ -150,6 +151,8 @@ export async function mergeRecords(ctx: OpsContext, primaryId: string, duplicate
     mutations.push({ op: "patch", collection: "activities", id: a.id, fields: { targets: unique, updatedAt: now } });
   }
   for (const id of ids) mutations.push({ op: "delete", collection: "records", id });
+  // Attachments / images of the duplicates move to the primary.
+  mutations.push(...fileMergeMutations(ctx, ids, { object: primary.object, id: primaryId }));
   await ctx.store.write(mutations, { message: `Merge ${ids.length + 1} ${object.labelPlural}` });
   const stored = requireRecord(ctx.store, primaryId);
   await emit(ctx, "record.updated", { record: stored, before: primary, changed: Object.keys(fields).filter((k) => JSON.stringify(fields[k]) !== JSON.stringify(primary.fields[k])) });

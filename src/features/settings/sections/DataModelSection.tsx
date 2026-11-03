@@ -146,13 +146,15 @@ export function ObjectFormModal({ object, onClose, onCreated }: { object: Object
   const [icon, setIcon] = useState(object?.icon ?? "Box");
   const [color, setColor] = useState(object?.color ?? "blue");
   const [labelField, setLabelField] = useState(object?.labelField ?? "name");
+  const [imageField, setImageField] = useState(object?.imageField ?? "");
   const [saving, setSaving] = useState(false);
   const labelCandidates = (object?.fields ?? []).filter((f) => ["text", "email", "url", "phone"].includes(f.type));
+  const imageCandidates = (object?.fields ?? []).filter((f) => f.type === "image");
 
   const submit = async () => {
     setSaving(true);
     if (object) {
-      const res = await runOp(() => updateObject(ops, object.id, { labelSingular: singular, labelPlural: plural, icon, color, ...(labelField !== object.labelField ? { labelField } : {}) }), t("dataModel.objectSaved"));
+      const res = await runOp(() => updateObject(ops, object.id, { labelSingular: singular, labelPlural: plural, icon, color, ...(labelField !== object.labelField ? { labelField } : {}), ...(imageField !== (object.imageField ?? "") ? { imageField: imageField || null } : {}) }), t("dataModel.objectSaved"));
       setSaving(false);
       if (res) onClose();
     } else {
@@ -232,6 +234,17 @@ export function ObjectFormModal({ object, onClose, onCreated }: { object: Object
         {object && (
           <FormField label={t("dataModel.labelField")} htmlFor="obj-label-field" help={t("dataModel.labelFieldHelp")}>
             <Select id="obj-label-field" value={labelField} options={labelCandidates.map((f) => ({ value: f.id, label: f.label }))} onChange={(e) => setLabelField(e.target.value)} />
+          </FormField>
+        )}
+        {object && (
+          <FormField label={t("dataModel.imageField")} htmlFor="obj-image-field" help={imageCandidates.length ? t("dataModel.imageFieldHelp") : t("dataModel.imageFieldNone")}>
+            <Select
+              id="obj-image-field"
+              value={imageField}
+              disabled={!imageCandidates.length}
+              options={[{ value: "", label: t("dataModel.imageFieldInitials") }, ...imageCandidates.map((f) => ({ value: f.id, label: f.label }))]}
+              onChange={(e) => setImageField(e.target.value)}
+            />
           </FormField>
         )}
         {!object && <p className="text-xs text-surface-500">{t("dataModel.newObjectHelp")}</p>}

@@ -2,7 +2,12 @@ import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { FILTER_OPS } from "../../src/core/types";
 import type { CollectionName } from "../../src/data/types";
+import { printResult, type Io } from "../output";
 import { withSession } from "../ops/session";
+
+function printPlan(io: Io, plan: { needsConfirmation: true; plan: Record<string, unknown> }): void {
+  printResult(io, plan, () => `Would restore ${String(plan.plan.restore)} (${String(plan.plan.mode)}). Re-run with --yes once the user agrees.`);
+}
 import type { Command } from "./types";
 import { AS_OPTION, boolOpt, jsonObjectOpt, listOpt, multiOpt, numOpt, parseFilters, parseSorts, positional, readTextValue, requireStr, SITE_OPTION, strOpt, table, usage, YES_OPTION } from "./util";
 
@@ -30,7 +35,10 @@ export const importCommand: Command = {
   name: "import",
   usage: "import csv <file|-> --object <id> [--map <json|Header=field,…>] [--dedupe update|skip|create] [--delimiter ;] [--day-first] [--yes]",
   summary: "Import a CSV into an object: columns mapped to fields automatically (or with --map), values coerced, duplicates (people by email, companies by domain, else by name) updated / skipped. DRY RUN by default — the report shows every row's outcome; --yes applies.",
-  subcommands: [{ name: "csv", usage: "import csv <file|-> --object <id> [--map …] [--dedupe update|skip|create] [--yes]", summary: "Dry run (default) or apply (--yes).", writes: true }],
+  subcommands: [
+    { name: "csv", usage: "import csv <file|-> --object <id> [--map …] [--dedupe update|skip|create] [--yes]", summary: "Dry run (default) or apply (--yes).", writes: true },
+    { name: "zip", usage: "import zip <backup.zip> [--replace] [--yes]", summary: "Restore a backup ZIP (data + files; merge, or --replace). Plan unless --yes.", writes: true, destructive: true },
+  ],
   options: [
     SITE_OPTION,
     AS_OPTION,
@@ -43,10 +51,22 @@ export const importCommand: Command = {
     { name: "no-create-options", type: "boolean", description: "Don't add unknown select values as new options." },
     { name: "dry-run", type: "boolean", description: "Explicit dry run (the default without --yes)." },
     { name: "rows", type: "string", description: "Rows shown in the report (default 100)." },
+    { name: "replace", type: "boolean", description: "zip: also delete documents absent from the backup." },
   ],
   async run({ io, options, positionals }) {
     const [kind, file] = positionals;
-    if (kind !== "csv") usage('Only "import csv" is supported.', "Usage: agentcrm import csv <file> --object <id>");
+    if (kind === "zip") {
+      const path = positional(positionals, 1, "backup ZIP", "import zip <backup.zip> [--yes]");
+      const { existsSync, readFileSync } = await import("node:fs");
+      if (!existsSync(path)) usage(`${path} does not exist.`);
+      const bytes = new Uint8Array(readFileSync(path));
+      if (options.yes !== true) {
+        printPlan(io, { needsConfirmation: true, plan: { restore: resolve(path), bytes: bytes.length, mode: options.replace === true ? "replace" : "merge" } });
+        return;
+      }
+      return withSession(io, options, { lock: true }, async ({ ctx }) => (await import("../../src/ops/backup")).importBackupZip(ctx, bytes, { mode: options.replace === true ? "replace" : "merge" }), (r) => `Restored ${r.written} document(s) and ${r.files} file(s)`);
+    }
+    if (kind !== "csv") usage('Only "import csv" and "import zip" are supported.', "Usage: agentcrm import csv <file> --object <id>");
     const source = positional(positionals, 1, "CSV file (or -)", "import csv <file|-> --object <id>");
     const csv = readTextValue(source === "-" ? "-" : `@${source}`, "file");
     void file;
@@ -80,11 +100,12 @@ export const importCommand: Command = {
 
 export const exportCommand: Command = {
   name: "export",
-  usage: "export <csv|json> …",
-  summary: "Export one object as CSV (labels or raw values, filters, columns), or the whole dataset as JSON (backup / migration, re-importable).",
+  usage: "export <csv|json|zip> …",
+  summary: "Export one object as CSV (labels or raw values, filters, columns), the whole dataset as JSON (backup / migration, re-importable), or a ZIP backup with data + files.",
   subcommands: [
     { name: "csv", usage: "export csv --object <id> [--out <file>] [--filter f:op:v]… [--sort f] [--columns a,b] [--view <id>] [--raw] [--deleted]", summary: "CSV of one object." },
     { name: "json", usage: "export json [--out <file>] [--collections records,activities,…]", summary: "Whole dataset (or some collections) as JSON." },
+    { name: "zip", usage: "export zip --out <file.zip> [--no-files]", summary: "Backup ZIP: data.json + the (decrypted) bytes of every file. Not encrypted: keep it safe." },
   ],
   options: [
     SITE_OPTION,
@@ -98,9 +119,20 @@ export const exportCommand: Command = {
     { name: "raw", type: "boolean", description: "Stored values (ids, ISO dates) instead of labels." },
     { name: "deleted", type: "boolean", description: "Include soft-deleted records." },
     { name: "collections", type: "string", description: "json: collections to export." },
+    { name: "no-files", type: "boolean", description: "zip: data only (no file bytes)." },
   ],
   async run({ io, options, positionals }) {
     const [kind] = positionals;
+    if (kind === "zip") {
+      const file = strOpt(options, "out");
+      if (!file) usage("export zip needs --out <file.zip>.");
+      return withSession(io, options, {}, async ({ ctx }) => {
+        const { exportBackupZip } = await import("../../src/ops/backup");
+        const { zip, report } = await exportBackupZip(ctx, { includeFiles: options["no-files"] !== true });
+        writeFileSync(resolve(file), zip);
+        return { file: resolve(file), zipBytes: zip.length, files: report.files, missing: report.missing, fileBytes: report.bytes };
+      }, (r) => `Wrote ${r.zipBytes} bytes (${r.files} file(s)${r.missing.length ? `, ${r.missing.length} missing` : ""}) to ${r.file}`);
+    }
     const out = strOpt(options, "out");
     const deliver = (text: string, extra: Record<string, unknown>): Record<string, unknown> => {
       if (out) {
@@ -135,7 +167,7 @@ export const exportCommand: Command = {
         return { export: data } as Record<string, unknown>;
       }, (r) => ("export" in r ? JSON.stringify(r.export, null, 2) : `Wrote ${String(r.bytes)} bytes to ${String(r.file)}`));
     }
-    usage(`Unknown export kind "${kind ?? ""}".`, "Use export csv or export json.");
+    usage(`Unknown export kind "${kind ?? ""}".`, "Use export csv, export json or export zip.");
   },
 };
 
@@ -194,7 +226,7 @@ export const statsCommand: Command = {
 export const compactCommand: Command = {
   name: "compact",
   usage: "compact [--older-than <days>] [--keep-runs <n>] [--yes]",
-  summary: "Physical purge (GDPR erasure): hard-deletes soft-deleted records and activities and old automation runs, then rewrites the storage without history (journal: new snapshot, merged segments deleted). Plan unless --yes.",
+  summary: "Physical purge (GDPR erasure): hard-deletes soft-deleted records and activities and old automation runs, deletes the bytes of deleted / orphan files, then rewrites the storage without history (journal: new snapshot, merged segments deleted). Plan unless --yes.",
   options: [SITE_OPTION, AS_OPTION, YES_OPTION, { name: "older-than", type: "string", description: "Only items deleted more than N days ago (default: all)." }, { name: "keep-runs", type: "string", description: "Automation runs kept (default 500)." }],
   async run({ io, options }) {
     const apply = options.yes === true;
@@ -202,7 +234,7 @@ export const compactCommand: Command = {
       const { compactData } = await import("../../src/ops/compact");
       const report = await compactData(ctx, { olderThanDays: numOpt(options, "older-than"), keepRuns: numOpt(options, "keep-runs"), dryRun: !apply });
       return apply ? report : { needsConfirmation: true, plan: report };
-    }, (r) => ("plan" in r ? `Would purge ${r.plan.purgedRecords.length} record(s), ${r.plan.purgedActivities} activit(ies), ${r.plan.purgedRuns} run(s). Re-run with --yes once the user agrees.` : `Purged ${r.purgedRecords.length} record(s); storage compacted: ${r.storageCompacted}`));
+    }, (r) => ("plan" in r ? `Would purge ${r.plan.purgedRecords.length} record(s), ${r.plan.purgedActivities} activit(ies), ${r.plan.purgedRuns} run(s), ${r.plan.purgedFiles} file(s). Re-run with --yes once the user agrees.` : `Purged ${r.purgedRecords.length} record(s), ${r.purgedFiles} file(s); storage compacted: ${r.storageCompacted}`));
   },
 };
 

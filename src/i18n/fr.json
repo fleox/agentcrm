@@ -113,7 +113,9 @@
     "user": "Utilisateur",
     "rating": "Note",
     "address": "Adresse",
-    "tags": "Étiquettes"
+    "tags": "Étiquettes",
+    "image": "Image",
+    "files": "Fichiers"
   },
   "fieldInput": {
     "empty": "Vide",
@@ -180,5 +182,36 @@
   },
   "setupRequired": {
     "title": "Configurer AgentCRM"
+  },
+  "files": {
+    "counter": "{{index}} sur {{total}}",
+    "download": "Télécharger",
+    "openNewTab": "Ouvrir dans un nouvel onglet",
+    "loadError": "Impossible de charger ce fichier.",
+    "previous": "Précédent",
+    "next": "Suivant",
+    "delete": "Supprimer le fichier",
+    "deleteTitle": "Supprimer « {{name}} » ?",
+    "deleteHint": "Il disparaît du CRM tout de suite ; son contenu est effacé du stockage à la prochaine compaction.",
+    "dropHere": "Déposez des fichiers pour les joindre",
+    "attach": "Joindre",
+    "failed": "Échec de l’envoi",
+    "status": {
+      "processing": "Préparation…",
+      "uploading": "Envoi…"
+    },
+    "insertInline": "Insérer dans le texte",
+    "removeUpload": "Retirer",
+    "notAnImage": "Ce fichier n’est pas une image lisible par ce navigateur.",
+    "cropTitle": "Ajuster la photo",
+    "zoom": "Zoom",
+    "cropHint": "Faites glisser pour déplacer la photo dans le cadre.",
+    "uploadImage": "Envoyer une image",
+    "replaceImage": "Remplacer",
+    "removeImage": "Retirer",
+    "addFiles": "Ajouter des fichiers",
+    "noFiles": "Aucun fichier",
+    "unavailable": "Ce stockage de données ne peut pas contenir de fichiers.",
+    "tooLarge": "{{name}} est trop volumineux ({{size}} > {{max}})."
   }
 }

@@ -12,6 +12,7 @@ import { extCommand } from "./ext";
 import { automationsCommand, compactCommand, exportCommand, formsCommand, importCommand, reportCommand, statsCommand } from "./data";
 import { deployAdminCommand } from "./deployAdmin";
 import { doctorCommand } from "./doctor";
+import { filesCommand } from "./files";
 import { installCommand } from "./install";
 import { optionsCommand, statusCommand, versionCommand } from "./meta";
 import { recordsCommand } from "./records";
@@ -84,6 +85,7 @@ export const COMMANDS: Command[] = [
   activitiesCommand,
   notesCommand,
   tasksCommand,
+  filesCommand,
   pipelinesCommand,
   viewsCommand,
   usersCommand,

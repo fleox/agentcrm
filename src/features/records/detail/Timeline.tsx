@@ -6,7 +6,10 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Check, MoreHorizontal, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 import type { Activity, ActivityType, CrmRecord, ObjectDef } from "../../../core/types";
-import { Avatar, Button, Checkbox, confirmDialog, Dropdown, EmptyState, Input, Markdown, useFieldContext } from "../../../components/ui";
+import { AttachmentList, Avatar, Button, Checkbox, confirmDialog, Dropdown, EmptyState, FileDropZone, FilePickerButton, Input, Markdown, PendingUploadList, RecordAvatar, useFieldContext, usePendingUploads } from "../../../components/ui";
+import { fileImageMarkdown, inlineFileIds, isImageMime } from "../../../core/files";
+import type { FileMeta } from "../../../core/types";
+import { deleteFile } from "../../../ops/files";
 import { useActivities, useCan, useOps, useUsers } from "../../../app/CrmDataContext";
 import { recordHref } from "../../../app/paths";
 import { completeTask, deleteActivity, listActivities, updateActivity } from "../../../ops/activities";
@@ -42,14 +45,32 @@ export function ActivityItem({ activity, record, compact }: { activity: Activity
   const long = (activity.body ?? "").length > 400;
   const meta = activity.meta ?? {};
   const now = Date.now();
+  const uploads = usePendingUploads();
+  // Inline images show in the body, not again in the grid.
+  const inline = inlineFileIds(activity.body);
+  const attachments = (activity.attachments ?? []).filter((id) => !inline.includes(id));
 
   const save = async () => {
+    if (uploads.busy) return;
     try {
-      await updateActivity(ops, activity.id, { title: title.trim() || activity.title, body });
+      const next = [...(activity.attachments ?? []), ...uploads.ids];
+      await updateActivity(ops, activity.id, { title: title.trim() || activity.title, body, ...(uploads.ids.length ? { attachments: next } : {}) });
+      uploads.reset();
       setEditing(false);
     } catch (err) {
       toast.error((err as Error).message);
     }
+  };
+  const removeFile = async (f: FileMeta) => {
+    try {
+      await deleteFile(ops, f.id);
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  };
+  const insertInline = (f: FileMeta) => setBody((b) => `${b}${b && !b.endsWith("\n") ? "\n" : ""}${fileImageMarkdown(f.name, f.id)}\n`);
+  const pasted = async (files: File[]) => {
+    for (const f of await uploads.add(files)) if (isImageMime(f.mime)) insertInline(f);
   };
 
   return (
@@ -125,17 +146,23 @@ export function ActivityItem({ activity, record, compact }: { activity: Activity
           )}
         </div>
         {editing ? (
-          <div className="mt-2 space-y-2">
-            <MarkdownEditor value={body} onChange={setBody} autoFocus onSubmit={() => void save()} onCancel={() => setEditing(false)} />
+          <FileDropZone onFiles={(f) => void uploads.add(f)} disabled={!uploads.available} className="mt-2 space-y-2">
+            <MarkdownEditor value={body} onChange={setBody} autoFocus onSubmit={() => void save()} onCancel={() => setEditing(false)} onPasteFiles={uploads.available ? (f) => void pasted(f) : undefined} />
+            <PendingUploadList uploads={uploads} onInsertInline={insertInline} />
             <div className="flex justify-end gap-2">
-              <Button size="xs" variant="ghost" onClick={() => setEditing(false)}>
+              {uploads.available && (
+                <span className="mr-auto">
+                  <FilePickerButton onFiles={(f) => void uploads.add(f)} />
+                </span>
+              )}
+              <Button size="xs" variant="ghost" onClick={() => (uploads.items.forEach((it) => void uploads.remove(it.key)), setEditing(false))}>
                 {tc("common.cancel")}
               </Button>
-              <Button size="xs" variant="primary" onClick={() => void save()}>
+              <Button size="xs" variant="primary" disabled={uploads.busy} onClick={() => void save()}>
                 {tc("common.save")}
               </Button>
             </div>
-          </div>
+          </FileDropZone>
         ) : (
           activity.body &&
           !compact && (
@@ -145,6 +172,7 @@ export function ActivityItem({ activity, record, compact }: { activity: Activity
             </div>
           )
         )}
+        {attachments.length > 0 && !compact && <AttachmentList ids={attachments} className="mt-2" onRemove={canWrite ? removeFile : undefined} />}
         {long && !editing && !compact && (
           <button type="button" onClick={() => setExpanded((e) => !e)} className="mt-1 text-2xs font-medium text-accent-700 hover:underline dark:text-accent-300">
             {expanded ? t("timeline.showLess") : t("timeline.showMore")}
@@ -154,7 +182,7 @@ export function ActivityItem({ activity, record, compact }: { activity: Activity
           <div className="mt-1.5 flex flex-wrap gap-1">
             {others.map((tg) => (
               <a key={tg.id} href={recordHref(tg.object, tg.id)} className="inline-flex items-center gap-1 rounded border border-surface-200 px-1.5 py-px text-2xs text-surface-600 hover:bg-surface-50 dark:border-surface-700 dark:text-surface-300 dark:hover:bg-surface-800">
-                <Avatar name={ctx.recordLabel(tg.id) ?? "?"} size="xs" square={tg.object === "companies"} />
+                <RecordAvatar recordId={tg.id} name={ctx.recordLabel(tg.id) ?? "?"} size="xs" square={tg.object === "companies"} />
                 {ctx.recordLabel(tg.id) ?? tg.id}
               </a>
             ))}

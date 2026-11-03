@@ -6,6 +6,8 @@
 
 import { createKvStore } from "../shared/storage/kvStore";
 import { createStoreCore, emptySnapshot } from "./core";
+import { withFileStore } from "./files";
+import { clearLocalFiles, createLocalFileStore } from "./files/local";
 import { plainCopy } from "./patch";
 import { isCollectionName, type CollectionName, type DataStore, type StoredDoc } from "./types";
 
@@ -13,9 +15,9 @@ export const LOCAL_DB_NAME = "agentcrm-local-data";
 
 const keyOf = (collection: CollectionName, id: string) => `${collection}/${id}`;
 
-export function createLocalStore(opts: { dbName?: string } = {}): DataStore {
+export function createLocalStore(opts: { dbName?: string; filesDbName?: string } = {}): DataStore {
   const kv = createKvStore<StoredDoc>(opts.dbName ?? LOCAL_DB_NAME, "docs");
-  return createStoreCore({
+  const store = createStoreCore({
     kind: "local",
 
     async load() {
@@ -44,9 +46,11 @@ export function createLocalStore(opts: { dbName?: string } = {}): DataStore {
       return { uid: "local", email: "admin@localhost", displayName: "Local admin", role: "admin" };
     },
   });
+  return withFileStore(store, createLocalFileStore({ dbName: opts.filesDbName }));
 }
 
 // Wipes the local dataset (Settings → danger zone, tests).
 export async function clearLocalStore(dbName = LOCAL_DB_NAME): Promise<void> {
   await createKvStore<StoredDoc>(dbName, "docs").clear();
+  await clearLocalFiles().catch(() => undefined);
 }

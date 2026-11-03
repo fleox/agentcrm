@@ -32,7 +32,9 @@ export type FieldType =
   | "user"
   | "rating"
   | "address"
-  | "tags";
+  | "tags"
+  | "image"
+  | "files";
 
 export interface SelectOption {
   id: string;
@@ -72,6 +74,7 @@ export interface ObjectDef {
   labelField: string;
   fields: FieldDef[];
   hidden?: boolean;
+  imageField?: string;
   createdAt: number;
   updatedAt: number;
 }
@@ -105,6 +108,7 @@ export interface Activity {
   doneAt?: number;
   assigneeId?: string;
   meta?: Record<string, unknown>;
+  attachments?: string[];
   createdAt: number;
   updatedAt: number;
   createdBy?: string;
@@ -176,6 +180,7 @@ export interface CrmSettings {
   weekStartsOn?: 0 | 1;
   staleDealDays: number;
   ownerUserId?: string;
+  maxUploadMb?: number;
   createdAt?: number;
   updatedAt?: number;
 }
@@ -190,7 +195,7 @@ export interface Page<T> {
 
 // ─── Data store & ops context ────────────────────────────────────────────
 
-export type CollectionName = "objects" | "records" | "activities" | "pipelines" | "views" | "automations" | "forms" | "users" | "settings" | "config" | "automationRuns" | "extensions";
+export type CollectionName = "objects" | "records" | "activities" | "pipelines" | "views" | "automations" | "forms" | "users" | "settings" | "config" | "automationRuns" | "extensions" | "files";
 
 export interface StoredDoc {
   id: string;

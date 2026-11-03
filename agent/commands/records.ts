@@ -33,11 +33,12 @@ const U = {
   search: "records search <query> [--object <id>]… [--limit n]",
   duplicates: "records duplicates --object <id> [--by email,domain,name,phone]",
   merge: "records merge <primaryId> <duplicateId>… [--yes]",
+  image: "records image <recordId> <path> | --remove [--field <imageFieldId>]",
 };
 
 export const recordsCommand: Command = {
   name: "records",
-  usage: "records <list|get|create|update|delete|restore|search|duplicates|merge> …",
+  usage: "records <list|get|create|update|delete|restore|search|duplicates|merge|image> …",
   summary: "Records of any object (companies, people, deals, custom objects): list with filters / sorts / pagination, get with relations and timeline counts, create, update (only the given fields), soft delete / restore, full-text search, find and merge duplicates.",
   subcommands: [
     { name: "list", usage: U.list, summary: `List records. Filter ops: ${FILTER_OPS.join(", ")}. Values: in/notIn comma-separated; dates YYYY-MM-DD, today, +30d.` },
@@ -49,6 +50,7 @@ export const recordsCommand: Command = {
     { name: "search", usage: U.search, summary: "Full-text search (names, emails, domains, phones)." },
     { name: "duplicates", usage: U.duplicates, summary: "Groups of likely duplicates (same email / domain / name / phone)." },
     { name: "merge", usage: U.merge, summary: "Merge duplicates into the primary (empty fields filled, relations and activities moved). Plan unless --yes.", writes: true, destructive: true },
+    { name: "image", usage: U.image, summary: "Set the record's avatar / logo from a local image (the object's image field), or --remove it.", writes: true },
   ],
   options: [
     SITE_OPTION,
@@ -68,6 +70,8 @@ export const recordsCommand: Command = {
     { name: "set", type: "string", description: "create / update: key=value (repeatable; numbers / true / null / JSON parsed).", multiple: true },
     { name: "hard", type: "boolean", description: "delete: remove immediately (no restore)." },
     { name: "by", type: "string", description: "duplicates: email,domain,name,phone." },
+    { name: "remove", type: "boolean", description: "image: remove the record's image." },
+    { name: "field", type: "string", description: "image: image field id (default: the object's image field)." },
   ],
   async run({ io, options, positionals }) {
     const [action, ...args] = positionals;
@@ -176,8 +180,10 @@ export const recordsCommand: Command = {
           return { record: await recordOut(ctx, res.record), merged: res.merged, movedActivities: res.movedActivities };
         }, (r) => ("plan" in r && r.plan ? `Would merge ${r.plan.duplicates.length} duplicate(s) into ${r.plan.primary.id}. Re-run with --yes once the user agrees.` : "merged" in r ? `Merged ${r.merged.length} into ${r.record.id}` : ""));
       }
+      case "image":
+        return (await import("./files")).recordImageAction(io, options, args);
       default:
-        usage(`Unknown records action "${action ?? ""}".`, "Use list, get, create, update, delete, restore, search, duplicates or merge.");
+        usage(`Unknown records action "${action ?? ""}".`, "Use list, get, create, update, delete, restore, search, duplicates, merge or image.");
     }
   },
 };

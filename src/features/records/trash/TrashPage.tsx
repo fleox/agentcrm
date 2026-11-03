@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 import { ArrowLeft, RotateCcw, Trash2 } from "lucide-react";
 import { recordLabel } from "../../../core/fields";
 import type { CrmRecord } from "../../../core/types";
-import { Avatar, Button, Checkbox, confirmDialog, EmptyState, ObjectIcon, useFieldContext } from "../../../components/ui";
+import { RecordAvatar, Button, Checkbox, confirmDialog, EmptyState, ObjectIcon, useFieldContext } from "../../../components/ui";
 import { useCan, useObject, useOps, useRecords } from "../../../app/CrmDataContext";
 import { useAuth } from "../../../app/AuthContext";
 import { paths } from "../../../app/paths";
@@ -101,7 +101,7 @@ export function TrashPage() {
                   </td>
                   <td className="h-9 border-b border-surface-100 px-2 dark:border-surface-800/70">
                     <button type="button" className="flex items-center gap-2 text-surface-600 hover:underline dark:text-surface-300" onClick={() => navigate(paths.record(object.id, r.id))}>
-                      <Avatar name={recordLabel(object, r)} size="sm" square={object.id === "companies"} />
+                      <RecordAvatar recordId={r.id} name={recordLabel(object, r)} size="sm" square={object.id === "companies"} />
                       {recordLabel(object, r)}
                     </button>
                   </td>

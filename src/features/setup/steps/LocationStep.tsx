@@ -6,7 +6,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Cloud, Download, FolderOpen, GitBranch, Github, Gitlab, KeyRound, Lock, ShieldCheck } from "lucide-react";
 import { Button, Checkbox, FormField, Input, Select, Textarea } from "../../../components/ui";
-import { buildFirebaseJson, buildFirestoreIndexes, buildFirestoreRules, type FirebaseSignup } from "../../../ops/firebaseRules";
+import { buildFirebaseJson, buildFirestoreIndexes, buildFirestoreRules, buildStorageRules, type FirebaseSignup } from "../../../ops/firebaseRules";
 import { cn } from "../../../shared/lib/utils";
 import { downloadText } from "../services/adminDeploy";
 import {
@@ -437,6 +437,9 @@ function FirebaseConnection({ state, update, onBack, onNext }: StepProps) {
               </Button>
               <Button size="sm" variant="ghost" icon={<Download />} onClick={() => downloadText(buildFirestoreIndexes(), "firestore.indexes.json", "application/json")}>
                 firestore.indexes.json
+              </Button>
+              <Button size="sm" variant="ghost" icon={<Download />} onClick={() => downloadText(buildStorageRules({ adminEmail: f.adminEmail }), "storage.rules")}>
+                storage.rules
               </Button>
               <Button size="sm" variant="ghost" icon={<Download />} onClick={() => downloadText(buildFirebaseJson(), "firebase.json", "application/json")}>
                 firebase.json

@@ -205,7 +205,8 @@
     "showEmpty_one": "Afficher {{count}} champ vide",
     "showEmpty_other": "Afficher {{count}} champs vides",
     "hideEmpty": "Masquer les champs vides",
-    "showEmpty_many": "Afficher {{count}} champs vides"
+    "showEmpty_many": "Afficher {{count}} champs vides",
+    "files": "Fichiers"
   },
   "timeline": {
     "log": "Consigner une note, un appel, un e-mail, une réunion ou une tâche…",
@@ -272,9 +273,11 @@
       "call": "Appel",
       "email": "E-mail",
       "meeting": "Réunion",
-      "task": "Tâche"
+      "task": "Tâche",
+      "attachment": "Pièce jointe"
     },
-    "minutes_many": "{{count}} minutes"
+    "minutes_many": "{{count}} minutes",
+    "waitUploads": "Attendez la fin des envois."
   },
   "markdown": {
     "write": "Écrire",
@@ -357,5 +360,44 @@
   },
   "errors": {
     "generic": "Une erreur est survenue."
+  },
+  "avatar": {
+    "add": "Ajouter une photo",
+    "change": "Changer la photo",
+    "replace": "Remplacer la photo",
+    "replaceLogo": "Remplacer le logo",
+    "remove": "Retirer",
+    "crop": "Ajuster la photo",
+    "cropLogo": "Ajuster le logo",
+    "saved": "Photo mise à jour",
+    "logoSaved": "Logo mis à jour",
+    "notImage": "Choisissez un fichier image (PNG, JPEG, WebP, SVG…)."
+  },
+  "files": {
+    "unavailable": "Ce stockage de données ne peut pas contenir de fichiers.",
+    "search": "Rechercher un fichier",
+    "sort": "Trier",
+    "sortBy": {
+      "newest": "Plus récents",
+      "oldest": "Plus anciens",
+      "name": "Nom",
+      "size": "Taille"
+    },
+    "layout": "Affichage",
+    "grid": "Grille",
+    "list": "Liste",
+    "upload": "Envoyer",
+    "includeRelated": "Inclure les fichiers des activités et des fiches liées",
+    "empty": "Aucun fichier pour l’instant",
+    "emptyHint": "Déposez des fichiers ici ou utilisez Envoyer. Les fichiers joints aux notes et tâches apparaissent aussi ici.",
+    "noMatch": "Aucun fichier ne correspond",
+    "onActivity": "Sur « {{title}} »",
+    "fromRelated": "De {{name}}",
+    "open": "Ouvrir",
+    "download": "Télécharger",
+    "delete": "Supprimer",
+    "deleteTitle": "Supprimer « {{name}} » ?",
+    "deleteHint": "Il disparaît du CRM tout de suite ; son contenu est effacé du stockage à la prochaine compaction.",
+    "deleted": "{{name}} supprimé"
   }
 }

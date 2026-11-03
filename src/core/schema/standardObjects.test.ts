@@ -6,10 +6,13 @@ describe("standard objects", () => {
 
   it("defines companies, people and deals with the contract fields", () => {
     const byId = Object.fromEntries(objects.map((o) => [o.id, o.fields.map((f) => f.id)]));
-    expect(byId.companies).toEqual(["name", "domain", "industry", "employees", "annualRevenue", "address", "linkedin", "phone", "tags"]);
-    expect(byId.people).toEqual(["firstName", "lastName", "name", "email", "phone", "jobTitle", "company", "city", "linkedin", "lifecycleStage", "leadSource", "tags"]);
+    expect(byId.companies).toEqual(["name", "domain", "industry", "employees", "annualRevenue", "address", "linkedin", "phone", "tags", "logo"]);
+    expect(byId.people).toEqual(["firstName", "lastName", "name", "email", "phone", "jobTitle", "company", "city", "linkedin", "lifecycleStage", "leadSource", "tags", "avatar"]);
     expect(byId.deals).toEqual(["name", "amount", "stage", "pipeline", "closeDate", "probability", "company", "contacts", "lostReason"]);
     for (const o of objects) expect(o.fields.some((f) => f.id === o.labelField)).toBe(true);
+    // Record avatars (0.3.0).
+    expect(objects.find((o) => o.id === "people")?.imageField).toBe("avatar");
+    expect(objects.find((o) => o.id === "companies")?.imageField).toBe("logo");
   });
 
   it("has the Sales pipeline and its stages as deal stage options", () => {

@@ -16,6 +16,7 @@ import { setStorageConfigSource, type StorageConfig } from "../shared/storage/re
 import { forgetSecrets, getHostingSecrets, getRuntimeConfig, resetRuntimeConfigCache, saveLocalRuntimeConfig, setPassphrase, type RuntimeConfig } from "../lib/runtimeConfig";
 import { createOpsContext } from "../ops/context";
 import { seedCrm } from "../ops/seed";
+import { migrateSchema } from "../ops/migrate";
 import type { CrmUser } from "../core/types";
 import { resolveCrmUser } from "./auth";
 import { AuthProvider, getAuthAdapter, useAuth } from "./AuthContext";
@@ -122,6 +123,10 @@ function ConfiguredApp({ config }: { config: RuntimeConfig }) {
         if (store.list("objects").length === 0) return set({ phase: "empty", store, identity });
         const user = resolveCrmUser(store, identity);
         if (!user) return set({ phase: "signIn", store });
+        // Additive schema upgrades (0.3.0 image fields) — admins only, never blocking.
+        if (user.role === "admin" && !user.disabled) {
+          await migrateSchema(createOpsContext(store, user)).catch((err: unknown) => console.warn("[agentcrm] schema migration skipped:", err));
+        }
         // Hosting target of the siteFiles facade: public part in
         // config/hosting, secrets in this browser.
         setStorageConfigSource(async () => {

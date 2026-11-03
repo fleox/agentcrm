@@ -21,7 +21,12 @@ export type FieldType =
   | "user"
   | "rating"
   | "address"
-  | "tags";
+  | "tags"
+  // Single file id (FileMeta in the `files` collection), shown as an
+  // avatar / logo (ObjectDef.imageField).
+  | "image"
+  // File ids (string[]).
+  | "files";
 
 export const FIELD_TYPES: readonly FieldType[] = [
   "text",
@@ -42,6 +47,8 @@ export const FIELD_TYPES: readonly FieldType[] = [
   "rating",
   "address",
   "tags",
+  "image",
+  "files",
 ];
 
 export interface SelectOption {
@@ -91,6 +98,9 @@ export interface ObjectDef {
   // Hidden from navigation / pickers (data kept). Objects owned by a
   // disabled module are hidden too (src/core/modules.ts `objects`).
   hidden?: boolean;
+  // Field id (type "image") used as the record's avatar / logo everywhere
+  // (header, table, kanban, chips, search). Initials when empty.
+  imageField?: string;
   createdAt: number;
   updatedAt: number;
 }
@@ -128,9 +138,45 @@ export interface Activity {
   assigneeId?: string;
   // Email headers, call duration, meeting start/end, external ids…
   meta?: Record<string, unknown>;
+  // Attached file ids (FileMeta in the `files` collection).
+  attachments?: string[];
   createdAt: number;
   updatedAt: number;
   createdBy?: string;
+  deletedAt?: number;
+}
+
+// ─── Files (images & attachments) ───────────────────────────────────────
+
+// What a file is attached to: a record (directly, its image / files
+// fields) or an activity (note, task, call, email, meeting).
+export interface FileTarget {
+  kind: "record" | "activity";
+  // Object id of a record target.
+  object?: string;
+  id: string;
+}
+
+// `files/<id>` document. The bytes live in the backend's FileStore
+// (src/data/files/): encrypted next to the journal, IndexedDB, git repo,
+// Firebase Storage… Metadata only here.
+export interface FileMeta {
+  id: string;
+  name: string;
+  mime: string;
+  // Bytes of the stored (possibly resized) file.
+  size: number;
+  width?: number;
+  height?: number;
+  // Blob id of a small preview (images: 320 px WebP).
+  thumbId?: string;
+  // Hex SHA-256 of the stored bytes.
+  sha256: string;
+  createdAt: number;
+  updatedAt?: number;
+  createdBy?: string;
+  targets: FileTarget[];
+  // Soft delete: the blob is purged by `compact`.
   deletedAt?: number;
 }
 
@@ -301,6 +347,8 @@ export interface CrmSettings {
   staleDealDays: number;
   // Identity used by the local & journal backends (no login).
   ownerUserId?: string;
+  // Upload limit per file in MB (default 25).
+  maxUploadMb?: number;
   createdAt?: number;
   updatedAt?: number;
 }

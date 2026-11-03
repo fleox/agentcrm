@@ -7,6 +7,8 @@
 //   <root>/snapshot.bin                 merged state + names of the segments it includes
 //   <root>/journal/<hlc>.bin            one write() batch, never rewritten
 //                                       (<hlc> = <wall>-<counter>-<clientId>)
+//   <root>/files/<id>.bin               uploaded file bytes (images, attachments),
+//                                       encrypted with the same key (../files/journal.ts)
 //
 // Writes append a segment — no lock, no conflict, ever. Reads = snapshot
 // + every listed segment it doesn't include, merged with per-field
@@ -25,6 +27,8 @@ import { base64ToBytes, bytesToBase64 } from "../../shared/git/encoding";
 import { mapLimit } from "../../shared/git/http";
 import type { StorageConnector } from "../../shared/storage/types";
 import { createStoreCore, emptySnapshot, type Snapshot } from "../core";
+import { withFileStore } from "../files";
+import { createJournalFileStore } from "../files/journal";
 import type { DataStore, StoreIdentity } from "../types";
 import { COLLECTIONS } from "../types";
 import { decodeJson, encodeJson, type CodecKey } from "./codec";
@@ -135,6 +139,7 @@ export function createJournalStore(opts: JournalStoreOptions): JournalDataStore 
     keyinfo: join(opts.root, "keyinfo.json"),
     snapshot: join(opts.root, "snapshot.bin"),
     journal: join(opts.root, "journal/"),
+    files: join(opts.root, "files/"),
   };
   const segmentPath = (name: string) => `${paths.journal}${name}`;
 
@@ -355,6 +360,19 @@ export function createJournalStore(opts: JournalStoreOptions): JournalDataStore 
 
   const store = core as JournalDataStore;
   Object.defineProperty(store, "clientId", { value: clientId });
+  withFileStore(
+    store,
+    createJournalFileStore({
+      connector,
+      folder: paths.files,
+      async key() {
+        if (!keyInfo && !key) await loadKey();
+        await ensureKeyInfo();
+        return key;
+      },
+      passphrase,
+    }),
+  );
   store.stats = async () => {
     const listed = (await listPrefix(paths.journal)).filter((p) => p.endsWith(".bin"));
     let documents = 0;
