@@ -28,7 +28,7 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(function Che
   );
   if (!label) return input;
   return (
-    <label className={cn("inline-flex cursor-pointer items-center gap-2 text-sm text-surface-700 dark:text-surface-200", className)}>
+    <label className={cn("relative inline-flex cursor-pointer items-center gap-2 text-sm text-surface-700 dark:text-surface-200", className)}>
       {input}
       <span>{label}</span>
     </label>
@@ -68,7 +68,7 @@ export function Switch({ checked, onChange, label, disabled, size = "md", classN
   );
   if (!label) return <span className={className}>{button}</span>;
   return (
-    <label className={cn("inline-flex cursor-pointer items-center gap-2 text-sm text-surface-700 dark:text-surface-200", className)}>
+    <label className={cn("relative inline-flex cursor-pointer items-center gap-2 text-sm text-surface-700 dark:text-surface-200", className)}>
       {button}
       <span>{label}</span>
     </label>

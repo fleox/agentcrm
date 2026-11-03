@@ -239,7 +239,7 @@ export function Layout({ children, banner }: { children: ReactNode; banner?: Rea
       <div className="flex min-w-0 flex-1 flex-col">
         {banner}
         <TopBar />
-        <main key={location.pathname.split("/").slice(0, 3).join("/")} className="min-h-0 flex-1 overflow-auto">
+        <main key={location.pathname.split("/").slice(0, 3).join("/")} className="relative min-h-0 flex-1 overflow-auto">
           {children}
         </main>
       </div>
