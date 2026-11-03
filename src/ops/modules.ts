@@ -202,6 +202,23 @@ export function getModuleConfig<T = unknown>(ctx: OpsContext, id: string): T | u
 
 const MAX_MODULE_CONFIG = 256 * 1024;
 
+// Keys that hold credentials in third-party module configs (compared
+// case-insensitively, `_` / `-` ignored) on top of the connector secret keys
+// refused by assertNoSecrets. Module config is readable by every CRM user.
+const MODULE_SECRET_KEYS: ReadonlySet<string> = new Set([
+  "apikey", "apisecret", "secret", "secretkey", "clientsecret", "privatekey", "accesstoken", "authtoken", "bearertoken", "refreshtoken", "password", "token", "webhooksecret",
+]);
+
+function assertNoModuleSecrets(value: unknown, path = ""): void {
+  if (!value || typeof value !== "object") return;
+  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    if (MODULE_SECRET_KEYS.has(k.toLowerCase().replace(/[_-]/g, "")) && v !== "" && v != null) {
+      throw new OpsError("validation", `Refusing to store the secret "${path}${k}" in the module configuration: every CRM user can read it. Keep secrets out of the CRM data.`);
+    }
+    assertNoModuleSecrets(v, `${path}${k}.`);
+  }
+}
+
 export async function setModuleConfig<T = unknown>(ctx: OpsContext, id: string, value: T | null): Promise<T | undefined> {
   assertCan(ctx, "modules.write");
   assertKnownModule(ctx.store, id);
@@ -215,6 +232,7 @@ export async function setModuleConfig<T = unknown>(ctx: OpsContext, id: string, 
     if (json === undefined) throw new OpsError("validation", "Module configuration must be JSON-serialisable.");
     if (json.length > MAX_MODULE_CONFIG) throw new OpsError("validation", `Module configuration is larger than ${MAX_MODULE_CONFIG / 1024} KB.`);
     assertNoSecrets(value);
+    assertNoModuleSecrets(value);
   }
   const current = configDoc(ctx.store);
   const next = value === null || value === undefined ? undefined : (JSON.parse(JSON.stringify(value)) as T);

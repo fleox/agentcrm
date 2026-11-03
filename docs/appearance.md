@@ -17,7 +17,7 @@ The same settings are available to agents: the `agentcrm appearance` CLI command
 | Buttons | `buttons` | `neutral` (near-black primary buttons), `accent` (accent-colored) | `neutral` |
 | Contrast | `contrast` | `normal`, `high` (stronger borders and secondary text) | `normal` |
 | Default mode | `defaultMode` | `system`, `light`, `dark` — for users who never chose themselves (each user's own choice stays in their browser) | `system` |
-| Logo | `logo` | image data URL (PNG, JPEG, GIF, WebP, SVG), ≤ 200 KB — shown in the sidebar next to the workspace name | none |
+| Logo | `logo` | image data URL (PNG, JPEG, GIF, WebP, SVG without scripts / event handlers), ≤ 200 KB — shown in the sidebar next to the workspace name | none |
 | Favicon | `favicon` | image data URL (PNG, ICO, SVG…), ≤ 200 KB | none |
 | Custom CSS | `customCss` | plain CSS, ≤ 50 KB, no `<style>` / `<script>`; loaded last | none |
 | Theme | `themeId` | an installed, enabled theme extension | none |

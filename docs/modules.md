@@ -32,7 +32,7 @@ The five required modules can't be disabled. Built-in modules have no dependenci
 
 ## Module settings and configuration
 
-Modules with a settings section link to it from their card (deals → Pipelines, integrations, assistant). Extension modules can have a settings page at Settings → Modules → *module* (`/settings/modules/<id>`), backed by a per-module JSON configuration (`config/modules` → `config.<id>`, ≤ 256 KB, never secrets). The configuration is kept when the module is disabled or its extension uninstalled.
+Modules with a settings section link to it from their card (deals → Pipelines, integrations, assistant). Extension modules can have a settings page at Settings → Modules → *module* (`/settings/modules/<id>`), backed by a per-module JSON configuration (`config/modules` → `config.<id>`, ≤ 256 KB, never secrets — keys such as `apiKey`, `token`, `secret`, `password` are refused). The configuration is kept when the module is disabled or its extension uninstalled.
 
 ## State
 

@@ -84,6 +84,11 @@ describe("ops/modules", () => {
     await setModuleConfig(crm.admin, "deals", null);
     expect(getModuleConfig(crm.admin, "deals")).toBeUndefined();
     await expect(setModuleConfig(crm.admin, "deals", { secretAccessKey: "x" })).rejects.toMatchObject({ code: "validation" });
+    // Common third-party credential keys, at any depth, any case.
+    for (const bad of [{ apiKey: "sk-123" }, { slack: { WEBHOOK_SECRET: "x" } }, { api_key: "x" }, { auth: { accessToken: "x" } }]) {
+      await expect(setModuleConfig(crm.admin, "deals", bad)).rejects.toMatchObject({ code: "validation" });
+    }
+    await setModuleConfig(crm.admin, "deals", { apiKey: "", tokenLimit: 5 });
     await expect(setModuleConfig(crm.admin, "nope", {})).rejects.toMatchObject({ code: "notFound" });
     await expect(setModuleConfig(crm.as("member"), "deals", {})).rejects.toMatchObject({ code: "forbidden" });
   });

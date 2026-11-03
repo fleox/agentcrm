@@ -6,7 +6,7 @@ import { buildAppearanceCache } from "./apply";
 import { googleFontHref } from "./fonts";
 import { DEFAULT_ACCENT_SCALE, NEUTRAL_SCALES } from "./palettes";
 import { PRESETS } from "./presets";
-import { DEFAULT_APPEARANCE, resolveAppearance, validateAppearancePatch } from "./schema";
+import { DEFAULT_APPEARANCE, resolveAppearance, validateAppearancePatch, validateImageDataUrl } from "./schema";
 
 const root = resolve(__dirname, "../..");
 
@@ -82,5 +82,17 @@ describe("schema", () => {
       expect(validateAppearancePatch(p.values).errors, p.id).toEqual([]);
       expect(Object.keys(p.values).sort(), p.id).toEqual(["accent", "buttons", "contrast", "density", "font", "neutral", "radius", "sidebar"]);
     }
+  });
+});
+
+describe("validateImageDataUrl", () => {
+  const svg = (s: string) => `data:image/svg+xml;base64,${Buffer.from(s).toString("base64")}`;
+  it("accepts plain images and refuses SVGs with active content", () => {
+    expect(validateImageDataUrl("data:image/png;base64,AA==")).toBeNull();
+    expect(validateImageDataUrl(svg('<svg xmlns="http://www.w3.org/2000/svg"><rect width="4" height="4" fill="#0f766e"/></svg>'))).toBeNull();
+    expect(validateImageDataUrl(svg('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'), "logo")).toMatch(/logo SVG contains scripts/);
+    expect(validateImageDataUrl(svg('<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"></svg>'))).toMatch(/scripts or event handlers/);
+    expect(validateImageDataUrl(svg('<svg xmlns="http://www.w3.org/2000/svg"><a href="javascript:alert(1)"><rect/></a></svg>'))).toMatch(/scripts/);
+    expect(validateAppearancePatch({ logo: svg("<svg><script>x</script></svg>") }).errors).toHaveLength(1);
   });
 });

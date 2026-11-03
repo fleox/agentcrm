@@ -18,7 +18,7 @@
 Changing a visual value marks the preset `custom`. Other actions:
 
 - `appearance preset <id>`: default, ocean, forest, sunset, graphite, rose, high-contrast, or a theme extension id. Keeps logo, favicon, custom CSS and the default mode.
-- `appearance logo <file>` / `appearance favicon <file>`: PNG, JPEG, GIF, WebP, SVG or ICO, at most 200 KB; `--remove` deletes it.
+- `appearance logo <file>` / `appearance favicon <file>`: PNG, JPEG, GIF, WebP, SVG or ICO, at most 200 KB (SVGs with scripts or event handlers are refused); `--remove` deletes it.
 - `appearance css <file|->`: plain CSS (no `<style>` / `<script>`), at most 50 KB, loaded last; `--remove` deletes it. Style through the CSS variables (`--acc-50` to `--acc-950`, `--srf-50` to `--srf-950`, `--primary`, `--radius-scale`, `--font-sans`, `--row-h`…) as `rgb(var(--acc-600))`.
 - `appearance reset`: back to defaults, keeping logo and favicon (`--branding` removes them too).
 - `appearance get --full` includes the logo / favicon data URLs and the custom CSS.
