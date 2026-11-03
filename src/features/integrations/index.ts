@@ -8,6 +8,7 @@
 // only. See INTEGRATIONS.md.
 import { Mail, Plug } from "lucide-react";
 import type { Feature } from "../types";
+import { moduleMeta } from "../../core/modules";
 import en from "./i18n/en.json";
 import fr from "./i18n/fr.json";
 import { handleOAuthPopupCallback } from "./auth";
@@ -25,6 +26,7 @@ const contactObjects = (o: { id: string }) => o.id === "people" || o.id === "com
 
 const feature: Feature = {
   id: "integrations",
+  module: moduleMeta("integrations"),
   routes: [],
   i18n: { en, fr },
   slots: {

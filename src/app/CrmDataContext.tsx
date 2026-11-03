@@ -14,6 +14,7 @@ import { can as canDo, createOpsContext, type OpsAction, type OpsContext } from 
 import { DEFAULT_SETTINGS } from "../ops/settings";
 import { FieldContext, type FieldContextValue } from "../components/ui/fieldContext";
 import { recordHref } from "./paths";
+import { useModuleStates } from "./featureRegistry";
 
 // ─── Live store ─────────────────────────────────────────────────────────
 
@@ -129,19 +130,39 @@ export function useDoc<T = StoredDoc>(c: CollectionName, id: string | undefined)
 
 const STANDARD_ORDER = ["companies", "people", "deals"];
 
-// Objects: standard ones first (companies, people, deals), then custom by label.
-export function useObjects(): ObjectDef[] {
+// Objects: standard ones first (companies, people, deals), then custom by
+// label. Objects flagged `hidden` or owned by a disabled module (deals
+// when "Deals & pipelines" is off) are left out unless `includeHidden`
+// (data model editor, import / export, label lookups).
+export function useObjects(opts: { includeHidden?: boolean } = {}): ObjectDef[] {
   const objects = useCollection<ObjectDef>("objects");
+  const hidden = useHiddenObjectIds();
+  const includeHidden = !!opts.includeHidden;
   return useMemo(
     () =>
-      [...objects].sort((a, b) => {
-        const ia = STANDARD_ORDER.indexOf(a.id);
-        const ib = STANDARD_ORDER.indexOf(b.id);
-        if (ia !== -1 || ib !== -1) return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
-        return a.labelPlural.localeCompare(b.labelPlural);
-      }),
-    [objects],
+      objects
+        .filter((o) => includeHidden || (!o.hidden && !hidden.has(o.id)))
+        .sort((a, b) => {
+          const ia = STANDARD_ORDER.indexOf(a.id);
+          const ib = STANDARD_ORDER.indexOf(b.id);
+          if (ia !== -1 || ib !== -1) return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+          return a.labelPlural.localeCompare(b.labelPlural);
+        }),
+    [objects, hidden, includeHidden],
   );
+}
+
+// Ids of objects owned by disabled modules (live).
+export function useHiddenObjectIds(): ReadonlySet<string> {
+  const states = useModuleStates();
+  return useMemo(() => new Set(states.filter((m) => !m.enabled).flatMap((m) => m.objects)), [states]);
+}
+
+// Configuration of a module (config/modules.config[id]); write it with
+// setModuleConfig(useOps(), id, value) from src/ops/modules.ts.
+export function useModuleConfig<T = unknown>(id: string): T | undefined {
+  const doc = useConfigDoc<{ config?: Record<string, unknown> }>("modules");
+  return doc?.config?.[id] as T | undefined;
 }
 
 export function useObject(id: string | undefined): ObjectDef | undefined {

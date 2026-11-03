@@ -21,6 +21,7 @@ import { REPORTS, runReport } from "../ops/reports";
 import { createField, describeSchema } from "../ops/schema";
 import { objectOf, userOf } from "../ops/store";
 import { AUTOMATION_FORM_TOOLS } from "./automationTools";
+import { CUSTOMIZE_TOOLS } from "./customizeTools";
 
 export type JsonSchema = {
   type?: string | string[];
@@ -415,16 +416,48 @@ export const AI_TOOLS: AiTool[] = [
   },
   // Automations, lead forms, email drafts (src/ai/automationTools.ts).
   ...AUTOMATION_FORM_TOOLS,
+  // Modules, appearance, extensions (src/ai/customizeTools.ts).
+  ...CUSTOMIZE_TOOLS,
 ];
 
+// ─── Dynamic catalog (extension modules) ────────────────────────────────
+// AI_TOOLS is the built-in catalog; extension modules add theirs with
+// registerAiTool (src/extensions/). Every front door lists listAiTools().
+
+const extraTools = new Map<string, AiTool>();
+const toolListeners = new Set<() => void>();
+const TOOL_NAME_RE = /^[a-z][a-z0-9_]{1,63}$/;
+
+export function registerAiTool(tool: AiTool): () => void {
+  if (!tool || typeof tool.name !== "string" || !TOOL_NAME_RE.test(tool.name)) throw new Error(`Invalid AI tool name "${String(tool?.name)}" (snake_case, ≤ 64 chars).`);
+  if (typeof tool.handler !== "function") throw new Error(`AI tool "${tool.name}" needs a handler.`);
+  if (!tool.inputSchema || tool.inputSchema.type !== "object") throw new Error(`AI tool "${tool.name}" needs an object inputSchema.`);
+  if (AI_TOOLS.some((t) => t.name === tool.name) || extraTools.has(tool.name)) throw new Error(`AI tool "${tool.name}" already exists.`);
+  extraTools.set(tool.name, { ...tool, mutating: tool.mutating !== false });
+  for (const l of [...toolListeners]) l();
+  return () => {
+    if (extraTools.delete(tool.name)) for (const l of [...toolListeners]) l();
+  };
+}
+
+// Built-in tools followed by the tools of loaded extension modules.
+export function listAiTools(): AiTool[] {
+  return extraTools.size ? [...AI_TOOLS, ...extraTools.values()] : AI_TOOLS;
+}
+
+export function subscribeAiTools(listener: () => void): () => void {
+  toolListeners.add(listener);
+  return () => toolListeners.delete(listener);
+}
+
 export function findTool(name: string): AiTool | undefined {
-  return AI_TOOLS.find((t) => t.name === name);
+  return AI_TOOLS.find((t) => t.name === name) ?? extraTools.get(name);
 }
 
 // Runs a tool by name with light input checking (required keys present).
 export async function callTool(ctx: OpsContext, name: string, input: unknown): Promise<unknown> {
   const tool = findTool(name);
-  if (!tool) throw new OpsError("notFound", `Unknown tool "${name}". Tools: ${AI_TOOLS.map((t) => t.name).join(", ")}.`);
+  if (!tool) throw new OpsError("notFound", `Unknown tool "${name}". Tools: ${listAiTools().map((t) => t.name).join(", ")}.`);
   const args = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
   for (const key of tool.inputSchema.required ?? []) {
     if (args[key] === undefined || args[key] === null) throw new OpsError("validation", `${name}: missing required "${key}".`);

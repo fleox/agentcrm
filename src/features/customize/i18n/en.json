@@ -1,0 +1,232 @@
+{
+  "sections": {
+    "modules": "Modules",
+    "appearance": "Appearance"
+  },
+  "readOnly": "Only admins can change this. You see the current workspace settings.",
+  "modules": {
+    "title": "Modules",
+    "description": "Switch features on or off for the whole workspace. Disabling a module hides its pages, navigation and widgets — its data is kept.",
+    "tabs": {
+      "modules": "Modules",
+      "extensions": "Installed extensions"
+    },
+    "categories": {
+      "core": "Core",
+      "sales": "Sales",
+      "productivity": "Productivity",
+      "automation": "Automation",
+      "integrations": "Integrations",
+      "ai": "AI",
+      "customisation": "Customisation"
+    },
+    "required": "Required",
+    "extension": "Extension",
+    "requires": "Requires {{list}}",
+    "usedBy": "Used by {{list}}",
+    "missing": "Needs {{list}} — enable it first.",
+    "settings": "Settings",
+    "enable": "Enable {{name}}",
+    "disable": "Disable {{name}}",
+    "enabled": "“{{name}}” enabled.",
+    "disabled": "“{{name}}” disabled — its data is kept.",
+    "cascadeDisableTitle": "Disable dependent modules too?",
+    "cascadeDisableBody": "{{list}} depend on “{{name}}”. They will be disabled as well.",
+    "cascadeEnableTitle": "Enable required modules too?",
+    "cascadeEnableBody": "“{{name}}” needs {{list}}. They will be enabled as well.",
+    "cascadeConfirm": "Continue",
+    "incompatible": "This version targets an unsupported API — install an update.",
+    "docs": "Create your own module",
+    "docsHint": "Modules are ZIP packages built with the AgentCRM runtime API — see the guide.",
+    "back": "All modules",
+    "noSettings": "This module has no settings page.",
+    "notLoaded": "This module isn't loaded (disabled, safe mode or failed to load).",
+    "catalog": {
+      "records": {
+        "name": "Records",
+        "description": "Objects, records, table & kanban views and record pages."
+      },
+      "search": {
+        "name": "Search",
+        "description": "⌘K command palette over records and navigation."
+      },
+      "settings": {
+        "name": "Settings",
+        "description": "Workspace settings, data model, users, import and export."
+      },
+      "setup": {
+        "name": "Setup & access",
+        "description": "Setup wizard, sign-in, data backend, admin hosting and security."
+      },
+      "dashboard": {
+        "name": "Dashboard",
+        "description": "Home dashboard with KPIs, charts and widgets."
+      },
+      "deals": {
+        "name": "Deals & pipelines",
+        "description": "The deals object, pipelines, kanban board, pipeline reports and dashboard widgets."
+      },
+      "reports": {
+        "name": "Reports",
+        "description": "Pipeline, forecast, won / lost, activity and lead source reports with CSV export."
+      },
+      "forms": {
+        "name": "Lead forms",
+        "description": "Static lead capture forms and inbox ingestion."
+      },
+      "tasks": {
+        "name": "Tasks",
+        "description": "The tasks page and task overlays."
+      },
+      "automations": {
+        "name": "Automations",
+        "description": "Trigger → conditions → actions workflows and their run log."
+      },
+      "integrations": {
+        "name": "Email & calendar",
+        "description": "Gmail, Google Calendar and Outlook sync through browser OAuth."
+      },
+      "assistant": {
+        "name": "AI assistant",
+        "description": "Chat panel driving the CRM with your own Claude API key."
+      },
+      "customize": {
+        "name": "Customisation",
+        "description": "Modules, extensions and appearance."
+      }
+    }
+  },
+  "extensions": {
+    "title": "Installed extensions",
+    "description": "External modules and themes, stored in your workspace data (encrypted with it) and loaded in every admin.",
+    "drop": "Drop an extension ZIP here, or click to choose a file",
+    "dropHint": "manifest.json + bundle.js (+ style.css) · up to 4 MB",
+    "reading": "Reading the package…",
+    "empty": "No extension installed yet.",
+    "kind": {
+      "module": "Module",
+      "theme": "Theme"
+    },
+    "status": {
+      "loaded": "Running",
+      "error": "Failed to load",
+      "disabled": "Disabled",
+      "skipped": "Skipped (safe mode)",
+      "incompatible": "Incompatible",
+      "pending": "Not loaded yet"
+    },
+    "by": "by {{author}}",
+    "installedOn": "Installed {{date}}",
+    "upgradedFrom": "Upgraded from {{version}}",
+    "export": "Export ZIP",
+    "uninstall": "Uninstall",
+    "uninstallTitle": "Uninstall “{{name}}”?",
+    "uninstallBody": "Its code is removed from the workspace for everyone. Data it created and its settings are kept.",
+    "uninstalled": "“{{name}}” uninstalled.",
+    "enabledToast": "“{{name}}” enabled.",
+    "disabledToast": "“{{name}}” disabled.",
+    "safeMode": "Safe mode is on: extensions are not loaded in this tab.",
+    "install": {
+      "title": "Install an extension",
+      "upgradeTitle": "Upgrade an extension",
+      "id": "Id",
+      "version": "Version",
+      "kind": "Type",
+      "author": "Author",
+      "homepage": "Homepage",
+      "api": "API version",
+      "size": "Size",
+      "dependsOn": "Requires",
+      "upgrade": "Upgrade {{from}} → {{to}}",
+      "reinstall": "Reinstall {{version}}",
+      "warningTitle": "This code will run with your rights",
+      "warning": "An extension can read and change every record of this workspace, for every user who opens the admin. Only install packages from people you trust.",
+      "trust": "I trust the author of “{{name}}”",
+      "confirm": "Install",
+      "confirmUpgrade": "Upgrade",
+      "done": "“{{name}}” {{version}} installed.",
+      "upgraded": "“{{name}}” upgraded to {{version}}.",
+      "invalid": "This package can't be installed"
+    }
+  },
+  "appearance": {
+    "title": "Appearance",
+    "description": "Colors, shape and branding of the workspace. Changes apply live for everyone.",
+    "presets": "Presets",
+    "themes": "Themes from extensions",
+    "themeNotLoaded": "Not loaded",
+    "custom": "Custom",
+    "accent": "Accent color",
+    "accentHint": "A full color scale is generated from it.",
+    "hex": "Hex",
+    "neutral": "Neutral tone",
+    "neutrals": {
+      "zinc": "Zinc",
+      "slate": "Slate",
+      "stone": "Stone",
+      "gray": "Gray",
+      "neutral": "Neutral"
+    },
+    "radius": "Corner radius",
+    "radii": {
+      "none": "None",
+      "sm": "Small",
+      "md": "Medium",
+      "lg": "Large",
+      "xl": "Extra large"
+    },
+    "density": "Density",
+    "densities": {
+      "compact": "Compact",
+      "comfortable": "Comfortable"
+    },
+    "font": "Font",
+    "fontHint": "Google fonts are loaded from fonts.googleapis.com when selected.",
+    "sidebar": "Sidebar",
+    "sidebars": {
+      "default": "Light",
+      "dark": "Dark",
+      "accent": "Accent"
+    },
+    "buttons": "Primary buttons",
+    "buttonStyles": {
+      "neutral": "Neutral",
+      "accent": "Accent"
+    },
+    "mode": "Default mode",
+    "modeHint": "For users who never switched light / dark themselves.",
+    "modes": {
+      "system": "System",
+      "light": "Light",
+      "dark": "Dark"
+    },
+    "contrast": "High contrast",
+    "contrastHint": "Stronger borders and secondary text.",
+    "branding": "Branding",
+    "logo": "Logo",
+    "favicon": "Favicon",
+    "upload": "Upload",
+    "remove": "Remove",
+    "imageHint": "PNG, SVG, JPEG, WebP or ICO · up to 200 KB",
+    "imageTooLarge": "The image is larger than 200 KB.",
+    "customCss": "Custom CSS",
+    "customCssHint": "Appended after every other style, for every user. Prefer CSS variables (--acc-500, --srf-100…).",
+    "save": "Save",
+    "saved": "Appearance updated.",
+    "reset": "Reset to default",
+    "resetTitle": "Reset the appearance?",
+    "resetBody": "Colors, shape, font and custom CSS go back to the defaults. The logo and favicon are kept.",
+    "preview": "Preview",
+    "previewSample": {
+      "title": "Acme Corp",
+      "search": "Search…",
+      "primary": "New deal",
+      "secondary": "Filter",
+      "row1": "Globex",
+      "row2": "Initech",
+      "row3": "Umbrella",
+      "badge": "Qualified",
+      "link": "View all"
+    }
+  }
+}

@@ -41,7 +41,11 @@ export type OpsAction =
   | "import"
   | "export"
   | "reports.read"
-  | "compact";
+  | "compact"
+  // Customisation (v0.2): Settings → Modules / Appearance / extensions.
+  | "modules.write"
+  | "appearance.write"
+  | "extensions.write";
 
 const READ: OpsAction[] = ["records.read", "activities.read", "views.read", "settings.read", "users.read", "reports.read"];
 const MEMBER: OpsAction[] = [...READ, "records.write", "records.delete", "activities.write", "views.writeOwn", "import", "export", "automations.run"];
@@ -55,6 +59,9 @@ const ADMIN: OpsAction[] = [
   "automations.write",
   "forms.write",
   "compact",
+  "modules.write",
+  "appearance.write",
+  "extensions.write",
 ];
 
 export const PERMISSIONS: Record<UserRole, ReadonlySet<OpsAction>> = {

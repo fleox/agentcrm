@@ -40,6 +40,11 @@ import { COLLECTIONS, type CollectionName, type DataStore, type DocMutation, typ
 export * from "./firebase/api";
 
 export const INVITES_COLLECTION = "invites";
+// Large extension bundles are split over this collection (a Firestore
+// document holds ≤ 1 MiB): extensions/{id} keeps `chunks: { file: n }`
+// and extensionChunks/{id}__{file}__{i} = { ext, file, index, data }.
+export const EXTENSION_CHUNKS_COLLECTION = "extensionChunks";
+export const EXTENSION_CHUNK_CHARS = 300_000;
 export const INBOX_COLLECTION = "inbox";
 type Role = StoreIdentity["role"];
 const ROLES: readonly Role[] = ["admin", "member", "viewer"];
@@ -120,13 +125,79 @@ export function inviteOps(mutations: DocMutation[], before: (id: string) => Stor
   return [...ops.values()];
 }
 
+// ─── Extension chunks ────────────────────────────────────────────────────
+
+const chunkId = (ext: string, file: string, i: number) => `${ext}__${file}__${i}`;
+
+function chunkCounts(doc: StoredDoc | undefined): Record<string, number> {
+  const files = (doc?.files ?? {}) as Record<string, unknown>;
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(files)) if (typeof v === "string") out[k] = Math.ceil(v.length / EXTENSION_CHUNK_CHARS);
+  return out;
+}
+
+function extensionSetOps(doc: StoredDoc, previous: StoredDoc | undefined): FirestoreWriteOp[] {
+  const files = (doc.files ?? {}) as Record<string, unknown>;
+  const size = Object.values(files).reduce<number>((n, v) => n + (typeof v === "string" ? v.length : 0), 0);
+  const ops: FirestoreWriteOp[] = [];
+  const counts: Record<string, number> = {};
+  const data = toData(doc);
+  if (size > EXTENSION_CHUNK_CHARS) {
+    for (const [file, v] of Object.entries(files)) {
+      if (typeof v !== "string") continue;
+      const n = Math.ceil(v.length / EXTENSION_CHUNK_CHARS);
+      counts[file] = n;
+      for (let i = 0; i < n; i++) {
+        ops.push({ type: "set", collection: EXTENSION_CHUNKS_COLLECTION, id: chunkId(doc.id, file, i), data: { ext: doc.id, file, index: i, data: v.slice(i * EXTENSION_CHUNK_CHARS, (i + 1) * EXTENSION_CHUNK_CHARS) } });
+      }
+    }
+    data.files = {};
+    data.chunks = counts;
+  }
+  // Chunks of the previous version that are no longer used.
+  for (const [file, n] of Object.entries(chunkCounts(previous))) {
+    for (let i = counts[file] ?? 0; i < n; i++) ops.push({ type: "delete", collection: EXTENSION_CHUNKS_COLLECTION, id: chunkId(doc.id, file, i) });
+  }
+  ops.unshift({ type: "set", collection: "extensions", id: doc.id, data });
+  return ops;
+}
+
+// Rebuilds chunked extension docs from their chunks.
+export function assembleExtensionDocs(docs: FirestoreDocData[], chunks: FirestoreDocData[]): FirestoreDocData[] {
+  const byExt = new Map<string, FirestoreDocData[]>();
+  for (const c of chunks) {
+    const ext = String(c.data.ext ?? "");
+    byExt.set(ext, [...(byExt.get(ext) ?? []), c]);
+  }
+  return docs.map((d) => {
+    const counts = d.data.chunks as Record<string, number> | undefined;
+    if (!counts || typeof counts !== "object") return d;
+    const files: Record<string, string> = {};
+    const parts = byExt.get(d.id) ?? [];
+    for (const [file, n] of Object.entries(counts)) {
+      const pieces = parts.filter((p) => p.data.file === file).sort((a, b) => Number(a.data.index) - Number(b.data.index));
+      // Incomplete (a write in flight): leave the file out; the loader skips it.
+      if (pieces.length !== n) continue;
+      files[file] = pieces.map((p) => String(p.data.data ?? "")).join("");
+    }
+    const { chunks: _chunks, ...rest } = d.data;
+    return { id: d.id, data: { ...rest, files } };
+  });
+}
+
 // ─── Mutations → Firestore ops ───────────────────────────────────────────
 
 export function mutationOps(mutations: DocMutation[], before: Snapshot): FirestoreWriteOp[] {
   const ops: FirestoreWriteOp[] = [];
   for (const m of mutations) {
-    if (m.op === "set") ops.push({ type: "set", collection: m.collection, id: m.doc.id, data: toData(m.doc) });
-    else if (m.op === "delete") ops.push({ type: "delete", collection: m.collection, id: m.id });
+    if (m.op === "set" && m.collection === "extensions") ops.push(...extensionSetOps(m.doc, before.extensions.get(m.doc.id)));
+    else if (m.op === "set") ops.push({ type: "set", collection: m.collection, id: m.doc.id, data: toData(m.doc) });
+    else if (m.op === "delete") {
+      ops.push({ type: "delete", collection: m.collection, id: m.id });
+      if (m.collection === "extensions") {
+        for (const [file, n] of Object.entries(chunkCounts(before.extensions.get(m.id)))) for (let i = 0; i < n; i++) ops.push({ type: "delete", collection: EXTENSION_CHUNKS_COLLECTION, id: chunkId(m.id, file, i) });
+      }
+    }
     else {
       // A patch on a missing doc is a no-op (Firestore update would fail).
       if (!before[m.collection].has(m.id)) continue;
@@ -162,9 +233,12 @@ export function createFirebaseStoreWith(opts: FirebaseStoreOptions): FirebaseDat
     }
   });
 
-  function buildSnapshot(raw: Map<CollectionName, FirestoreDocData[]>): Snapshot {
+  function buildSnapshot(raw: Map<CollectionName, FirestoreDocData[]>, chunks: FirestoreDocData[]): Snapshot {
     const s = emptySnapshot();
-    for (const c of COLLECTIONS) for (const d of raw.get(c) ?? []) s[c].set(d.id, fromData(d));
+    for (const c of COLLECTIONS) {
+      const docs = c === "extensions" ? assembleExtensionDocs(raw.get(c) ?? [], chunks) : raw.get(c) ?? [];
+      for (const d of docs) s[c].set(d.id, fromData(d));
+    }
     rawUsers = new Map(s.users);
     // Hide the placeholder of an invited user who has joined.
     for (const u of [...s.users.values()]) {
@@ -173,7 +247,7 @@ export function createFirebaseStoreWith(opts: FirebaseStoreOptions): FirebaseDat
     return s;
   }
 
-  async function readCollection(c: CollectionName): Promise<FirestoreDocData[]> {
+  async function readCollection(c: CollectionName | typeof EXTENSION_CHUNKS_COLLECTION): Promise<FirestoreDocData[]> {
     try {
       return await api.listCollection(c);
     } catch (err) {
@@ -263,8 +337,9 @@ export function createFirebaseStoreWith(opts: FirebaseStoreOptions): FirebaseDat
 
     async load() {
       const raw = new Map<CollectionName, FirestoreDocData[]>();
-      await Promise.all(COLLECTIONS.map(async (c) => raw.set(c, await readCollection(c))));
-      const snap = buildSnapshot(raw);
+      let chunks: FirestoreDocData[] = [];
+      await Promise.all([...COLLECTIONS.map(async (c) => raw.set(c, await readCollection(c))), readCollection(EXTENSION_CHUNKS_COLLECTION).then((d) => (chunks = d))]);
+      const snap = buildSnapshot(raw, chunks);
       scheduleReconcile();
       return snap;
     },
@@ -273,18 +348,35 @@ export function createFirebaseStoreWith(opts: FirebaseStoreOptions): FirebaseDat
 
     watch(onRemote) {
       const raw = new Map<CollectionName, FirestoreDocData[]>();
+      let chunks: FirestoreDocData[] | null = null;
+      const emit = () => {
+        if (raw.size < COLLECTIONS.length || chunks === null) return;
+        onRemote(buildSnapshot(raw, chunks));
+        scheduleReconcile();
+      };
       const offs = COLLECTIONS.map((c) =>
         api.watchCollection(
           c,
           (docs) => {
             raw.set(c, docs);
-            if (raw.size < COLLECTIONS.length) return;
-            onRemote(buildSnapshot(raw));
-            scheduleReconcile();
+            emit();
           },
           (err) => {
             if (isPermissionDenied(err)) raw.set(c, []);
             else console.warn(`[firebase] live updates of ${c} stopped:`, err);
+          },
+        ),
+      );
+      offs.push(
+        api.watchCollection(
+          EXTENSION_CHUNKS_COLLECTION,
+          (docs) => {
+            chunks = docs;
+            emit();
+          },
+          (err) => {
+            if (isPermissionDenied(err)) chunks = [];
+            else console.warn("[firebase] live updates of extension chunks stopped:", err);
           },
         ),
       );

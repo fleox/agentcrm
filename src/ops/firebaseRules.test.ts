@@ -36,6 +36,12 @@ describe("firestore rules generator", () => {
     expect(rules).toContain("role() in ['admin', 'member', 'viewer']");
   });
 
+  it("extensions (+ their chunks): everyone active reads, only admins write", () => {
+    for (const c of ["extensions", "extensionChunks"]) {
+      expect(rules).toMatch(new RegExp(`match /${c}/\\{id\\} \\{\\n\\s+allow read: if isActive\\(\\);\\n\\s+allow write: if isAdmin\\(\\);`));
+    }
+  });
+
   it("users can't escalate: self updates limited to profile keys", () => {
     const users = block(rules, "/users/{uid}");
     expect(users).toContain("affectedKeys().hasOnly(['name', 'avatarUrl', 'updatedAt'])");

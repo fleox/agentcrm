@@ -13,6 +13,7 @@
   "files": [
     "dist/agent",
     "dist/admin",
+    "types/agentcrm-runtime.d.ts",
     "dist/version.json",
     "plugin",
     "changelog.json",
@@ -29,11 +30,13 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "build": "vite build && node scripts/write-admin-manifest.mjs && vite build --config vite.agent.config.ts && node scripts/write-version.mjs",
+    "build:examples": "node scripts/build-examples.mjs",
     "preview": "vite preview",
     "check:skills": "node scripts/check-skills.mjs",
     "hermes:build": "node scripts/build-hermes.mjs",
     "check:hermes": "node scripts/build-hermes.mjs --check && python3 -m unittest discover -s hermes/tests",
-    "version": "node scripts/sync-version.mjs && npm run build && node scripts/build-hermes.mjs && git add -A plugin hermes .claude-plugin"
+    "version": "node scripts/sync-version.mjs && npm run build && node scripts/build-hermes.mjs && git add -A plugin hermes .claude-plugin",
+    "gen:runtime-stubs": "node scripts/gen-runtime-stubs.mjs"
   },
   "devDependencies": {
     "@dnd-kit/core": "^6.3.1",

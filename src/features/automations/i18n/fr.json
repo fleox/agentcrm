@@ -1,10 +1,16 @@
 {
-  "nav": { "title": "Automatisations" },
+  "nav": {
+    "title": "Automatisations"
+  },
   "title": "Automatisations",
   "subtitle": "Créez des tâches, mettez à jour des champs, assignez des responsables ou appelez des webhooks quand les fiches changent — ou quand elles restent sans activité.",
   "empty": "Aucune automatisation",
   "emptyHint": "Créez des tâches, mettez à jour des champs ou appelez des webhooks quand les fiches changent.",
-  "tabs": { "list": "Automatisations", "runs": "Journal", "templates": "Modèles" },
+  "tabs": {
+    "list": "Automatisations",
+    "runs": "Journal",
+    "templates": "Modèles"
+  },
   "list": {
     "new": "Nouvelle automatisation",
     "runNow": "Lancer les planifiées",
@@ -108,7 +114,8 @@
       "updateField": "Modifier un champ",
       "addNote": "Ajouter une note",
       "assignOwner": "Assigner un responsable",
-      "webhook": "Appeler un webhook"
+      "webhook": "Appeler un webhook",
+      "extension": "Action d'extension"
     },
     "summary": {
       "createTask": "Créer la tâche « {{title}} »",
@@ -132,7 +139,10 @@
     "roundRobin": "À tour de rôle (admins et membres actifs)",
     "url": "URL du webhook",
     "webhookHint": "Envoie la fiche en JSON (valeurs brutes et affichées). Au mieux : les échecs sont journalisés, les autres actions s'exécutent quand même.",
-    "placeholdersHint": "Variables :"
+    "placeholdersHint": "Variables :",
+    "extensionMissing": "L'action « {{action}} » n'est pas disponible — installez ou activez son extension.",
+    "yes": "Oui",
+    "no": "Non"
   },
   "editor": {
     "newTitle": "Nouvelle automatisation",
@@ -169,7 +179,11 @@
     "status": "Statut",
     "message": "Détails",
     "details": "Afficher les détails",
-    "statuses": { "ok": "OK", "error": "Erreur", "skipped": "Ignorée" },
+    "statuses": {
+      "ok": "OK",
+      "error": "Erreur",
+      "skipped": "Ignorée"
+    },
     "filterAutomation": "Automatisation",
     "allAutomations": "Toutes les automatisations",
     "filterStatus": "Statut",
@@ -195,12 +209,30 @@
     "customize": "Personnaliser",
     "created": "Automatisation créée",
     "items": {
-      "deal-won-onboarding": { "name": "Affaire gagnée → tâche d'onboarding", "description": "Quand une affaire atteint une étape gagnée, crée une tâche d'onboarding pour son responsable à 2 jours et ajoute une note." },
-      "new-lead-round-robin": { "name": "Nouveau lead → assignation à tour de rôle", "description": "Quand une personne est créée comme lead, lui assigne un responsable à tour de rôle parmi les admins et membres actifs, et crée une tâche de premier contact." },
-      "stale-deal-followup": { "name": "Affaire inactive 14 jours → tâche de relance", "description": "Les affaires ouvertes sans activité depuis 14 jours reçoivent une tâche de relance pour leur responsable (une fois par période d'inactivité)." },
-      "deal-lost-note": { "name": "Affaire perdue → noter la raison", "description": "Quand une affaire passe à une étape perdue, ajoute une note avec la raison de la perte à son historique." },
-      "customer-welcome": { "name": "Nouveau client → tâche de bienvenue", "description": "Quand l'étape de cycle de vie d'une personne devient Client, crée une tâche pour envoyer le kit de bienvenue." },
-      "new-person-webhook": { "name": "Nouvelle personne → webhook", "description": "Envoie chaque nouvelle personne en JSON à une URL qui vous appartient (Zapier, Make, n8n, workflow Slack…). Renseignez l'URL avant d'activer." }
+      "deal-won-onboarding": {
+        "name": "Affaire gagnée → tâche d'onboarding",
+        "description": "Quand une affaire atteint une étape gagnée, crée une tâche d'onboarding pour son responsable à 2 jours et ajoute une note."
+      },
+      "new-lead-round-robin": {
+        "name": "Nouveau lead → assignation à tour de rôle",
+        "description": "Quand une personne est créée comme lead, lui assigne un responsable à tour de rôle parmi les admins et membres actifs, et crée une tâche de premier contact."
+      },
+      "stale-deal-followup": {
+        "name": "Affaire inactive 14 jours → tâche de relance",
+        "description": "Les affaires ouvertes sans activité depuis 14 jours reçoivent une tâche de relance pour leur responsable (une fois par période d'inactivité)."
+      },
+      "deal-lost-note": {
+        "name": "Affaire perdue → noter la raison",
+        "description": "Quand une affaire passe à une étape perdue, ajoute une note avec la raison de la perte à son historique."
+      },
+      "customer-welcome": {
+        "name": "Nouveau client → tâche de bienvenue",
+        "description": "Quand l'étape de cycle de vie d'une personne devient Client, crée une tâche pour envoyer le kit de bienvenue."
+      },
+      "new-person-webhook": {
+        "name": "Nouvelle personne → webhook",
+        "description": "Envoie chaque nouvelle personne en JSON à une URL qui vous appartient (Zapier, Make, n8n, workflow Slack…). Renseignez l'URL avant d'activer."
+      }
     }
   },
   "widget": {

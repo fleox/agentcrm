@@ -12,7 +12,7 @@ import type { ActivityType, CrmRecord, ObjectDef } from "../../core/types";
 import { Avatar, Button, confirmDialog, Dropdown, EmptyState, ObjectIcon, Tabs, useFieldContext } from "../../components/ui";
 import { useActivities, useCan, useCollection, useObject, useOps, useRecord } from "../../app/CrmDataContext";
 import { useAuth } from "../../app/AuthContext";
-import { getSlot } from "../../app/featureRegistry";
+import { useSlot } from "../../app/featureRegistry";
 import { paths } from "../../app/paths";
 import { emitShellEvent } from "../../app/shellEvents";
 import { deleteRecord, restoreRecord, updateRecord } from "../../ops/records";
@@ -89,6 +89,9 @@ export function RecordPage() {
   const record = useRecord(recordId);
   const activities = useActivities(recordId);
   const allRecords = useCollection("records");
+  const tabSlot = useSlot("recordDetailTabs");
+  const panelSlot = useSlot("recordDetailPanels");
+  const actionSlot = useSlot("recordActions");
   const objects = useCollection("objects");
   const canWrite = useCan("records.write");
   const canDelete = useCan("records.delete");
@@ -117,9 +120,9 @@ export function RecordPage() {
   const label = recordLabel(object, record);
   const deleted = !!record.deletedAt;
   const slotProps = { record, object };
-  const slotTabs = getSlot("recordDetailTabs").filter((x) => !x.when || x.when(object));
-  const panels = getSlot("recordDetailPanels").filter((x) => !x.when || x.when(object));
-  const actions = getSlot("recordActions").filter((x) => !x.when || x.when(object));
+  const slotTabs = tabSlot.filter((x) => !x.when || x.when(object));
+  const panels = panelSlot.filter((x) => !x.when || x.when(object));
+  const actions = actionSlot.filter((x) => !x.when || x.when(object));
   const notes = activities.filter((a) => a.type === "note").length;
   const openTasks = activities.filter((a) => a.type === "task" && !a.doneAt).length;
 

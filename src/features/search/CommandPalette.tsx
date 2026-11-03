@@ -9,7 +9,7 @@ import { ArrowRight, Calendar, CheckSquare, Clock, CornerDownLeft, Languages, Ma
 import { Kbd, Modal, ObjectIcon } from "../../components/ui";
 import { useActivities, useCan, useCurrentUser, useObjects, useRecordLabel, useSearchIndex } from "../../app/CrmDataContext";
 import { emitShellEvent, useShellEvent } from "../../app/shellEvents";
-import { getFeatures } from "../../app/featureRegistry";
+import { useFeatures } from "../../app/featureRegistry";
 import { paths } from "../../app/paths";
 import { useTheme } from "../../app/theme";
 import { activeLocale, LOCALE_LABELS, setActiveLocale, SUPPORTED_LOCALES } from "../../i18n";
@@ -60,6 +60,7 @@ export function CommandPalette() {
   const canWriteActivities = useCan("activities.write");
   const index = useSearchIndex();
   const objects = useObjects();
+  const features = useFeatures();
   const activities = useActivities();
   const labelOf = useRecordLabel();
   const theme = useTheme();
@@ -97,7 +98,7 @@ export function CommandPalette() {
   // Navigation + action commands (static for a given state).
   const commands = useMemo<PaletteItem[]>(() => {
     const out: PaletteItem[] = [];
-    const navItems = getFeatures()
+    const navItems = features
       .flatMap((f) => f.navItems ?? [])
       .filter((n) => !n.roles || n.roles.includes(user.role))
       .sort((a, b) => (a.order ?? 100) - (b.order ?? 100));
@@ -171,7 +172,7 @@ export function CommandPalette() {
     }
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [objects, user.role, canWriteRecords, canWriteActivities, current, labelOf, theme.theme, t, tc, open]);
+  }, [objects, features, user.role, canWriteRecords, canWriteActivities, current, labelOf, theme.theme, t, tc, open]);
 
   const commandMode = q.trimStart().startsWith(">");
   const text = commandMode ? q.trimStart().slice(1).trim() : q.trim();

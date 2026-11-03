@@ -17,7 +17,7 @@ export function AutomationsPage() {
   const navigate = useNavigate();
   const automations = useAutomations();
   const runs = useAutomationRuns();
-  const objects = useObjects();
+  const objects = useObjects({ includeHidden: true });
   const pipelines = usePipelines();
   const users = useUsers();
   const canWrite = useCan("automations.write");

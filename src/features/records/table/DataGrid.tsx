@@ -13,7 +13,10 @@ import { Avatar, Checkbox, Dropdown, FieldValue, ObjectIcon, useFieldContext } f
 import { cn } from "../../../shared/lib/utils";
 import { columnField } from "../lib/viewModel";
 import { CellEditor } from "./CellEditor";
+import { useRowHeight } from "../../../app/appearanceHooks";
 
+// Default row height (comfortable density); the grid reads the live value
+// of the workspace density (--row-h) through useRowHeight().
 export const ROW_HEIGHT = 33;
 const HEADER_HEIGHT = 33;
 const SELECT_WIDTH = 36;
@@ -74,6 +77,7 @@ interface Cell {
 }
 
 export function DataGrid(props: DataGridProps) {
+  const rowHeight = useRowHeight();
   const { object, rows, columns, widths, canWrite, selection, onSelectionChange, onOpen, onSave } = props;
   const { t } = useTranslation("records");
   const ctx = useFieldContext();
@@ -106,8 +110,8 @@ export function DataGrid(props: DataGridProps) {
   const widthOf = (c: string, i: number) => widths[c] ?? defaultColumnWidth(fields[i], i === 0);
   const totalWidth = SELECT_WIDTH + columns.reduce((a, c, i) => a + widthOf(c, i), 0) + 48;
 
-  const start = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - OVERSCAN);
-  const visibleCount = Math.ceil(viewport / ROW_HEIGHT) + OVERSCAN * 2;
+  const start = Math.max(0, Math.floor(scrollTop / rowHeight) - OVERSCAN);
+  const visibleCount = Math.ceil(viewport / rowHeight) + OVERSCAN * 2;
   const end = Math.min(rows.length, start + visibleCount);
   const slice = rows.slice(start, end);
 
@@ -117,12 +121,12 @@ export function DataGrid(props: DataGridProps) {
     (row: number) => {
       const el = scrollRef.current;
       if (!el) return;
-      const top = row * ROW_HEIGHT;
-      const visible = (el.clientHeight || viewport) - HEADER_HEIGHT - ROW_HEIGHT;
+      const top = row * rowHeight;
+      const visible = (el.clientHeight || viewport) - HEADER_HEIGHT - rowHeight;
       if (top < el.scrollTop) el.scrollTop = top;
       else if (top > el.scrollTop + visible) el.scrollTop = top - visible;
     },
-    [viewport],
+    [viewport, rowHeight],
   );
 
   const move = (dr: number, dc: number) => {
@@ -154,7 +158,7 @@ export function DataGrid(props: DataGridProps) {
 
   const onKeyDown = (e: ReactKeyboardEvent<HTMLDivElement>) => {
     if (e.target !== scrollRef.current || editing) return;
-    const page = Math.max(1, Math.floor(viewport / ROW_HEIGHT) - 1);
+    const page = Math.max(1, Math.floor(viewport / rowHeight) - 1);
     switch (e.key) {
       case "ArrowDown":
         e.preventDefault();
@@ -261,7 +265,7 @@ export function DataGrid(props: DataGridProps) {
         </thead>
         <tbody>
           {start > 0 && (
-            <tr aria-hidden="true" style={{ height: start * ROW_HEIGHT }}>
+            <tr aria-hidden="true" style={{ height: start * rowHeight }}>
               <td colSpan={columns.length + 2} />
             </tr>
           )}
@@ -272,7 +276,7 @@ export function DataGrid(props: DataGridProps) {
             const rowBg = selected ? "bg-accent-50 dark:bg-[#151b30]" : rowActive ? "bg-surface-50 dark:bg-surface-900" : "bg-white group-hover:bg-surface-50 dark:bg-surface-950 dark:group-hover:bg-surface-900";
             return (
               <tr key={r.id} className="group" data-row-id={r.id} aria-rowindex={index + 1} aria-selected={selected}>
-                <td className={cn("sticky left-0 z-10 h-8 border-b border-r border-surface-100 px-2 dark:border-surface-800/70", rowBg)}>
+                <td className={cn("sticky left-0 z-10 h-row border-b border-r border-surface-100 px-2 dark:border-surface-800/70", rowBg)}>
                   <Checkbox
                     aria-label={t("table.selectRow", { name: recordLabel(object, r) })}
                     checked={selected}
@@ -302,7 +306,7 @@ export function DataGrid(props: DataGridProps) {
                       }}
                       onDoubleClick={() => startEdit({ row: index, col: i })}
                       className={cn(
-                        "relative h-8 border-b border-r border-surface-100 px-2 text-surface-800 dark:border-surface-800/70 dark:text-surface-200",
+                        "relative h-row border-b border-r border-surface-100 px-2 text-surface-800 dark:border-surface-800/70 dark:text-surface-200",
                         isEditing ? "overflow-visible" : "overflow-hidden whitespace-nowrap",
                         i === 0 && "sticky z-10 font-medium",
                         rowBg,
@@ -354,19 +358,19 @@ export function DataGrid(props: DataGridProps) {
                     </td>
                   );
                 })}
-                <td className={cn("h-8 border-b border-surface-100 dark:border-surface-800/70", rowBg)} />
+                <td className={cn("h-row border-b border-surface-100 dark:border-surface-800/70", rowBg)} />
               </tr>
             );
           })}
           {end < rows.length && (
-            <tr aria-hidden="true" style={{ height: (rows.length - end) * ROW_HEIGHT }}>
+            <tr aria-hidden="true" style={{ height: (rows.length - end) * rowHeight }}>
               <td colSpan={columns.length + 2} />
             </tr>
           )}
           {canWrite && props.onQuickAdd && (
             <tr>
-              <td className={cn("sticky left-0 z-10 h-8 border-b border-r border-surface-100 dark:border-surface-800/70", stickyBg)} />
-              <td className={cn("sticky z-10 h-8 border-b border-r border-surface-100 px-1 dark:border-surface-800/70", stickyBg)} style={{ left: SELECT_WIDTH }}>
+              <td className={cn("sticky left-0 z-10 h-row border-b border-r border-surface-100 dark:border-surface-800/70", stickyBg)} />
+              <td className={cn("sticky z-10 h-row border-b border-r border-surface-100 px-1 dark:border-surface-800/70", stickyBg)} style={{ left: SELECT_WIDTH }}>
                 {adding ? (
                   <form
                     data-form-type="other"
@@ -402,7 +406,7 @@ export function DataGrid(props: DataGridProps) {
                   </button>
                 )}
               </td>
-              <td colSpan={columns.length} className="h-8 border-b border-surface-100 dark:border-surface-800/70" />
+              <td colSpan={columns.length} className="h-row border-b border-surface-100 dark:border-surface-800/70" />
             </tr>
           )}
         </tbody>

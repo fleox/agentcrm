@@ -4,10 +4,10 @@
 // CrmDataProvider + HashRouter + Layout with every feature's routes.
 
 import { defaultCurrencyFor } from "../core/schema/localize";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { HashRouter, Navigate, Route, Routes } from "react-router-dom";
 import { I18nextProvider, useTranslation } from "react-i18next";
-import { AlertTriangle, Database, KeyRound } from "lucide-react";
+import { AlertTriangle, Database, KeyRound, PowerOff, ShieldAlert } from "lucide-react";
 import i18n from "../i18n";
 import { Button, Card, ConfirmHost, EmptyState, FormField, Input, Spinner, ToastContainer } from "../components/ui";
 import { getDataStore, resetDataStore } from "../data";
@@ -18,10 +18,16 @@ import { createOpsContext } from "../ops/context";
 import { seedCrm } from "../ops/seed";
 import type { CrmUser } from "../core/types";
 import { resolveCrmUser } from "./auth";
-import { AuthProvider, getAuthAdapter } from "./AuthContext";
+import { AuthProvider, getAuthAdapter, useAuth } from "./AuthContext";
 import { CrmDataProvider, useCrm } from "./CrmDataContext";
-import { getFeatures, getSlot } from "./featureRegistry";
+import { connectModuleState, getAllFeatures, getFeatures, getSlot, useFeatures, useModuleStates } from "./featureRegistry";
 import { Layout } from "./Layout";
+import { useWorkspaceAppearance } from "./WorkspaceAppearance";
+import { paths } from "./paths";
+import { useObjects } from "./CrmDataContext";
+import { isSafeMode, syncExtensions, watchExtensions, type SyncReport } from "../extensions/loader";
+import { toast } from "../shared/lib/toast";
+import type { Feature } from "../features/types";
 
 // ─── App control (setup wizard → "configured") ──────────────────────────
 
@@ -87,7 +93,7 @@ type BootState =
   | { phase: "signIn"; store: DataStore }
   | { phase: "passphrase"; store: DataStore; wrong: boolean }
   | { phase: "empty"; store: DataStore; identity: StoreIdentity }
-  | { phase: "ready"; store: DataStore; identity: StoreIdentity; user: CrmUser }
+  | { phase: "ready"; store: DataStore; identity: StoreIdentity; user: CrmUser; safeMode: boolean; extensionReport: SyncReport }
   | { phase: "error"; error: Error };
 
 function CenteredScreen({ children }: { children: ReactNode }) {
@@ -122,7 +128,13 @@ function ConfiguredApp({ config }: { config: RuntimeConfig }) {
           const doc = store.get("config", "hosting") as unknown as StorageConfig | undefined;
           return doc?.connectorId ? { connectorId: doc.connectorId, settings: { ...(doc.settings ?? {}), ...getHostingSecrets(config) } } : null;
         });
-        set({ phase: "ready", store, identity, user });
+        // Modules (config/modules) + external extensions before the shell
+        // renders, so their routes exist on the first paint. The loader
+        // never throws; safe mode skips every extension.
+        connectModuleState(store);
+        const safeMode = isSafeMode();
+        const extensionReport = await syncExtensions(store, { safeMode });
+        set({ phase: "ready", store, identity, user, safeMode, extensionReport });
       } catch (err) {
         const e = err as Error & { reason?: string };
         if (e.name === "PassphraseError") return set({ phase: "passphrase", store, wrong: e.reason === "wrong" });
@@ -164,7 +176,7 @@ function ConfiguredApp({ config }: { config: RuntimeConfig }) {
         <AuthProvider backend={config.backend} identity={state.identity} user={state.user} onSignOut={signOut}>
           <CrmDataProvider store={state.store} user={state.user}>
             <LiveUser identity={state.identity} initial={state.user}>
-              {(user) => <Shell user={user} />}
+              {(user) => <Shell user={user} safeMode={state.safeMode} extensionReport={state.extensionReport} />}
             </LiveUser>
           </CrmDataProvider>
         </AuthProvider>
@@ -188,14 +200,56 @@ function LiveUser({ identity, initial, children }: { identity: StoreIdentity; in
   return <>{children(user)}</>;
 }
 
-function Shell({ user }: { user: CrmUser }) {
-  const { t } = useTranslation();
+// Starts / stops each enabled feature's onStart as modules toggle.
+function useFeatureLifecycle(features: Feature[], user: CrmUser): void {
+  const running = useRef(new Map<string, { feature: Feature; cleanup: void | (() => void) }>());
   useEffect(() => {
-    const cleanups = getFeatures().map((f) => f.onStart?.({ user }));
-    return () => cleanups.forEach((c) => typeof c === "function" && c());
-    // Features start once per signed-in user.
+    const map = running.current;
+    for (const [id, r] of [...map]) {
+      if (!features.includes(r.feature)) {
+        if (typeof r.cleanup === "function") r.cleanup();
+        map.delete(id);
+      }
+    }
+    for (const f of features) {
+      if (map.has(f.id) || !f.onStart) continue;
+      try {
+        map.set(f.id, { feature: f, cleanup: f.onStart({ user }) });
+      } catch (err) {
+        console.error(`[features] onStart of ${f.id} failed:`, err);
+      }
+    }
+  }, [features, user]);
+  // Features start once per signed-in user.
+  useEffect(() => {
+    const map = running.current;
+    return () => {
+      for (const r of map.values()) if (typeof r.cleanup === "function") r.cleanup();
+      map.clear();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user.id]);
+}
+
+function Shell({ user, safeMode, extensionReport }: { user: CrmUser; safeMode: boolean; extensionReport: SyncReport }) {
+  const { t } = useTranslation();
+  const { store } = useCrm();
+  const features = useFeatures();
+  const modules = useModuleStates();
+  const objects = useObjects();
+  useFeatureLifecycle(features, user);
+  useWorkspaceAppearance();
+
+  // Live extension updates (install / enable / upgrade / uninstall).
+  useEffect(() => {
+    const report = (r: SyncReport) => {
+      if (r.failed.length) toast.error(t("app.extensionErrors", { count: r.failed.length, list: r.failed.map((f) => `${f.id} (${f.error})`).join(", ") }));
+    };
+    report(extensionReport);
+    return watchExtensions(store, { safeMode, onSync: report });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [store, safeMode]);
+
   if (user.disabled) {
     return (
       <CenteredScreen>
@@ -203,21 +257,81 @@ function Shell({ user }: { user: CrmUser }) {
       </CenteredScreen>
     );
   }
-  const routes = getFeatures()
-    .flatMap((f) => f.routes)
-    .filter((r) => !r.roles || r.roles.includes(user.role));
+  const allowed = (f: Feature) => f.routes.filter((r) => !r.roles || r.roles.includes(user.role));
+  const routes = features.flatMap(allowed);
+  // Routes of disabled modules → "module disabled" page.
+  const enabledIds = new Set(features.map((f) => f.id));
+  const disabledRoutes = getAllFeatures()
+    .filter((f) => !enabledIds.has(f.id))
+    .flatMap((f) => allowed(f).map((r) => ({ path: r.path, module: f.id })))
+    // "/" of a disabled dashboard redirects to the first object instead.
+    .filter((r) => r.path !== "/" && !routes.some((x) => x.path === r.path));
+  const disabledObjects = modules.filter((m) => !m.enabled).flatMap((m) => m.objects.map((o) => ({ object: o, module: m.id })));
+  const hasHome = routes.some((r) => r.path === "/");
   return (
     <HashRouter>
-      <Layout>
+      <Layout banner={safeMode ? <SafeModeBanner /> : undefined}>
         <Routes>
           {routes.map((r) => (
             <Route key={r.path} path={r.path} element={r.element} />
           ))}
+          {disabledRoutes.map((r) => (
+            <Route key={`off:${r.path}`} path={r.path} element={<ModuleDisabledPage moduleId={r.module} />} />
+          ))}
+          {disabledObjects.flatMap((d) => [
+            <Route key={`off:${d.object}`} path={`/objects/${d.object}`} element={<ModuleDisabledPage moduleId={d.module} />} />,
+            <Route key={`off:${d.object}/*`} path={`/objects/${d.object}/*`} element={<ModuleDisabledPage moduleId={d.module} />} />,
+          ])}
+          {!hasHome && objects[0] && <Route path="/" element={<Navigate to={paths.objectList(objects[0].id)} replace />} />}
           <Route path="/setup/*" element={<Navigate to="/" replace />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Layout>
     </HashRouter>
+  );
+}
+
+function SafeModeBanner() {
+  const { t } = useTranslation();
+  const exit = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("safe");
+    url.hash = url.hash.replace(/[?&]safe=[^&]*/, "").replace(/\?$/, "");
+    window.location.replace(url.toString());
+  };
+  return (
+    <div role="status" className="flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-1.5 text-xs text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+      <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
+      <span className="flex-1">{t("app.safeMode.banner")}</span>
+      <button type="button" onClick={exit} className="font-medium underline-offset-2 hover:underline">
+        {t("app.safeMode.exit")}
+      </button>
+    </div>
+  );
+}
+
+// Shown on the routes of a disabled module (admins get a shortcut to
+// Settings → Modules).
+export function ModuleDisabledPage({ moduleId }: { moduleId: string }) {
+  const { t } = useTranslation();
+  const { role } = useAuth();
+  const modules = useModuleStates();
+  const m = modules.find((x) => x.id === moduleId);
+  const name = m ? (m.nameKey ? t(m.nameKey) : m.name) : moduleId;
+  return (
+    <EmptyState
+      className="py-24"
+      icon={<PowerOff />}
+      title={t("app.moduleDisabled.title")}
+      description={role === "admin" ? t("app.moduleDisabled.hint", { name }) : t("app.moduleDisabled.hintMember", { name })}
+      action={
+        role === "admin" ? (
+          <Button variant="outline" onClick={() => (window.location.hash = `#${paths.settings("modules")}`)}>
+            {t("app.moduleDisabled.open")}
+          </Button>
+        ) : undefined
+      }
+    />
   );
 }
 

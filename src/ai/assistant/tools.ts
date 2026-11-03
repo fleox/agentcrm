@@ -1,7 +1,7 @@
 // The src/ai/tools.ts catalog → Messages API `tools` definitions. Read
 // at call time so tools appended to AI_TOOLS show up automatically.
 
-import { AI_TOOLS, type AiTool } from "../tools";
+import { listAiTools, type AiTool } from "../tools";
 import type { ApiTool } from "./types";
 
 export function toApiTool(tool: Pick<AiTool, "name" | "description" | "inputSchema">): ApiTool {
@@ -11,6 +11,6 @@ export function toApiTool(tool: Pick<AiTool, "name" | "description" | "inputSche
   return { name: tool.name, description: tool.description, input_schema: schema };
 }
 
-export function toApiTools(tools: readonly AiTool[] = AI_TOOLS): ApiTool[] {
+export function toApiTools(tools: readonly AiTool[] = listAiTools()): ApiTool[] {
   return tools.map(toApiTool);
 }

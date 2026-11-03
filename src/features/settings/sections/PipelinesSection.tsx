@@ -31,7 +31,7 @@ function pipelineObjects(objects: ObjectDef[], pipelines: Pipeline[]): ObjectDef
 
 export function PipelinesSection() {
   const { t } = useTranslation("settings");
-  const objects = useObjects();
+  const objects = useObjects({ includeHidden: true });
   const all = usePipelines();
   const canEdit = useCan("pipelines.write");
   const candidates = pipelineObjects(objects, all);

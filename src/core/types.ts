@@ -88,6 +88,9 @@ export interface ObjectDef {
   // Field id used as the record's display label.
   labelField: string;
   fields: FieldDef[];
+  // Hidden from navigation / pickers (data kept). Objects owned by a
+  // disabled module are hidden too (src/core/modules.ts `objects`).
+  hidden?: boolean;
   createdAt: number;
   updatedAt: number;
 }
@@ -241,7 +244,10 @@ export type AutomationAction =
   | { type: "updateField"; field: string; value: unknown }
   | { type: "addNote"; body: string }
   | { type: "assignOwner"; userId: string | "roundRobin" }
-  | { type: "webhook"; url: string };
+  | { type: "webhook"; url: string }
+  // Action contributed by an extension module (registerAutomationAction):
+  // `action` = its namespaced id ("sales-goals.notifyGoalReached").
+  | { type: "extension"; action: string; params?: Record<string, unknown> };
 
 export interface Automation {
   id: string;

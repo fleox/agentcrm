@@ -10,7 +10,7 @@
 // (every tool_use always gets a tool_result).
 
 import type { OpsContext } from "../../ops/context";
-import { AI_TOOLS, callTool as defaultCallTool, findTool, type AiTool } from "../tools";
+import { listAiTools, callTool as defaultCallTool, findTool, type AiTool } from "../tools";
 import { AnthropicError, isAbortError, streamMessage, type FetchLike } from "./anthropic";
 import { toApiTools } from "./tools";
 import type { ApiMessage, AssistantContentBlock, StopReason, ToolResultBlock, ToolUseBlock, Usage, UserContentBlock } from "./types";
@@ -207,7 +207,7 @@ export async function runAssistantLoop(opts: LoopOptions): Promise<LoopResult> {
         maxTokens: opts.maxTokens,
         system: opts.system,
         messages,
-        tools: toApiTools(opts.tools ?? AI_TOOLS),
+        tools: toApiTools(opts.tools ?? listAiTools()),
         signal: opts.signal,
         fetch: opts.fetch,
         onText: (delta) => emit({ type: "text", iteration, delta }),

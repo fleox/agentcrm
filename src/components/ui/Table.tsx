@@ -24,7 +24,7 @@ export function Th({ className, ...rest }: ThHTMLAttributes<HTMLTableCellElement
   return (
     <th
       className={cn(
-        "h-8 whitespace-nowrap border-b border-r border-surface-200 px-2 text-left text-xs font-medium text-surface-500 last:border-r-0 dark:border-surface-800",
+        "h-row whitespace-nowrap border-b border-r border-surface-200 px-2 text-left text-xs font-medium text-surface-500 last:border-r-0 dark:border-surface-800",
         className,
       )}
       {...rest}
@@ -33,5 +33,5 @@ export function Th({ className, ...rest }: ThHTMLAttributes<HTMLTableCellElement
 }
 
 export function Td({ className, ...rest }: TdHTMLAttributes<HTMLTableCellElement>) {
-  return <td className={cn("h-8 max-w-[320px] truncate border-b border-r border-surface-100 px-2 text-surface-800 last:border-r-0 dark:border-surface-800/70 dark:text-surface-200", className)} {...rest} />;
+  return <td className={cn("h-row max-w-[320px] truncate border-b border-r border-surface-100 px-2 text-surface-800 last:border-r-0 dark:border-surface-800/70 dark:text-surface-200", className)} {...rest} />;
 }

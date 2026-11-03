@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createFirebaseStoreWith, inviteOps, mutationOps } from "./firebase";
+import { assembleExtensionDocs, createFirebaseStoreWith, EXTENSION_CHUNKS_COLLECTION, EXTENSION_CHUNK_CHARS, inviteOps, mutationOps } from "./firebase";
 import { DELETE_FIELD, type FirebaseAuthUser } from "./firebase/api";
 import { createMemoryFirebaseApi, crmRulesModel } from "./firebase/memoryApi";
 import { snapshotFromDocs } from "./core";
@@ -145,5 +145,38 @@ describe("firebase store", () => {
     expect(store.get("activities", "a1")).toMatchObject({ title: "Hi" });
     expect(seen.has("activities")).toBe(true);
     off();
+  });
+});
+
+describe("firebase extension chunks", () => {
+  const big = (n: number) => `export default {};\n//${"x".repeat(n)}`;
+  const ext = (code: string) => ({ id: "big-ext", kind: "module", manifest: { id: "big-ext", version: "1.0.0" }, enabled: true, files: { "bundle.js": code }, installedAt: 1, updatedAt: 1 });
+
+  it("splits large bundles over extensionChunks and reassembles them", async () => {
+    const { api, store } = setup();
+    await store.identity();
+    await store.ready();
+    const code = big(EXTENSION_CHUNK_CHARS * 2 + 10);
+    await store.write([{ op: "set", collection: "extensions", doc: ext(code) }]);
+    expect(api.db.get("extensions", "big-ext")).toMatchObject({ files: {}, chunks: { "bundle.js": 3 } });
+    expect(api.db.get(EXTENSION_CHUNKS_COLLECTION, "big-ext__bundle.js__2")).toMatchObject({ ext: "big-ext", file: "bundle.js", index: 2 });
+    // A fresh client sees the whole bundle.
+    const other = createFirebaseStoreWith({ api, now: () => 1000 });
+    await other.identity();
+    await other.ready();
+    expect((other.get("extensions", "big-ext")?.files as Record<string, string>)["bundle.js"]).toBe(code);
+    // A smaller upgrade drops the unused chunks; delete drops them all.
+    await store.write([{ op: "set", collection: "extensions", doc: ext(big(EXTENSION_CHUNK_CHARS + 5)) }]);
+    expect(api.db.get(EXTENSION_CHUNKS_COLLECTION, "big-ext__bundle.js__2")).toBeUndefined();
+    expect(api.db.get(EXTENSION_CHUNKS_COLLECTION, "big-ext__bundle.js__1")).toBeTruthy();
+    await store.write([{ op: "delete", collection: "extensions", id: "big-ext" }]);
+    expect(api.db.get(EXTENSION_CHUNKS_COLLECTION, "big-ext__bundle.js__0")).toBeUndefined();
+  });
+
+  it("keeps small bundles inline and skips incomplete chunk sets", () => {
+    const ops = mutationOps([{ op: "set", collection: "extensions", doc: ext("export default {};") }], snapshotFromDocs({}));
+    expect(ops).toHaveLength(1);
+    const docs = assembleExtensionDocs([{ id: "e", data: { chunks: { "bundle.js": 2 }, files: {} } }], [{ id: "e__bundle.js__0", data: { ext: "e", file: "bundle.js", index: 0, data: "a" } }]);
+    expect(docs[0].data).toEqual({ files: {} });
   });
 });

@@ -8,7 +8,7 @@ import { useTranslation } from "react-i18next";
 import { AlertTriangle, Database, Download, GitBranch, Settings, SlidersHorizontal, Upload, Users, type LucideIcon } from "lucide-react";
 import { PageHeader, Tabs } from "../../components/ui";
 import { useAuth } from "../../app/AuthContext";
-import { getSlot } from "../../app/featureRegistry";
+import { useModuleEnabled, useSlot } from "../../app/featureRegistry";
 import { paths } from "../../app/paths";
 import type { UserRole } from "../../core/types";
 import { cn } from "../../shared/lib/utils";
@@ -28,11 +28,11 @@ interface NavEntry {
   group: "workspace" | "data" | "extra" | "danger";
 }
 
-const BUILT_IN: (Omit<NavEntry, "label"> & { labelKey: string; roles?: UserRole[] })[] = [
+const BUILT_IN: (Omit<NavEntry, "label"> & { labelKey: string; roles?: UserRole[]; module?: string })[] = [
   { id: "general", labelKey: "nav.general", icon: SlidersHorizontal, component: GeneralSection, group: "workspace" },
   { id: "users", labelKey: "nav.users", icon: Users, component: UsersSection, group: "workspace" },
   { id: "data-model", labelKey: "nav.dataModel", icon: Database, component: DataModelSection, group: "data" },
-  { id: "pipelines", labelKey: "nav.pipelines", icon: GitBranch, component: PipelinesSection, group: "data" },
+  { id: "pipelines", labelKey: "nav.pipelines", icon: GitBranch, component: PipelinesSection, group: "data", module: "deals" },
   { id: "import", labelKey: "nav.import", icon: Upload, component: ImportSection, group: "data" },
   { id: "export", labelKey: "nav.export", icon: Download, component: ExportSection, group: "data" },
   { id: "danger", labelKey: "nav.danger", icon: AlertTriangle, component: DangerZoneSection, group: "danger", roles: ["admin"] },
@@ -44,13 +44,15 @@ export function SettingsPage() {
   const { section = "general" } = useParams();
   const navigate = useNavigate();
   const { role } = useAuth();
+  const dealsOn = useModuleEnabled("deals");
 
-  const builtIn: NavEntry[] = BUILT_IN.filter((s) => !s.roles || s.roles.includes(role)).map((s) => ({ id: s.id, label: t(s.labelKey), icon: s.icon, component: s.component, group: s.group }));
-  const extra: NavEntry[] = getSlot("settingsSections")
+  const builtIn: NavEntry[] = BUILT_IN.filter((s) => (!s.roles || s.roles.includes(role)) && (s.module !== "deals" || dealsOn)).map((s) => ({ id: s.id, label: t(s.labelKey), icon: s.icon, component: s.component, group: s.group }));
+  const extra: NavEntry[] = useSlot("settingsSections")
     .filter((s) => !s.roles || s.roles.includes(role))
     .filter((s) => !builtIn.some((b) => b.id === s.id))
-    .map((s) => ({ id: s.id, label: tc(s.label), icon: s.icon, component: s.component, group: "extra" as const }));
+    .map((s) => ({ id: s.id, label: tc(s.label), icon: s.icon, component: s.component, group: s.group ?? ("extra" as const) }));
   const entries = [...builtIn.filter((e) => e.group !== "danger"), ...extra, ...builtIn.filter((e) => e.group === "danger")];
+  // Keep the group order (workspace, data, more, danger) for the top tabs too.
   const active = entries.find((e) => e.id === section) ?? entries[0];
   const Active = active.component;
   const go = (id: string) => navigate(paths.settings(id === "general" ? undefined : id));

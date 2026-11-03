@@ -7,6 +7,7 @@
 //   settingsSections → Settings → AI assistant (API key, model, max tokens)
 import { Sparkles } from "lucide-react";
 import type { Feature } from "../types";
+import { moduleMeta } from "../../core/modules";
 import en from "./i18n/en.json";
 import fr from "./i18n/fr.json";
 import { AssistantPanel } from "./AssistantPanel";
@@ -16,6 +17,7 @@ import { askAssistant } from "./events";
 
 const feature: Feature = {
   id: "assistant",
+  module: moduleMeta("assistant"),
   routes: [],
   i18n: { en, fr },
   slots: {

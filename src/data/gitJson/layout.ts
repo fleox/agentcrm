@@ -9,6 +9,7 @@
 //   forms/<id>.json   users/<id>.json   settings/<id>.json
 //   config/<id>.json                 secrets stripped (kept per browser)
 //   automationRuns/<id>.json
+//   extensions/<id>.json             installed extension (manifest + bundle source)
 //
 // Ids are URI-encoded in file names (a git-json user id looks like
 // "github:octocat" — colons are not portable file names).

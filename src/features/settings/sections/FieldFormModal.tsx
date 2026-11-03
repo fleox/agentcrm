@@ -39,7 +39,7 @@ export function FieldFormModal({ object, field, onClose, readOnly }: { object: O
   const { t } = useTranslation("settings");
   const { t: tc } = useTranslation();
   const ops = useOps();
-  const objects = useObjects();
+  const objects = useObjects({ includeHidden: true });
   const pipelines = usePipelines(object.id);
   const records = useRecords(object.id, { includeDeleted: true });
   const managed = !!field && isPipelineManagedField(pipelines, object.id, field.id);

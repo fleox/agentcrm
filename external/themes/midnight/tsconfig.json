@@ -1,0 +1,5 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "paths": { "@agent-crm/runtime": ["../../../types/agentcrm-runtime.d.ts"] } },
+  "include": ["src"]
+}

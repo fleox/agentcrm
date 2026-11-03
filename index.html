@@ -10,14 +10,79 @@
     <meta name="robots" content="noindex, nofollow, noarchive" />
     <meta name="googlebot" content="noindex, nofollow, noarchive" />
     <title>AgentCRM</title>
+    <!-- External extensions (src/extensions/) import these bare specifiers;
+         the stubs re-export the admin's own instances (one React). Must stay
+         before any module script. Kept in sync by src/extensions/runtime.test.ts. -->
+    <script type="importmap">
+      {
+        "imports": {
+          "react": "./runtime/react.js",
+          "react/jsx-runtime": "./runtime/react-jsx-runtime.js",
+          "react-dom": "./runtime/react-dom.js",
+          "react-dom/client": "./runtime/react-dom-client.js",
+          "react-i18next": "./runtime/react-i18next.js",
+          "lucide-react": "./runtime/lucide-react.js",
+          "@agent-crm/runtime": "./runtime/agentcrm-runtime.js"
+        }
+      }
+    </script>
     <script>
-      // Anti-FOUC: apply the saved theme synchronously, before React renders.
+      // Anti-FOUC: apply the workspace appearance cached by the last visit
+      // (localStorage "agentcrm.appearance", written by
+      // src/appearance/apply.ts — same steps as applyAppearanceCache) and the
+      // light / dark mode synchronously, before React renders.
       (function () {
+        var d = document,
+          root = d.documentElement,
+          cache = null;
+        try {
+          var raw = localStorage.getItem("agentcrm.appearance");
+          cache = raw ? JSON.parse(raw) : null;
+          if (!cache || cache.v !== 1) cache = null;
+        } catch (e) {}
+        function style(id, css) {
+          if (!css) return;
+          var el = d.createElement("style");
+          el.id = id;
+          el.textContent = css;
+          d.head.appendChild(el);
+        }
+        if (cache) {
+          try {
+            style("agentcrm-appearance", cache.css);
+            for (var k in cache.attrs) root.setAttribute(k, cache.attrs[k]);
+            if (cache.fontHref) {
+              var link = d.createElement("link");
+              link.id = "agentcrm-font";
+              link.rel = "stylesheet";
+              link.href = cache.fontHref;
+              d.head.appendChild(link);
+            }
+            style("agentcrm-theme-css", cache.themeCss);
+            style("agentcrm-custom-css", cache.customCss);
+            // Theme / custom CSS must come after the app stylesheet (parsed later).
+            d.addEventListener("DOMContentLoaded", function () {
+              ["agentcrm-theme-css", "agentcrm-custom-css"].forEach(function (id) {
+                var el = d.getElementById(id);
+                if (el) d.head.appendChild(el);
+              });
+            });
+            if (cache.favicon) {
+              var icon = d.querySelector('link[rel="icon"]');
+              if (icon) {
+                icon.setAttribute("data-default-href", icon.getAttribute("href") || "");
+                icon.removeAttribute("type");
+                icon.setAttribute("href", cache.favicon);
+              }
+            }
+          } catch (e) {}
+        }
         try {
           var stored = localStorage.getItem("agentcrm.theme");
+          var mode = cache && cache.defaultMode;
           var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-          var theme = stored === "dark" || stored === "light" ? stored : prefersDark ? "dark" : "light";
-          if (theme === "dark") document.documentElement.classList.add("dark");
+          var theme = stored === "dark" || stored === "light" ? stored : mode === "dark" || mode === "light" ? mode : prefersDark ? "dark" : "light";
+          if (theme === "dark") root.classList.add("dark");
         } catch (e) {}
       })();
     </script>
@@ -44,7 +109,7 @@
         width: 32px;
         height: 32px;
         border: 3px solid rgba(113, 113, 122, 0.25);
-        border-top-color: #3366ff;
+        border-top-color: rgb(var(--acc-500, 51 102 255));
         border-radius: 50%;
         animation: agentcrm-boot-spin 0.85s linear infinite;
       }

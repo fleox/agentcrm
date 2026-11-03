@@ -68,12 +68,12 @@ export function Card({ title, actions, children, className, padded = true, ...re
   return (
     <section className={cn("rounded-lg border border-surface-200 bg-white shadow-card dark:border-surface-800 dark:bg-surface-900", className)} {...rest}>
       {(title || actions) && (
-        <header className="flex items-center justify-between gap-2 border-b border-surface-100 px-4 py-2.5 dark:border-surface-800">
+        <header className="flex items-center justify-between gap-2 border-b border-surface-100 px-card py-card-head dark:border-surface-800">
           <h3 className="truncate text-sm font-semibold text-surface-900 dark:text-white">{title}</h3>
           {actions && <div className="flex items-center gap-1">{actions}</div>}
         </header>
       )}
-      <div className={cn(padded && "p-4")}>{children}</div>
+      <div className={cn(padded && "p-card")}>{children}</div>
     </section>
   );
 }
@@ -84,7 +84,7 @@ export function Kbd({ children }: { children: ReactNode }) {
 
 export function PageHeader({ title, icon, description, actions, children }: { title: ReactNode; icon?: ReactNode; description?: ReactNode; actions?: ReactNode; children?: ReactNode }) {
   return (
-    <div className="border-b border-surface-200 bg-white px-6 py-3 dark:border-surface-800 dark:bg-surface-950">
+    <div className="border-b border-surface-200 bg-white px-6 py-page dark:border-surface-800 dark:bg-surface-950">
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
           {icon && <span className="text-surface-500 [&>svg]:h-4 [&>svg]:w-4">{icon}</span>}

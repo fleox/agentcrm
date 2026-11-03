@@ -15,7 +15,19 @@
     "emptyTitle": "Ce CRM est vide",
     "emptyHint": "Créez les objets standard (entreprises, personnes, affaires) et le pipeline Ventes — avec ou sans données de démonstration.",
     "installDemo": "Installer avec des données de démo",
-    "installEmpty": "Installer à vide"
+    "installEmpty": "Installer à vide",
+    "moduleDisabled": {
+      "title": "Ce module est désactivé",
+      "hint": "« {{name}} » est désactivé pour cet espace. Ses données sont conservées — réactivez-le dans Paramètres → Modules.",
+      "hintMember": "« {{name}} » est désactivé pour cet espace. Demandez à un administrateur de l'activer.",
+      "open": "Ouvrir Paramètres → Modules"
+    },
+    "safeMode": {
+      "banner": "Mode sans échec : les extensions externes ne sont pas chargées.",
+      "exit": "Quitter le mode sans échec"
+    },
+    "extensionErrors_one": "{{count}} extension n'a pas pu être chargée : {{list}}",
+    "extensionErrors_other": "{{count}} extensions n'ont pas pu être chargées : {{list}}"
   },
   "nav": {
     "dashboard": "Tableau de bord",

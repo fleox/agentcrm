@@ -44,7 +44,7 @@ export async function updateSettings(ctx: OpsContext, patch: Partial<Omit<CrmSet
   return getSettings(ctx);
 }
 
-function assertNoSecrets(value: unknown, path = ""): void {
+export function assertNoSecrets(value: unknown, path = ""): void {
   if (!value || typeof value !== "object") return;
   for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
     if (SECRET_SETTING_KEYS.has(k) && v !== "" && v != null) {

@@ -4,41 +4,75 @@ export default {
   darkMode: "class",
   theme: {
     extend: {
+      // Appearance (v0.2): every themable token reads a CSS variable set by
+      // src/appearance/ (defaults in src/index.css — identical to the
+      // pre-v0.2 palette). Variables hold "r g b" triplets so opacity
+      // modifiers (bg-accent-500/20) keep working.
       fontFamily: {
-        sans: ["Inter", "ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],
+        sans: ["var(--font-sans)"],
         mono: ["ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
       },
       fontSize: {
         "2xs": ["0.6875rem", { lineHeight: "1rem" }],
       },
       colors: {
-        // Neutral surface scale (Twenty-like grays).
+        // Neutral surface scale (Twenty-like grays; workspace "neutral").
         surface: {
-          50: "#fafafa",
-          100: "#f4f4f5",
-          200: "#e4e4e7",
-          300: "#d4d4d8",
-          400: "#a1a1aa",
-          500: "#71717a",
-          600: "#52525b",
-          700: "#3f3f46",
-          800: "#27272a",
-          850: "#1f1f22",
-          900: "#18181b",
-          950: "#0f0f11",
+          50: "rgb(var(--srf-50) / <alpha-value>)",
+          100: "rgb(var(--srf-100) / <alpha-value>)",
+          200: "rgb(var(--srf-200) / <alpha-value>)",
+          300: "rgb(var(--srf-300) / <alpha-value>)",
+          400: "rgb(var(--srf-400) / <alpha-value>)",
+          500: "rgb(var(--srf-500) / <alpha-value>)",
+          600: "rgb(var(--srf-600) / <alpha-value>)",
+          700: "rgb(var(--srf-700) / <alpha-value>)",
+          800: "rgb(var(--srf-800) / <alpha-value>)",
+          850: "rgb(var(--srf-850) / <alpha-value>)",
+          900: "rgb(var(--srf-900) / <alpha-value>)",
+          950: "rgb(var(--srf-950) / <alpha-value>)",
         },
+        // Accent scale generated from the workspace accent color (OKLCH).
         accent: {
-          50: "#eef4ff",
-          100: "#dae6ff",
-          200: "#bcd2ff",
-          300: "#8eb4ff",
-          400: "#598bff",
-          500: "#3366ff",
-          600: "#1f4ef5",
-          700: "#173ce1",
-          800: "#1a33b6",
-          900: "#1b318f",
+          50: "rgb(var(--acc-50) / <alpha-value>)",
+          100: "rgb(var(--acc-100) / <alpha-value>)",
+          200: "rgb(var(--acc-200) / <alpha-value>)",
+          300: "rgb(var(--acc-300) / <alpha-value>)",
+          400: "rgb(var(--acc-400) / <alpha-value>)",
+          500: "rgb(var(--acc-500) / <alpha-value>)",
+          600: "rgb(var(--acc-600) / <alpha-value>)",
+          700: "rgb(var(--acc-700) / <alpha-value>)",
+          800: "rgb(var(--acc-800) / <alpha-value>)",
+          900: "rgb(var(--acc-900) / <alpha-value>)",
+          950: "rgb(var(--acc-950) / <alpha-value>)",
         },
+        // Primary buttons (neutral near-black / white, or accent).
+        primary: {
+          DEFAULT: "rgb(var(--primary) / <alpha-value>)",
+          hover: "rgb(var(--primary-hover) / <alpha-value>)",
+          fg: "rgb(var(--primary-fg) / <alpha-value>)",
+        },
+      },
+      // Workspace radius: Tailwind's default radii × --radius-scale.
+      borderRadius: {
+        none: "0px",
+        sm: "calc(0.125rem * var(--radius-scale))",
+        DEFAULT: "calc(0.25rem * var(--radius-scale))",
+        md: "calc(0.375rem * var(--radius-scale))",
+        lg: "calc(0.5rem * var(--radius-scale))",
+        xl: "calc(0.75rem * var(--radius-scale))",
+        "2xl": "calc(1rem * var(--radius-scale))",
+        "3xl": "calc(1.5rem * var(--radius-scale))",
+        full: "9999px",
+      },
+      // Density: table rows, controls, card paddings.
+      height: {
+        row: "var(--row-h)",
+        ctl: "var(--ctl-h)",
+      },
+      padding: {
+        card: "var(--card-pad)",
+        "card-head": "var(--card-head-py)",
+        page: "var(--page-py)",
       },
       boxShadow: {
         card: "0 1px 2px 0 rgb(0 0 0 / 0.04), 0 1px 3px 0 rgb(0 0 0 / 0.05)",

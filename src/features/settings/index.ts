@@ -4,15 +4,20 @@
 import { createElement } from "react";
 import { Settings } from "lucide-react";
 import type { Feature } from "../types";
+import { moduleMeta } from "../../core/modules";
 import en from "./i18n/en.json";
 import fr from "./i18n/fr.json";
 import { SettingsPage } from "./SettingsPage";
 
 const feature: Feature = {
   id: "settings",
+  module: moduleMeta("settings"),
   routes: [
     { path: "/settings", element: createElement(SettingsPage) },
     { path: "/settings/:section", element: createElement(SettingsPage) },
+    // Sub-pages of a section (Settings → Modules → <module>): the section
+    // reads useParams().sub.
+    { path: "/settings/:section/:sub", element: createElement(SettingsPage) },
   ],
   navItems: [{ id: "settings", label: "settings:nav.title", icon: Settings, to: "/settings", section: "bottom", order: 100 }],
   i18n: { en, fr },

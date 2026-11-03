@@ -18,3 +18,6 @@ export * from "./seed";
 export * from "./compact";
 export * from "./automations";
 export * from "./forms";
+export * from "./modules";
+export * from "./extensions";
+export * from "./appearance";

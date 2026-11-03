@@ -26,7 +26,7 @@ function ObjectsList({ onOpen }: { onOpen(id: string): void }) {
   const { t } = useTranslation("settings");
   const { t: tc } = useTranslation();
   const ops = useOps();
-  const objects = useObjects();
+  const objects = useObjects({ includeHidden: true });
   const records = useRecords(undefined);
   const pipelines = usePipelines();
   const canEdit = useCan("schema.write");

@@ -15,7 +15,19 @@
     "emptyTitle": "This CRM is empty",
     "emptyHint": "Create the standard objects (companies, people, deals) and the Sales pipeline — with or without demo data.",
     "installDemo": "Install with demo data",
-    "installEmpty": "Install empty"
+    "installEmpty": "Install empty",
+    "moduleDisabled": {
+      "title": "This module is disabled",
+      "hint": "“{{name}}” is switched off for this workspace. Its data is kept — enable it again in Settings → Modules.",
+      "hintMember": "“{{name}}” is switched off for this workspace. Ask an admin to enable it.",
+      "open": "Open Settings → Modules"
+    },
+    "safeMode": {
+      "banner": "Safe mode: external extensions are not loaded.",
+      "exit": "Leave safe mode"
+    },
+    "extensionErrors_one": "{{count}} extension failed to load: {{list}}",
+    "extensionErrors_other": "{{count}} extensions failed to load: {{list}}"
   },
   "nav": {
     "dashboard": "Dashboard",

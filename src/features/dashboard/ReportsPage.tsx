@@ -8,6 +8,7 @@ import { BarChart3, Download } from "lucide-react";
 import { Button, Card, EmptyState, Input, PageHeader, Select, downloadCsv, fileStamp, toCsv } from "../../components/ui";
 import { ACTIVITY_TYPES, type CrmRecord, type ObjectDef } from "../../core/types";
 import { useActivities, useCan, useCollection, useOps, usePipelines, useSettings, useUsers } from "../../app/CrmDataContext";
+import { useModuleEnabled } from "../../app/featureRegistry";
 import { forecast } from "../../ops/pipelines";
 import { activityByUser, conversion, leadSources, pipelineByStage, staleDeals, wonLost } from "../../ops/reports";
 import {
@@ -107,7 +108,10 @@ export function ReportsPage() {
   const settings = useSettings();
   const records = useCollection<CrmRecord>("records");
   const activities = useActivities();
-  const pipelines = usePipelines();
+  // Deals & pipelines module off → no pipeline reports.
+  const dealsOn = useModuleEnabled("deals");
+  const allPipelines = usePipelines();
+  const pipelines = useMemo(() => (dealsOn ? allPipelines : []), [dealsOn, allPipelines]);
   const users = useUsers({ includeDisabled: true });
   const objects = useCollection<ObjectDef>("objects");
   const money = useMemo(() => moneyFormatter(settings.defaultCurrency), [settings.defaultCurrency]);
@@ -141,11 +145,11 @@ export function ReportsPage() {
     const sources = (safe(() => leadSources(ops, { since: range.since }))?.sources ?? []).map((s) => ({ ...s, label: s.id ? s.label : t("unknown"), color: leadField?.options?.find((o) => o.id === s.id)?.color }));
     const funnel = safe(() => conversion(ops, { since: range.since }))?.stages ?? [];
     const lifecycleColors = Object.fromEntries((lifecycleField?.options ?? []).map((o) => [o.id, o.color]));
-    const stale = safe(() => staleDeals(ops, pipelineId ? { pipelineId } : {}));
+    const stale = dealsOn ? safe(() => staleDeals(ops, pipelineId ? { pipelineId } : {})) : null;
     return { range, byStage, fc, wlMonths, wlTotals, winRate, activity, days, sources, funnel, lifecycleColors, stale };
     // Collections are the recompute keys: ops reads the same store.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ops, canRead, preset, from, to, pipelineId, records, activities, pipelines, users, objects, settings, t]);
+  }, [ops, canRead, preset, from, to, pipelineId, records, activities, pipelines, users, objects, settings, t, dealsOn]);
 
   const userMap = useMemo(() => new Map(users.map((u) => [u.id, u])), [users]);
   const objectOfRecord = useMemo(() => {
@@ -206,7 +210,7 @@ export function ReportsPage() {
       </PageHeader>
 
       <div className="grid grid-cols-1 gap-4 p-4 sm:p-6 lg:grid-cols-2">
-        {!pipeline && (
+        {!pipeline && dealsOn && (
           <Card className="lg:col-span-2">
             <EmptyState icon={<BarChart3 />} title={t("noPipeline")} description={t("noPipelineHint")} />
           </Card>

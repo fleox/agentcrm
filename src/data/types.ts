@@ -17,7 +17,9 @@ export type CollectionName =
   | "users"
   | "settings"
   | "config"
-  | "automationRuns";
+  | "automationRuns"
+  // Installed external extensions (src/ops/extensions.ts).
+  | "extensions";
 
 export const COLLECTIONS: readonly CollectionName[] = [
   "objects",
@@ -31,6 +33,7 @@ export const COLLECTIONS: readonly CollectionName[] = [
   "settings",
   "config",
   "automationRuns",
+  "extensions",
 ];
 
 export function isCollectionName(value: unknown): value is CollectionName {

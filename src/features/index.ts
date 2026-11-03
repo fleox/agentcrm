@@ -11,7 +11,10 @@ import integrations from "./integrations";
 import assistant from "./assistant";
 import settings from "./settings";
 import setup from "./setup";
+import reports from "./reports";
+import deals from "./deals";
+import customize from "./customize";
 
-export const FEATURES: Feature[] = [dashboard, tasks, records, search, automations, forms, integrations, assistant, settings, setup];
+export const FEATURES: Feature[] = [dashboard, tasks, records, deals, reports, search, automations, forms, integrations, assistant, customize, settings, setup];
 
 export type { Feature } from "./types";

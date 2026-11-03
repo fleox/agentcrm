@@ -1,0 +1,8 @@
+/* Midnight theme — extra CSS while the theme is selected. Prefer the CSS
+   variables of the appearance engine (--acc-*, --srf-* as "r g b"). */
+html.dark body {
+  background-image: radial-gradient(1200px 600px at 100% -10%, rgb(var(--acc-500) / 0.08), transparent 60%);
+}
+::selection {
+  background: rgb(var(--acc-500) / 0.35);
+}

@@ -13,7 +13,7 @@ export function TemplatesPage() {
   const { t } = useTranslation("automations");
   const ops = useOps();
   const navigate = useNavigate();
-  const objects = useObjects();
+  const objects = useObjects({ includeHidden: true });
   const pipelines = usePipelines();
   const users = useUsers();
   const canWrite = useCan("automations.write");

@@ -91,3 +91,61 @@ describe("App shell", () => {
     act(() => root.unmount());
   });
 });
+
+describe("App shell × modules", () => {
+  it("hides disabled modules live and shows the module-disabled page on their routes", async () => {
+    const config = { backend: "local" } as RuntimeConfig;
+    setRuntimeConfigOverride(config);
+    const store = createMemoryStore();
+    await store.ready();
+    const system = createOpsContext(store, null);
+    await seedCrm(system, { admin: { name: "Ada Admin", email: "ada@example.com" }, demo: true, name: "Modules CRM" });
+    setDataStore(store, config);
+    const { root } = mount();
+    await waitFor(() => !!document.body.textContent?.includes("Pipeline by stage"));
+    const nav = () => [...document.querySelectorAll("aside nav a")].map((a) => a.textContent);
+    expect(nav()).toContain("Deals");
+    expect(nav()).toContain("Reports");
+
+    const { setModuleEnabled } = await import("../ops/modules");
+    await act(async () => {
+      await setModuleEnabled(system, "deals", false);
+      await setModuleEnabled(system, "reports", false);
+    });
+    await waitFor(() => !nav().includes("Deals") && !nav().includes("Reports"));
+    expect(document.body.textContent).not.toContain("Pipeline by stage");
+
+    go("#/reports");
+    await waitFor(() => !!document.body.textContent?.includes("This module is disabled"));
+    expect(document.body.textContent).toContain("Open Settings → Modules");
+    go("#/objects/deals");
+    await waitFor(() => !!document.body.textContent?.includes("“Deals & pipelines” is switched off"));
+    // Disabled dashboard: "/" goes to the first object.
+    await act(async () => {
+      await setModuleEnabled(system, "dashboard", false);
+    });
+    go("#/");
+    await waitFor(() => window.location.hash === "#/objects/companies");
+    act(() => root.unmount());
+  });
+
+  it("applies the workspace appearance and shows the logo", async () => {
+    const config = { backend: "local" } as RuntimeConfig;
+    setRuntimeConfigOverride(config);
+    const store = createMemoryStore();
+    await store.ready();
+    const system = createOpsContext(store, null);
+    await seedCrm(system, { admin: { name: "Ada Admin", email: "ada@example.com" }, demo: false, name: "Look CRM" });
+    setDataStore(store, config);
+    const { applyPreset, setLogo } = await import("../ops/appearance");
+    await applyPreset(system, "forest");
+    await setLogo(system, "data:image/png;base64,iVBORw0KGgo=");
+    const { root } = mount();
+    await waitFor(() => !!document.querySelector("[data-testid=workspace-logo]"));
+    expect(document.documentElement.getAttribute("data-sidebar")).toBe("dark");
+    expect(document.getElementById("agentcrm-appearance")?.textContent).toContain("--acc-500:22 163 74");
+    expect(JSON.parse(localStorage.getItem("agentcrm.appearance")!)).toMatchObject({ v: 1, attrs: { "data-sidebar": "dark" } });
+    expect(document.querySelector("aside")?.getAttribute("data-sidebar")).toBe("dark");
+    act(() => root.unmount());
+  });
+});

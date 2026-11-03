@@ -1,4 +1,5 @@
 // Human-readable summaries of triggers and actions (translated).
+import { getAutomationAction } from "../../ops/automations/extensionActions";
 import { useTranslation } from "react-i18next";
 import { formatFieldValue } from "../../core/fields";
 import { resolveField } from "../../core/query";
@@ -57,6 +58,10 @@ export function useAutomationLabels(objects: ObjectDef[], pipelines: Pipeline[],
         return action.userId === "roundRobin" ? t("actions.summary.roundRobin") : t("actions.summary.assignOwner", { user: users.find((u) => u.id === action.userId)?.name ?? action.userId });
       case "webhook":
         return t("actions.summary.webhook", { url: action.url.replace(/^https?:\/\//, "").slice(0, 40) });
+      case "extension": {
+        const def = getAutomationAction(action.action);
+        return def ? t(def.label) : action.action;
+      }
     }
   };
 

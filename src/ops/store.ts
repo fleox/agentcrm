@@ -3,6 +3,7 @@
 import type { Activity, Automation, AutomationRun, CrmRecord, CrmSettings, CrmUser, LeadForm, ObjectDef, Pipeline, ViewDef } from "../core/types";
 import type { DataStore, StoredDoc } from "../data/types";
 import { OpsError } from "./context";
+import type { ExtensionDoc } from "../extensions/types";
 
 export const asDoc = <T extends { id: string }>(value: T): StoredDoc => value as unknown as StoredDoc;
 
@@ -92,4 +93,12 @@ export function automationRunsOf(store: DataStore): AutomationRun[] {
 // Deep, mutable copy of a frozen stored doc.
 export function thaw<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
+}
+
+export function extensionDocsOf(store: DataStore): ExtensionDoc[] {
+  return store.list("extensions") as unknown as ExtensionDoc[];
+}
+
+export function extensionDocOf(store: DataStore, id: string): ExtensionDoc | undefined {
+  return store.get("extensions", id) as unknown as ExtensionDoc | undefined;
 }

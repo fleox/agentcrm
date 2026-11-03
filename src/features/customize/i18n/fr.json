@@ -1,0 +1,232 @@
+{
+  "sections": {
+    "modules": "Modules",
+    "appearance": "Apparence"
+  },
+  "readOnly": "Seuls les administrateurs peuvent modifier ceci. Vous voyez les réglages actuels de l'espace.",
+  "modules": {
+    "title": "Modules",
+    "description": "Activez ou désactivez des fonctionnalités pour tout l'espace. Désactiver un module masque ses pages, sa navigation et ses widgets — ses données sont conservées.",
+    "tabs": {
+      "modules": "Modules",
+      "extensions": "Extensions installées"
+    },
+    "categories": {
+      "core": "Socle",
+      "sales": "Ventes",
+      "productivity": "Productivité",
+      "automation": "Automatisation",
+      "integrations": "Intégrations",
+      "ai": "IA",
+      "customisation": "Personnalisation"
+    },
+    "required": "Obligatoire",
+    "extension": "Extension",
+    "requires": "Nécessite {{list}}",
+    "usedBy": "Utilisé par {{list}}",
+    "missing": "Nécessite {{list}} — activez-le d'abord.",
+    "settings": "Réglages",
+    "enable": "Activer {{name}}",
+    "disable": "Désactiver {{name}}",
+    "enabled": "« {{name}} » activé.",
+    "disabled": "« {{name}} » désactivé — ses données sont conservées.",
+    "cascadeDisableTitle": "Désactiver aussi les modules dépendants ?",
+    "cascadeDisableBody": "{{list}} dépendent de « {{name}} ». Ils seront aussi désactivés.",
+    "cascadeEnableTitle": "Activer aussi les modules requis ?",
+    "cascadeEnableBody": "« {{name}} » nécessite {{list}}. Ils seront aussi activés.",
+    "cascadeConfirm": "Continuer",
+    "incompatible": "Cette version cible une API non prise en charge — installez une mise à jour.",
+    "docs": "Créer votre propre module",
+    "docsHint": "Les modules sont des paquets ZIP construits avec l'API runtime d'AgentCRM — voir le guide.",
+    "back": "Tous les modules",
+    "noSettings": "Ce module n'a pas de page de réglages.",
+    "notLoaded": "Ce module n'est pas chargé (désactivé, mode sans échec ou échec du chargement).",
+    "catalog": {
+      "records": {
+        "name": "Fiches",
+        "description": "Objets, fiches, vues tableau et kanban, pages de fiche."
+      },
+      "search": {
+        "name": "Recherche",
+        "description": "Palette de commandes ⌘K sur les fiches et la navigation."
+      },
+      "settings": {
+        "name": "Paramètres",
+        "description": "Réglages de l'espace, modèle de données, utilisateurs, import et export."
+      },
+      "setup": {
+        "name": "Installation et accès",
+        "description": "Assistant d'installation, connexion, stockage des données, hébergement de l'admin et sécurité."
+      },
+      "dashboard": {
+        "name": "Tableau de bord",
+        "description": "Accueil avec indicateurs, graphiques et widgets."
+      },
+      "deals": {
+        "name": "Affaires et pipelines",
+        "description": "L'objet affaires, les pipelines, le kanban, les rapports de pipeline et les widgets du tableau de bord."
+      },
+      "reports": {
+        "name": "Rapports",
+        "description": "Rapports pipeline, prévisions, gagnées / perdues, activité et sources de leads, avec export CSV."
+      },
+      "forms": {
+        "name": "Formulaires de leads",
+        "description": "Formulaires statiques de capture de leads et ingestion de la boîte de réception."
+      },
+      "tasks": {
+        "name": "Tâches",
+        "description": "La page des tâches et les fenêtres de tâche."
+      },
+      "automations": {
+        "name": "Automatisations",
+        "description": "Workflows déclencheur → conditions → actions et leur historique."
+      },
+      "integrations": {
+        "name": "E-mail et agenda",
+        "description": "Synchronisation Gmail, Google Agenda et Outlook via OAuth dans le navigateur."
+      },
+      "assistant": {
+        "name": "Assistant IA",
+        "description": "Panneau de discussion qui pilote le CRM avec votre propre clé API Claude."
+      },
+      "customize": {
+        "name": "Personnalisation",
+        "description": "Modules, extensions et apparence."
+      }
+    }
+  },
+  "extensions": {
+    "title": "Extensions installées",
+    "description": "Modules et thèmes externes, stockés dans les données de votre espace (chiffrés avec elles) et chargés dans chaque admin.",
+    "drop": "Déposez le ZIP d'une extension ici, ou cliquez pour choisir un fichier",
+    "dropHint": "manifest.json + bundle.js (+ style.css) · 4 Mo maximum",
+    "reading": "Lecture du paquet…",
+    "empty": "Aucune extension installée.",
+    "kind": {
+      "module": "Module",
+      "theme": "Thème"
+    },
+    "status": {
+      "loaded": "Actif",
+      "error": "Échec du chargement",
+      "disabled": "Désactivé",
+      "skipped": "Ignoré (mode sans échec)",
+      "incompatible": "Incompatible",
+      "pending": "Pas encore chargé"
+    },
+    "by": "par {{author}}",
+    "installedOn": "Installé le {{date}}",
+    "upgradedFrom": "Mis à jour depuis {{version}}",
+    "export": "Exporter le ZIP",
+    "uninstall": "Désinstaller",
+    "uninstallTitle": "Désinstaller « {{name}} » ?",
+    "uninstallBody": "Son code est retiré de l'espace pour tout le monde. Les données qu'il a créées et ses réglages sont conservés.",
+    "uninstalled": "« {{name}} » désinstallé.",
+    "enabledToast": "« {{name}} » activé.",
+    "disabledToast": "« {{name}} » désactivé.",
+    "safeMode": "Le mode sans échec est actif : les extensions ne sont pas chargées dans cet onglet.",
+    "install": {
+      "title": "Installer une extension",
+      "upgradeTitle": "Mettre à jour une extension",
+      "id": "Identifiant",
+      "version": "Version",
+      "kind": "Type",
+      "author": "Auteur",
+      "homepage": "Site",
+      "api": "Version de l'API",
+      "size": "Taille",
+      "dependsOn": "Nécessite",
+      "upgrade": "Mise à jour {{from}} → {{to}}",
+      "reinstall": "Réinstaller {{version}}",
+      "warningTitle": "Ce code s'exécutera avec vos droits",
+      "warning": "Une extension peut lire et modifier toutes les fiches de cet espace, pour chaque utilisateur qui ouvre l'admin. N'installez que des paquets de personnes de confiance.",
+      "trust": "Je fais confiance à l'auteur de « {{name}} »",
+      "confirm": "Installer",
+      "confirmUpgrade": "Mettre à jour",
+      "done": "« {{name}} » {{version}} installé.",
+      "upgraded": "« {{name}} » mis à jour en {{version}}.",
+      "invalid": "Ce paquet ne peut pas être installé"
+    }
+  },
+  "appearance": {
+    "title": "Apparence",
+    "description": "Couleurs, formes et identité visuelle de l'espace. Les changements s'appliquent en direct pour tout le monde.",
+    "presets": "Préréglages",
+    "themes": "Thèmes des extensions",
+    "themeNotLoaded": "Non chargé",
+    "custom": "Personnalisé",
+    "accent": "Couleur d'accent",
+    "accentHint": "Une gamme complète de teintes en est générée.",
+    "hex": "Hexa",
+    "neutral": "Ton neutre",
+    "neutrals": {
+      "zinc": "Zinc",
+      "slate": "Ardoise",
+      "stone": "Pierre",
+      "gray": "Gris",
+      "neutral": "Neutre"
+    },
+    "radius": "Arrondi des angles",
+    "radii": {
+      "none": "Aucun",
+      "sm": "Petit",
+      "md": "Moyen",
+      "lg": "Grand",
+      "xl": "Très grand"
+    },
+    "density": "Densité",
+    "densities": {
+      "compact": "Compacte",
+      "comfortable": "Confortable"
+    },
+    "font": "Police",
+    "fontHint": "Les polices Google sont chargées depuis fonts.googleapis.com lorsqu'elles sont choisies.",
+    "sidebar": "Barre latérale",
+    "sidebars": {
+      "default": "Claire",
+      "dark": "Sombre",
+      "accent": "Accent"
+    },
+    "buttons": "Boutons principaux",
+    "buttonStyles": {
+      "neutral": "Neutres",
+      "accent": "Accent"
+    },
+    "mode": "Mode par défaut",
+    "modeHint": "Pour les utilisateurs qui n'ont jamais choisi clair / sombre eux-mêmes.",
+    "modes": {
+      "system": "Système",
+      "light": "Clair",
+      "dark": "Sombre"
+    },
+    "contrast": "Contraste élevé",
+    "contrastHint": "Bordures et textes secondaires plus marqués.",
+    "branding": "Identité visuelle",
+    "logo": "Logo",
+    "favicon": "Favicon",
+    "upload": "Importer",
+    "remove": "Retirer",
+    "imageHint": "PNG, SVG, JPEG, WebP ou ICO · 200 Ko maximum",
+    "imageTooLarge": "L'image dépasse 200 Ko.",
+    "customCss": "CSS personnalisé",
+    "customCssHint": "Ajouté après tous les autres styles, pour tout le monde. Préférez les variables CSS (--acc-500, --srf-100…).",
+    "save": "Enregistrer",
+    "saved": "Apparence mise à jour.",
+    "reset": "Réinitialiser",
+    "resetTitle": "Réinitialiser l'apparence ?",
+    "resetBody": "Couleurs, formes, police et CSS personnalisé reviennent aux valeurs par défaut. Le logo et le favicon sont conservés.",
+    "preview": "Aperçu",
+    "previewSample": {
+      "title": "Acme Corp",
+      "search": "Rechercher…",
+      "primary": "Nouvelle affaire",
+      "secondary": "Filtrer",
+      "row1": "Globex",
+      "row2": "Initech",
+      "row3": "Umbrella",
+      "badge": "Qualifiée",
+      "link": "Tout voir"
+    }
+  }
+}

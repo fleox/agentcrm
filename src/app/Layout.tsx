@@ -12,7 +12,9 @@ import { activeLocale, LOCALE_LABELS, setActiveLocale, SUPPORTED_LOCALES } from 
 import type { NavItem } from "../features/types";
 import { useAuth } from "./AuthContext";
 import { useObjects, useSettings } from "./CrmDataContext";
-import { getFeatures, getSlot } from "./featureRegistry";
+import { useFeatures, useSlot } from "./featureRegistry";
+import { useAppliedAppearance } from "./appearanceHooks";
+import type { Feature } from "../features/types";
 import { paths } from "./paths";
 import { emitShellEvent } from "./shellEvents";
 import { useTheme } from "./theme";
@@ -27,8 +29,8 @@ function readCollapsed(): boolean {
   }
 }
 
-function navItems(role: string): NavItem[] {
-  return getFeatures()
+function navItems(features: Feature[], role: string): NavItem[] {
+  return features
     .flatMap((f) => f.navItems ?? [])
     .filter((n) => !n.roles || n.roles.includes(role as never))
     .sort((a, b) => (a.order ?? 100) - (b.order ?? 100));
@@ -77,6 +79,9 @@ export function Sidebar() {
   const { user } = useAuth();
   const objects = useObjects();
   const settings = useSettings();
+  const features = useFeatures();
+  const appearance = useAppliedAppearance();
+  const variant = appearance.sidebar;
   const [collapsed, setCollapsed] = useState(readCollapsed);
   useEffect(() => {
     try {
@@ -85,13 +90,28 @@ export function Sidebar() {
       // Not persisted.
     }
   }, [collapsed]);
-  const items = navItems(user.role);
+  const items = navItems(features, user.role);
   const bySection = (s: NavItem["section"]) => items.filter((i) => (i.section ?? "main") === s);
 
   return (
-    <aside className={cn("flex h-full shrink-0 flex-col border-r border-surface-200 bg-surface-50 transition-[width] duration-150 dark:border-surface-800 dark:bg-surface-900", collapsed ? "w-[52px]" : "w-[220px]")}>
+    <aside
+      data-sidebar={variant}
+      className={cn(
+        "flex h-full shrink-0 flex-col border-r transition-[width] duration-150",
+        // dark / accent variants render the sidebar with the dark styles
+        // (the `dark` class scopes Tailwind's dark: variants to it); accent
+        // remaps the surface scale to the accent one (src/index.css).
+        variant === "default" ? "border-surface-200 bg-surface-50 dark:border-surface-800 dark:bg-surface-900" : "dark border-surface-800 bg-surface-900 [color-scheme:dark]",
+        variant === "accent" && "acrm-sidebar-accent",
+        collapsed ? "w-[52px]" : "w-[220px]",
+      )}
+    >
       <div className={cn("flex h-12 shrink-0 items-center gap-2 px-3", collapsed && "justify-center px-0")}>
-        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-surface-900 text-xs font-bold text-white dark:bg-white dark:text-surface-900">{(settings.name || "A").slice(0, 1).toUpperCase()}</span>
+        {appearance.logo ? (
+          <img src={appearance.logo} alt="" className="h-6 w-6 shrink-0 rounded-md object-contain" data-testid="workspace-logo" />
+        ) : (
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-surface-900 text-xs font-bold text-white dark:bg-white dark:text-surface-900">{(settings.name || "A").slice(0, 1).toUpperCase()}</span>
+        )}
         {!collapsed && <span className="min-w-0 flex-1 truncate text-sm font-semibold text-surface-900 dark:text-white">{settings.name}</span>}
       </div>
       <div className="px-2 pb-1">
@@ -151,7 +171,7 @@ export function TopBar() {
   const { t, i18n } = useTranslation();
   const { theme, toggle } = useTheme();
   const auth = useAuth();
-  const topBarSlots = getSlot("topBar");
+  const topBarSlots = useSlot("topBar");
   const locale = activeLocale();
   void i18n.language;
   return (
@@ -199,8 +219,9 @@ export function TopBar() {
   );
 }
 
-export function Layout({ children }: { children: ReactNode }) {
+export function Layout({ children, banner }: { children: ReactNode; banner?: ReactNode }) {
   const location = useLocation();
+  const overlays = useSlot("globalOverlays");
   // Cmd/Ctrl+K opens whatever the search feature registered.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -216,12 +237,13 @@ export function Layout({ children }: { children: ReactNode }) {
     <div className="flex h-screen w-full overflow-hidden bg-white text-surface-900 dark:bg-surface-950 dark:text-surface-100">
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
+        {banner}
         <TopBar />
         <main key={location.pathname.split("/").slice(0, 3).join("/")} className="min-h-0 flex-1 overflow-auto">
           {children}
         </main>
       </div>
-      {getSlot("globalOverlays").map((C, i) => (
+      {overlays.map((C, i) => (
         <C key={i} />
       ))}
     </div>

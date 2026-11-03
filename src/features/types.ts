@@ -8,6 +8,9 @@ import type { ComponentType, ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import type { CrmRecord, CrmUser, ObjectDef, UserRole } from "../core/types";
 import type { NamespaceBundles } from "../i18n";
+import type { ModuleMeta } from "../core/modules";
+
+export type { ModuleMeta, ModuleCategory } from "../core/modules";
 
 export interface FeatureRoute {
   // Path under the HashRouter, e.g. "/tasks", "/objects/:objectId".
@@ -75,6 +78,8 @@ export interface SettingsSection {
   order?: number;
   roles?: UserRole[];
   component: ComponentType;
+  // Settings nav group (default "extra" = "More").
+  group?: "workspace" | "data" | "extra";
 }
 
 // A widget on the dashboard contributed by another feature.
@@ -114,6 +119,11 @@ export interface Feature {
   // Runs once when the signed-in shell mounts (subscribe to plugin
   // actions, start timers…). Return a cleanup function.
   onStart?: (env: FeatureEnv) => void | (() => void);
+  // Module metadata (Settings → Modules). Built-ins: moduleMeta("<id>")
+  // from src/core/modules.ts. A feature without it is always on.
+  module?: ModuleMeta;
+  // Module settings page (Settings → Modules → <module>), external modules.
+  settingsPage?: ComponentType;
 }
 
 // What onStart receives.

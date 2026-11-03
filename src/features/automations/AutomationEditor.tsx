@@ -24,7 +24,7 @@ export function AutomationEditorPage() {
   const { automationId } = useParams();
   const [search] = useSearchParams();
   const existing = useDoc<Automation>("automations", automationId && automationId !== "new" ? automationId : undefined);
-  const objects = useObjects();
+  const objects = useObjects({ includeHidden: true });
   const { t } = useTranslation("automations");
   if (automationId && automationId !== "new" && !existing) {
     return <EmptyState className="py-24" icon={<Zap />} title={t("editor.notFound")} />;
@@ -43,7 +43,7 @@ function AutomationEditor({ id, initial }: { id?: string; initial: AutomationInp
   const { t } = useTranslation("automations");
   const ops = useOps();
   const navigate = useNavigate();
-  const objects = useObjects();
+  const objects = useObjects({ includeHidden: true });
   const users = useUsers();
   const pipelines = usePipelines();
   const canWrite = useCan("automations.write");
@@ -205,7 +205,7 @@ function AutomationEditor({ id, initial }: { id?: string; initial: AutomationInp
 function TestPanel({ draft, id }: { draft: AutomationInput; id?: string }) {
   const { t } = useTranslation("automations");
   const ops = useOps();
-  const objects = useObjects();
+  const objects = useObjects({ includeHidden: true });
   const records = useRecords(draft.object);
   const canRun = useCan("automations.run");
   const canWriteRecords = useCan("records.write");

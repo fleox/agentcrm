@@ -14,7 +14,7 @@ import { ReadOnlyNote, SectionHeader, errorMessage } from "../components/common"
 export function ExportSection() {
   const { t } = useTranslation("settings");
   const ops = useOps();
-  const objects = useObjects();
+  const objects = useObjects({ includeHidden: true });
   const settings = useSettings();
   const canExport = useCan("export");
   const canRestore = useCan("settings.write");

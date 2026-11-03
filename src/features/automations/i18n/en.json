@@ -1,10 +1,16 @@
 {
-  "nav": { "title": "Automations" },
+  "nav": {
+    "title": "Automations"
+  },
   "title": "Automations",
   "subtitle": "Create tasks, update fields, assign owners or call webhooks when records change — or when they go quiet.",
   "empty": "No automations yet",
   "emptyHint": "Create tasks, update fields or call webhooks when records change.",
-  "tabs": { "list": "Automations", "runs": "Run log", "templates": "Templates" },
+  "tabs": {
+    "list": "Automations",
+    "runs": "Run log",
+    "templates": "Templates"
+  },
   "list": {
     "new": "New automation",
     "runNow": "Run scheduled now",
@@ -105,7 +111,8 @@
       "updateField": "Update a field",
       "addNote": "Add a note",
       "assignOwner": "Assign owner",
-      "webhook": "Call a webhook"
+      "webhook": "Call a webhook",
+      "extension": "Extension action"
     },
     "summary": {
       "createTask": "Create task “{{title}}”",
@@ -129,7 +136,10 @@
     "roundRobin": "Round robin (active admins & members)",
     "url": "Webhook URL",
     "webhookHint": "POSTs the record as JSON (raw and display values). Best effort: failures are logged, other actions still run.",
-    "placeholdersHint": "Placeholders:"
+    "placeholdersHint": "Placeholders:",
+    "extensionMissing": "The action \"{{action}}\" is not available — install or enable its extension.",
+    "yes": "Yes",
+    "no": "No"
   },
   "editor": {
     "newTitle": "New automation",
@@ -166,7 +176,11 @@
     "status": "Status",
     "message": "Details",
     "details": "Show details",
-    "statuses": { "ok": "OK", "error": "Error", "skipped": "Skipped" },
+    "statuses": {
+      "ok": "OK",
+      "error": "Error",
+      "skipped": "Skipped"
+    },
     "filterAutomation": "Automation",
     "allAutomations": "All automations",
     "filterStatus": "Status",
@@ -190,12 +204,30 @@
     "customize": "Customize",
     "created": "Automation created",
     "items": {
-      "deal-won-onboarding": { "name": "Deal won → onboarding task", "description": "When a deal reaches a won stage, create an onboarding task for its owner due in 2 days and log a note." },
-      "new-lead-round-robin": { "name": "New lead → assign round robin", "description": "When a person is created as a lead, assign an owner in turn among active admins and members, and create a first-touch task." },
-      "stale-deal-followup": { "name": "Deal stale 14 days → follow-up task", "description": "Open deals without any activity for 14 days get a follow-up task for their owner (once per idle period)." },
-      "deal-lost-note": { "name": "Deal lost → log the reason", "description": "When a deal moves to a lost stage, log a note with the lost reason on its timeline." },
-      "customer-welcome": { "name": "New customer → welcome task", "description": "When a person's lifecycle stage becomes Customer, create a task to send the welcome pack." },
-      "new-person-webhook": { "name": "New person → webhook", "description": "POST every new person as JSON to a URL you own (Zapier, Make, n8n, Slack workflow…). Set the URL before enabling." }
+      "deal-won-onboarding": {
+        "name": "Deal won → onboarding task",
+        "description": "When a deal reaches a won stage, create an onboarding task for its owner due in 2 days and log a note."
+      },
+      "new-lead-round-robin": {
+        "name": "New lead → assign round robin",
+        "description": "When a person is created as a lead, assign an owner in turn among active admins and members, and create a first-touch task."
+      },
+      "stale-deal-followup": {
+        "name": "Deal stale 14 days → follow-up task",
+        "description": "Open deals without any activity for 14 days get a follow-up task for their owner (once per idle period)."
+      },
+      "deal-lost-note": {
+        "name": "Deal lost → log the reason",
+        "description": "When a deal moves to a lost stage, log a note with the lost reason on its timeline."
+      },
+      "customer-welcome": {
+        "name": "New customer → welcome task",
+        "description": "When a person's lifecycle stage becomes Customer, create a task to send the welcome pack."
+      },
+      "new-person-webhook": {
+        "name": "New person → webhook",
+        "description": "POST every new person as JSON to a URL you own (Zapier, Make, n8n, Slack workflow…). Set the URL before enabling."
+      }
     }
   },
   "widget": {

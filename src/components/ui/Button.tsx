@@ -6,7 +6,9 @@ export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "outl
 export type ButtonSize = "xs" | "sm" | "md";
 
 const VARIANTS: Record<ButtonVariant, string> = {
-  primary: "bg-surface-900 text-white hover:bg-surface-800 dark:bg-white dark:text-surface-900 dark:hover:bg-surface-200 shadow-sm",
+  // Colors from the workspace appearance (--primary*: near-black / white
+  // by default, the accent with "accent buttons").
+  primary: "bg-primary text-primary-fg hover:bg-primary-hover shadow-sm",
   secondary: "bg-surface-100 text-surface-800 hover:bg-surface-200 dark:bg-surface-800 dark:text-surface-100 dark:hover:bg-surface-700",
   outline: "border border-surface-200 bg-white text-surface-800 hover:bg-surface-50 dark:border-surface-700 dark:bg-surface-900 dark:text-surface-100 dark:hover:bg-surface-800 shadow-sm",
   ghost: "text-surface-600 hover:bg-surface-100 hover:text-surface-900 dark:text-surface-300 dark:hover:bg-surface-800 dark:hover:text-white",

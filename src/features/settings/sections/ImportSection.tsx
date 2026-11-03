@@ -21,7 +21,7 @@ const ACTION_COLORS: Record<string, string> = { create: "green", update: "blue",
 export function ImportSection() {
   const { t } = useTranslation("settings");
   const ops = useOps();
-  const objects = useObjects();
+  const objects = useObjects({ includeHidden: true });
   const canImport = useCan("import");
   const [step, setStep] = useState<Step>(1);
   const [objectId, setObjectId] = useState(objects.find((o) => o.id === "people")?.id ?? objects[0]?.id ?? "");

@@ -31,6 +31,9 @@
 //   assignOwner  { userId | "roundRobin" } round robin over active admins /
 //                members; the cursor is persisted on the automation doc
 //   webhook      { url }            POST JSON, best effort (10 s timeout)
+//   extension    { action, params } an action registered by an extension
+//                module (automations/extensionActions.ts); string params
+//                marked `template` are rendered first
 // Templates: {{label}}, {{<fieldId>}}, {{owner}} … (see automations/template.ts).
 
 import { normalizeEmail } from "../core/fields";
@@ -46,10 +49,20 @@ import { assertCan, OpsError, type OpsContext } from "./context";
 import { pipelineOfRecord } from "./pipelines";
 import { queryContext, setRecordOwner, updateRecord } from "./records";
 import { summarizeForWebhook } from "./automations/webhook";
+import { getAutomationAction, listAutomationActions, type AutomationActionDef } from "./automations/extensionActions";
 import { asDoc, automationRunsOf, automationsOf, objectOf, recordOf, recordsOf, requireObject, requireRecord, thaw, userOf, usersOf } from "./store";
 
 export { AUTOMATION_TEMPLATES, findAutomationTemplate, type AutomationInput, type AutomationTemplate } from "./automations/templates";
 export { renderTemplate, templatePlaceholders } from "./automations/template";
+export {
+  registerAutomationAction,
+  getAutomationAction,
+  listAutomationActions,
+  subscribeAutomationActions,
+  type AutomationActionDef,
+  type AutomationActionParam,
+  type AutomationActionRunInput,
+} from "./automations/extensionActions";
 
 export const MAX_AUTOMATION_DEPTH = 3;
 // Runs kept in the log (oldest pruned by runScheduled / pruneAutomationRuns).
@@ -60,7 +73,7 @@ const HOUR = 3_600_000;
 export const EVENT_TRIGGERS: readonly AutomationTriggerType[] = ["record.created", "record.updated", "field.changed", "stage.changed"];
 export const SCHEDULED_TRIGGERS: readonly AutomationTriggerType[] = ["schedule", "inactivity"];
 export const TRIGGER_TYPES: readonly AutomationTriggerType[] = [...EVENT_TRIGGERS, ...SCHEDULED_TRIGGERS];
-export const ACTION_TYPES: readonly AutomationAction["type"][] = ["createTask", "updateField", "addNote", "assignOwner", "webhook"];
+export const ACTION_TYPES: readonly AutomationAction["type"][] = ["createTask", "updateField", "addNote", "assignOwner", "webhook", "extension"];
 
 export type AutomationEvent = {
   [K in CrmActionName]: { type: K; payload: CrmActionPayloads[K] };
@@ -180,6 +193,22 @@ export function validateAutomation(ctx: OpsContext, input: AutomationInput): Aut
         if (!/^https?:\/\/\S+$/i.test(a.url ?? "")) errors.push(`${n}: the webhook URL must start with https:// (or http://).`);
         actions.push({ type: "webhook", url: (a.url ?? "").trim() });
         break;
+      case "extension": {
+        const def = typeof a.action === "string" ? getAutomationAction(a.action) : undefined;
+        const params = a.params && typeof a.params === "object" && !Array.isArray(a.params) ? { ...a.params } : {};
+        if (!def) {
+          const known = listAutomationActions().map((d) => d.id);
+          errors.push(`${n}: unknown extension action "${String(a.action)}"${known.length ? `. Available: ${known.join(", ")}` : " (is its extension installed and enabled?)"}.`);
+        } else {
+          if (object && def.objects?.length && !def.objects.includes(object.id)) errors.push(`${n}: "${def.id}" doesn't apply to ${object.labelPlural}.`);
+          for (const p of def.params ?? []) {
+            if (p.required && (params[p.id] === undefined || params[p.id] === null || params[p.id] === "")) errors.push(`${n}: "${p.label}" is required.`);
+          }
+          if (object && def.validate) errors.push(...def.validate(params, object).map((e) => `${n}: ${e}`));
+        }
+        actions.push({ type: "extension", action: String(a.action ?? ""), params });
+        break;
+      }
       default:
         errors.push(`${n}: unknown action "${String((a as { type?: unknown })?.type)}". Actions: ${ACTION_TYPES.join(", ")}.`);
     }
@@ -327,7 +356,22 @@ function describeAction(ctx: OpsContext, action: AutomationAction, record: CrmRe
       return action.userId === "roundRobin" ? "Assign owner (round robin)" : `Assign owner ${userOf(ctx.store, action.userId)?.name ?? action.userId}`;
     case "webhook":
       return `POST to ${action.url}`;
+    case "extension": {
+      const def = getAutomationAction(action.action);
+      if (!def) return `Run ${action.action} (not available)`;
+      const params = renderParams(ctx, def, action.params ?? {}, record, object);
+      return def.describe?.({ params, record, object }) ?? `Run ${def.label}`;
+    }
   }
+}
+
+// String params flagged `template` get {{placeholders}} rendered.
+function renderParams(ctx: OpsContext, def: AutomationActionDef, params: Record<string, unknown>, record: CrmRecord, object: ObjectDef): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...params };
+  for (const p of def.params ?? []) {
+    if (p.template && typeof out[p.id] === "string") out[p.id] = renderTemplate(ctx, out[p.id] as string, record, object);
+  }
+  return out;
 }
 
 async function postWebhook(url: string, body: unknown): Promise<void> {
@@ -397,6 +441,13 @@ async function executeAction(
         record: summarizeForWebhook(ctx, record, object),
       });
       return `POST ${action.url} ok`;
+    }
+    case "extension": {
+      const def = getAutomationAction(action.action);
+      if (!def) throw new Error(`Action "${action.action}" is not available (is its extension installed and enabled?).`);
+      const params = renderParams(ctx, def, action.params ?? {}, record, object);
+      const message = await def.run(actx, { params, record, object, automation, trigger });
+      return typeof message === "string" && message ? message : `${def.id} done`;
     }
   }
 }

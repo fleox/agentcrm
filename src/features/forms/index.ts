@@ -5,6 +5,7 @@
 import { createElement } from "react";
 import { FileInput } from "lucide-react";
 import type { Feature } from "../types";
+import { moduleMeta } from "../../core/modules";
 import en from "./i18n/en.json";
 import fr from "./i18n/fr.json";
 import { setInboxSourceResolver } from "../../ops/forms";
@@ -18,6 +19,7 @@ const roles: ("admin" | "member")[] = ["admin", "member"];
 
 const feature: Feature = {
   id: "forms",
+  module: moduleMeta("forms"),
   routes: [
     { path: "/forms", element: createElement(FormsPage), roles },
     { path: "/forms/inbox", element: createElement(InboxPage), roles },

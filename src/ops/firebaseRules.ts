@@ -87,7 +87,7 @@ export function normalizeRulesOptions(opts: FirestoreRulesOptions): Required<Fir
 }
 
 // Collections only admins write; everyone active reads.
-const ADMIN_WRITE: CollectionName[] = ["objects", "pipelines", "forms", "settings", "config"];
+const ADMIN_WRITE: CollectionName[] = ["objects", "pipelines", "forms", "settings", "config", "extensions"];
 // Collections members (and admins) fully manage.
 const MEMBER_WRITE: CollectionName[] = ["records", "activities"];
 
@@ -238,6 +238,12 @@ export function buildFirestoreRules(input: FirestoreRulesOptions): string {
     lines.push(`    match /${c}/{id} {`, "      allow read: if isActive();", "      allow write: if isAdmin();", "    }", "");
   }
   lines.push(
+    "    // Pieces of large extension bundles (src/data/firebase.ts).",
+    "    match /extensionChunks/{id} {",
+    "      allow read: if isActive();",
+    "      allow write: if isAdmin();",
+    "    }",
+    "",
     "    // ─── inbox/{id}: public lead-form submissions ──────────────────────",
     "    function validSubmission(d) {",
     "      return d.keys().hasAll(['formId', 'data', 'createdAt'])",

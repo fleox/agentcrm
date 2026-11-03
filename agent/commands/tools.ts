@@ -17,7 +17,8 @@ export const toolsCommand: Command = {
   async run({ io, options, positionals }) {
     const [action = "list"] = positionals;
     if (action === "list") {
-      const { AI_TOOLS } = await import("../../src/ai/tools");
+      const { listAiTools } = await import("../../src/ai/tools");
+      const AI_TOOLS = listAiTools();
       const tools = AI_TOOLS.map((t) => ({ name: t.name, description: t.description, mutating: t.mutating, inputSchema: t.inputSchema }));
       printResult(io, { tools }, () => table(tools, ["name", "mutating", "description"]));
       return;
@@ -44,7 +45,8 @@ export const mcpCommand: Command = {
     const session = await openSession(strOpt(options, "site"), { as: strOpt(options, "as") });
     const log = (msg: string) => process.stderr.write(`${msg}\n`);
     for (const w of session.warnings) log(`[agentcrm mcp] note: ${w}`);
-    const { AI_TOOLS } = await import("../../src/ai/tools");
+    const { listAiTools } = await import("../../src/ai/tools");
+    const AI_TOOLS = listAiTools();
     const { createMcpServer, serveStdio } = await import("../mcp/server");
     let lastRefresh = Date.now();
     const server = createMcpServer({

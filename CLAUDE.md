@@ -30,6 +30,8 @@ src/
                      importCsv, exportCsv, dedupe/merge, reports, automations engine, lead inbox ingestion, compact, stats
   ai/                tools.ts (shared tool catalog), assistant runtime (Claude API from browser)
   app/               App.tsx, routes registry, layout shell, AuthContext, CrmDataContext, setup wizard
+  appearance/        Appearance engine (v0.2): OKLCH scales, palettes, fonts, presets, schema, css, apply (DOM), themes
+  extensions/        External extensions runtime (v0.2): runtime API, loader, registry, package (ZIP), api versions
   features/<name>/   One folder per feature: index.ts exports { id, routes, navItems, i18n } — App aggregates src/features/index.ts
   components/ui/     Shared UI kit (Button, Input, Select, Modal, Drawer, Table, Badge, Avatar, Tabs, Toast, CommandPalette…)
   i18n/              core bundles en.json / fr.json; features ship their own bundles under features/<name>/i18n/
@@ -44,7 +46,10 @@ docs/                user docs
 | Feature folder | Content |
 |---|---|
 | `features/records` | Object list pages: table view (inline edit, sort, filter, columns, saved views, bulk actions), kanban view (group by select/stage, drag & drop), record detail page (fields panel, relations, timeline, tasks, notes) |
-| `features/dashboard` | Home dashboard (pipeline by stage, won/lost, activity, my tasks) + reports page (charts) |
+| `features/dashboard` | Home dashboard (pipeline by stage, won/lost, activity, my tasks) + the reports page code (`ReportsPage.tsx`, charts) |
+| `features/reports` | Reports module: owns only the `/reports` route + nav entry (page code reused from `features/dashboard`) |
+| `features/deals` | Object module "Deals & pipelines" (no page; switching it off hides the deals object, pipelines settings, pipeline reports / widgets) |
+| `features/customize` | Settings → Modules (modules, installed extensions, module settings pages) and Settings → Appearance |
 | `features/tasks` | "My tasks" / all tasks / calendar-ish due list |
 | `features/settings` | General settings, data model editor (custom objects & fields, pipelines), users & roles, data backend & hosting, import/export, admin hosting, danger zone (compact, purge) |
 | `features/search` | Cmd+K command palette (records + navigation + actions) |
@@ -104,7 +109,7 @@ Relations are stored on the record field holding the id (`one`) or id array (`ma
 Generalisation of cms-ia's docstore (`../cms-ia/src/services/docstore/types.ts`): whole dataset in memory, synchronous reads after `ready()`, optimistic `write()`.
 
 ```ts
-type CollectionName = "objects" | "records" | "activities" | "pipelines" | "views" | "automations" | "forms" | "users" | "settings" | "config" | "automationRuns";
+type CollectionName = "objects" | "records" | "activities" | "pipelines" | "views" | "automations" | "forms" | "users" | "settings" | "config" | "automationRuns" | "extensions";
 interface StoredDoc { id: string; [k: string]: unknown }
 type DocMutation = { op: "set"; collection: CollectionName; doc: StoredDoc } | { op: "patch"; collection: CollectionName; id: string; fields: Record<string, unknown> } | { op: "delete"; collection: CollectionName; id: string };
 interface DataStore { readonly kind: BackendKind; ready(): Promise<void>; list(c): StoredDoc[]; get(c, id): StoredDoc | undefined;
@@ -256,3 +261,192 @@ signatures** — add new optional fields / new exports instead. Each agent edits
   Concurrent compactions are safe-ish: only the client whose snapshot is in place deletes segments; run compaction from one place.
 - `tsconfig.agent.json` keeps the DOM lib (same as cms-ia: the CLI reuses browser-written modules).
 - The AI catalog has one extra tool, `log_activity` (calls / emails / meetings).
+
+## Customisation: modules, extensions, appearance (v0.2)
+
+Everything below is drivable **manually (admin UI)** and **by AI (CLI, `src/ai/tools.ts` → MCP + in-admin assistant, skills)** —
+same ops underneath (`src/ops/modules.ts`, `src/ops/appearance.ts`, `src/ops/extensions.ts`, all re-exported by `src/ops/index.ts`).
+New permissions (`src/ops/context.ts`, admin only): `modules.write`, `appearance.write`, `extensions.write` (reads use `settings.read`).
+
+### Modules (built-in features)
+
+- **Catalog** (pure, Node-safe): `src/core/modules.ts` — `MODULE_CATEGORIES` (`core|sales|productivity|automation|integrations|ai|customisation`),
+  `ModuleMeta { name, description (i18n keys), icon (lucide name), category, required?, dependsOn?, defaultEnabled?, objects? }`,
+  `BUILTIN_MODULES: BuiltinModule[]` (`ModuleMeta & { id, label, summary (English), settingsSection? }`), `builtinModule(id)`,
+  `moduleMeta(id)` (what a feature puts in `Feature.module`), `REQUIRED_MODULES`, `ModulesConfigDoc`, `MODULES_CONFIG_ID = "modules"`,
+  `disabledFromDoc(doc)`. Built-in ids: required `records`, `search`, `settings`, `setup`, `customize`; optional `dashboard`, `deals`
+  (object module, `objects: ["deals"]`, settings → `pipelines`), `reports`, `forms`, `tasks`, `automations`, `integrations`, `assistant`.
+  A test (`src/ops/modules.test.ts`) keeps `FEATURES` ⇔ `BUILTIN_MODULES` identical — **a new built-in feature = a catalog entry +
+  `module: moduleMeta("<id>")` + i18n keys `customize:modules.catalog.<id>.{name,description}`**.
+- **Feature contract additions** (`src/features/types.ts`): `Feature.module?: ModuleMeta`, `Feature.settingsPage?: ComponentType`
+  (Settings → Modules → <module>, route `/settings/modules/<id>`), `SettingsSection.group?: "workspace"|"data"|"extra"`.
+  Settings has a sub-route `/settings/:section/:sub` (sections read `useParams().sub`).
+- **State**: doc `config/modules` = `{ id: "modules", disabled: string[] /* built-in ids */, config: { [moduleId]: JSON }, updatedAt }`.
+  External modules are enabled through their extension doc (`extensions/<id>.enabled`). Disabling deletes nothing.
+- **Ops** `src/ops/modules.ts`: `ModuleInfo { id, source: "builtin"|"extension", name, description (English), nameKey?, descriptionKey?,
+  icon, category, required, enabled, dependsOn, dependents, missingDependencies, objects, settingsSection?, version?, incompatible? }`;
+  `moduleStates(store)` (pure, no permission), `isModuleEnabled(store, id)`, `disabledObjectIds(store)`, `listModules(ctx)`,
+  `getModule(ctx, id)`, `setModuleEnabled(ctx, id, enabled, { cascade? }) → { id, enabled, changed: {id, enabled}[] }` (refuses
+  required modules → `invalid`; enabled dependents / disabled dependencies → `conflict` with `details.blockers`, unless `cascade`),
+  `getModuleConfig(ctx, id)`, `setModuleConfig(ctx, id, value | null)` (JSON ≤ 256 KB, no secrets, patch `config.<id>`).
+- **Shell** (`src/app/featureRegistry.ts`): `registerFeatures`, `registerExternalFeature(feature) → unregister`, `getAllFeatures()`,
+  `getFeatures()` (enabled only), `getSlot(name)`, `connectModuleState(store)` (follows `config` + `extensions`, live), `isModuleEnabled`,
+  `getModuleStates`, `getDisabledModules`, `subscribeFeatures`; hooks `useFeatures()`, `useSlot(name)` (**use it in components** —
+  re-renders on module changes), `useModuleEnabled(id)`, `useModuleStates()`, `useFeatureRegistryVersion()`.
+  `App.tsx` calls `connectModuleState` + the extension loader before the shell renders, starts / stops `onStart` as modules toggle,
+  routes of disabled modules (and `/objects/<object of a disabled module>/*`) render `ModuleDisabledPage` (admin: link to Settings →
+  Modules), `/` redirects to the first object when the dashboard is off. `useObjects({ includeHidden? })` (CrmDataContext) hides objects
+  flagged `ObjectDef.hidden` or owned by a disabled module; `useHiddenObjectIds()`, `useModuleConfig(id)`. Dashboard / Reports /
+  Settings → Pipelines hide pipeline content when `deals` is off.
+
+### External extensions (runtime-loaded, no rebuild)
+
+- **Kinds**: `module` (a Feature + hooks + AI tools + automation actions + settings page) and `theme` (appearance values + CSS).
+- **ZIP format** (`src/extensions/package.ts`, DOM-free, shared with the CLI): `manifest.json` + `bundle.js` (+ `style.css`); one
+  wrapping folder accepted, `__MACOSX` / dotfiles ignored.
+  `manifest.json` = `ExtensionManifest { id, kind: "module"|"theme", name, version (semver), apiVersion, description, author?, homepage?,
+  entry: "bundle.js", style?: "style.css", icon? (lucide PascalCase), category? (module category), dependsOn? (module ids) }`
+  (unknown keys rejected; themes can't have category / dependsOn). Id: `^[a-z][a-z0-9-]{1,48}[a-z0-9]$`, not a built-in module id
+  nor `agentcrm|core|runtime|admin|app|custom|default` (`RESERVED_EXTENSION_IDS`). Limits (`EXTENSION_LIMITS`, `src/extensions/api.ts`):
+  bundle 1.5 MB, style 256 KB, manifest 16 KB, ZIP 4 MB. `bundle.js` must have a default export and import only `RUNTIME_SPECIFIERS`.
+  Exports: `validateManifest(raw)`, `validatePackage({manifest, files})`, `readExtensionZip(Uint8Array|ArrayBuffer|Blob)`,
+  `packExtension(pkg) → Uint8Array`, `bundleImports(code)`, `rewriteRuntimeImports(code, resolve)`, `fingerprint(manifest, files)`,
+  `ExtensionPackageError { code: invalidZip|missingManifest|invalidManifest|missingEntry|tooLarge|incompatibleApi|invalidBundle, details? }`,
+  `EXTENSION_ID_RE`, `SEMVER_RE`.
+- **Versions** (`src/extensions/api.ts`): `EXTENSION_API_VERSION = "1.0.0"`, `EXTENSION_MIN_API_VERSION = "1.0.0"`, `compareVersions`,
+  `isCompatibleApiVersion`, `RUNTIME_GLOBAL = "__AGENTCRM_RUNTIME__"`, `RUNTIME_MODULES` (specifier → stub file), `RUNTIME_SPECIFIERS`,
+  `RUNTIME_DIR = "runtime"`.
+- **Storage**: collection `extensions` (every backend; Firestore rules: active users read, admins write), doc `ExtensionDoc { id, kind,
+  manifest, enabled, files: { "bundle.js", "style.css"? }, installedAt, installedBy?, updatedAt, previousVersion? }` — encrypted with the
+  rest, shared by every user, no hosting needed. Firebase splits docs > 300 000 chars over `extensionChunks/{id}__{file}__{i}`
+  (`src/data/firebase.ts`: `EXTENSION_CHUNKS_COLLECTION`, `assembleExtensionDocs`) — transparent to ops.
+- **Ops** `src/ops/extensions.ts`: `listExtensions(ctx, { kind? }) → ExtensionSummary[]` (no code; `size`, `compatible`),
+  `getExtension(ctx, id)`, `getExtensionPackage(ctx, id) → ExtensionPackage` (export: `packExtension(...)`), `installExtension(ctx, pkg,
+  { enabled? }) → { id, kind, version, mode: "install"|"upgrade", previousVersion?, enabled, warnings }` (validates everything; in-place
+  upgrade keeps `enabled`; kind change → `conflict`; a module whose dependencies are off is installed disabled with a warning),
+  `setExtensionEnabled(ctx, id, enabled, { cascade? })` (modules go through `setModuleEnabled`; disabling the selected theme clears
+  `themeId`), `uninstallExtension(ctx, id, { force? })` (blocked by enabled dependents; keeps the module config), `summarizeExtension(doc)`.
+- **Runtime** (`src/extensions/runtime.ts`, first import of `main.tsx`): `installRuntime()` sets `globalThis.__AGENTCRM_RUNTIME__ =
+  { apiVersion, api: runtimeApi, modules: { react, "react/jsx-runtime", "react-dom", "react-dom/client", "react-i18next",
+  "lucide-react" (loaded on demand from its UMD build, separate chunk) }, prepare(specifiers) }`. The main bundle's own React is the one
+  exposed. Stubs in `public/runtime/` (copied to `dist/admin/runtime/` with stable names): `react.js`, `react-jsx-runtime.js`,
+  `react-dom.js`, `react-dom-client.js`, `react-i18next.js`, `lucide-react.js` (all GENERATED by `scripts/gen-runtime-stubs.mjs` /
+  `npm run gen:runtime-stubs` — rerun after upgrading those packages) and the hand-written `agentcrm-runtime.js`. `index.html` has the
+  matching import map (Vite keeps it before the entry script). The loader also rewrites the specifiers of a bundle to absolute stub URLs
+  before importing it (Blob URLs + dev server safe).
+- **`@agent-crm/runtime` named exports** (= `runtimeApi`; public typings `types/agentcrm-runtime.d.ts`, self-contained):
+  `apiVersion`, `minApiVersion`, `defineModule`, `defineTheme`, `ops` (all of `src/ops/`, typed subset `RuntimeOps`);
+  hooks `useCrm`, `useOps`, `useCan`, `useCurrentUser`, `useCollection`, `useObjects`, `useObject`, `useRecords`, `useRecord`,
+  `useActivities`, `usePipelines`, `useViews`, `useUsers`, `useSettings`, `useModuleConfig`, `useModuleEnabled`, `useAppearance`;
+  router `useNavigate`, `useParams`, `useSearchParams`, `useLocation`, `Link`, `NavLink`, `paths`, `recordHref`;
+  plugin registry `addAction`, `removeAction`, `addFilter`, `removeFilter`, `doAction`, `applyFilters`, `registerAiTool`,
+  `registerAutomationAction`; UI kit `Button`, `IconButton`, `Input`, `Textarea`, `Select`, `Label`, `FormField`, `Checkbox`, `Switch`,
+  `Modal`, `Drawer`, `Card`, `Badge`, `Avatar`, `Tabs`, `Tooltip`, `Spinner`, `EmptyState`, `PageHeader`, `Kbd`, `Dropdown`, `Table`,
+  `THead`, `TBody`, `Tr`, `Th`, `Td`, `FieldValue`, `FieldInput`, `ObjectIcon`, `Markdown`, `confirmDialog`, `toast`, `cn`, `newId`;
+  i18n `i18n`, `addBundles(ns, {en, fr})`, `activeLocale`, `intlLocale`; formatters `formatFieldValue`, `formatCurrency`, `formatNumber`,
+  `formatDate`, `formatDateTime`, `formatRelative`, `recordLabel`, `coerceFieldValue`, `isEmptyFieldValue`.
+- **Extension checklist — adding a runtime export**: (1) add it to `runtimeApi` in `src/extensions/runtime.ts`, (2) add
+  `export const X = R.X;` to `public/runtime/agentcrm-runtime.js`, (3) declare it in `types/agentcrm-runtime.d.ts` (self-contained types),
+  (4) `src/extensions/runtime.test.ts` must pass (value lists identical + compile-time assignability `_curatedFromReal`, mutual checks of
+  the contract types), (5) bump `EXTENSION_API_VERSION` (minor; raise the MIN only on a breaking change) and the examples' `apiVersion`
+  if they use it. A new bare specifier = `RUNTIME_MODULES` + stub (+ generator entry) + import map + `external/vite.extension.ts`
+  `RUNTIME_EXTERNALS` + `scripts/build-examples.mjs` `RUNTIME`.
+- **Types** (`src/extensions/types.ts`): `ExtensionKind`, `ExtensionManifest`, `ExtensionFiles`, `ExtensionPackage`, `ExtensionDoc`,
+  `ModuleApi { moduleId, addAction, addFilter, registerAiTool, registerAutomationAction, onDispose }` (everything registered through it
+  is removed when the module unloads), `ModuleFeature = Partial<Omit<Feature, "id"|"module"|"settingsPage">>`,
+  `ModuleDefinition { id, apiVersion, feature?, register?(api), aiTools?, automationActions?, settingsPage? }`, `ThemeDefinition`
+  (from `src/appearance/types.ts`: `{ id, apiVersion, name, description?, appearance: Partial<Appearance>, css? }`),
+  `LoadedExtension { id, kind, version, status: loaded|error|disabled|skipped|incompatible, error?, fingerprint? }`.
+- **Registry** (`src/extensions/registry.ts`): `activateExtension(doc, importedModule, fingerprint)` (bundle `default.id` must equal the
+  manifest id; module → `registerExternalFeature` (feature id = module id = i18n namespace), `registerAiTool` per tool,
+  `registerAutomationAction` per action, `style.css` injected as `<style data-agentcrm-extension>`, `register(api)`; all rolled back on
+  error; theme → `registerExternalTheme` with `css + style.css`), `deactivateExtension(id)`, `deactivateAllExtensions()`,
+  `setExtensionStatus`, `listLoadedExtensions()`, `getLoadedExtension(id)`, `subscribeLoadedExtensions`.
+- **Loader** (`src/extensions/loader.ts`): `syncExtensions(store, { importBundle?, safeMode?, onError? }) → SyncReport { loaded,
+  unloaded, failed: {id, error}[], skipped }` (serialised; loads enabled + compatible docs, unloads disabled / uninstalled, reloads on
+  fingerprint change; never throws), `watchExtensions(store, opts & { onSync? }) → stop`, `type ImportBundle = (code, { id, version })
+  => Promise<module>`, `createBrowserImportBundle(baseUrl?)` (Blob URL), `isSafeMode(location?)` (`?safe=1` / `#/…?safe=1` / Shift held),
+  `trackSafeModeKey()`. **Node / CLI**: `src/extensions/nodeImport.ts` `createNodeImportBundle({ runtimeDir, tmpDir? })` (temp `.mjs`,
+  specifiers → `runtimeDir` stubs: `public/runtime` in the repo, `dist/admin/runtime` in the npm package); import
+  `src/extensions/runtime.ts` first. Safe mode shows a banner and skips every extension.
+- **AI tools** (`src/ai/tools.ts`): `AI_TOOLS` stays the built-in catalog; `registerAiTool(tool) → unregister` (snake_case, unique),
+  `listAiTools()` (built-ins + extensions — **every front door must list this**), `subscribeAiTools`, `findTool` / `callTool` resolve both.
+- **Automations extension point** (`src/ops/automations/extensionActions.ts`, re-exported by `ops/automations.ts`): action
+  `{ type: "extension", action: "<moduleId>.<name>", params }` in `AutomationAction`; `AutomationActionDef { id, label, description?,
+  params?: AutomationActionParam[] ({ id, label, type: text|longText|number|boolean|select, required?, options?, placeholder?, template? }),
+  objects?, describe?, validate?, run(ctx, { params, record, object, automation, trigger }) }`, `registerAutomationAction`,
+  `getAutomationAction`, `listAutomationActions`, `subscribeAutomationActions`. Validation refuses unknown / non-applicable actions;
+  a run whose action is no longer registered fails with "not available". The automation editor lists registered actions.
+- **Examples** (`external/`, built by `npm run build:examples` = `scripts/build-examples.mjs` → `dist/extensions/<id>-<version>.zip`; not
+  part of `npm run build`): `external/vite.extension.ts` (`extensionConfig(entry)`, `RUNTIME_EXTERNALS`, lib mode, one `bundle.js`,
+  `inlineDynamicImports`, production JSX), `external/tsconfig.base.json`, `external/modules/hello-module` (nav page `/hello`, record tab,
+  AI tool `hello_world`), `external/modules/sales-goals` (dependsOn `deals`; monthly target per user in module config
+  `{ targets: {userId: amount}, notified }`, dashboard widget, settings page, AI tool `get_sales_goals`, automation action
+  `sales-goals.notifyGoalReached` → addNote once per user & month), `external/themes/midnight` (theme + `src/style.css`). Each example
+  maps `@agent-crm/runtime` to `types/agentcrm-runtime.d.ts` in its tsconfig; the build script type-checks them. `buildExample(dir)` is
+  exported by the script. `src/extensions/e2e.test.ts` builds the three with Vite, packs, installs in a memory store and loads them
+  with the Node importBundle.
+- **Safety**: installing = running code with the admin's rights → admin only, the UI shows id / version / author / size / dependencies
+  and requires an explicit "I trust the author" checkbox; enable / disable without uninstalling; safe mode.
+
+### Appearance
+
+- **Doc** `config/appearance` = `AppearanceDoc` (explicit values only) over `Appearance { preset, accent (#rrggbb), neutral:
+  zinc|slate|stone|gray|neutral, radius: none|sm|md|lg|xl, density: compact|comfortable, font (id of FONTS), sidebar: default|dark|accent,
+  defaultMode: system|light|dark, contrast: normal|high, buttons: neutral|accent, logo?, favicon? (image data URL ≤ 200 KB), customCss?
+  (≤ 50 KB, no tags), themeId? }`. Resolution: `DEFAULT_APPEARANCE` ← selected enabled theme's `appearance` ← stored values.
+  The per-user light/dark choice stays in this browser (`agentcrm.theme`); `defaultMode` applies only when the user never chose.
+- **Engine** `src/appearance/` (pure except `apply.ts`): `types.ts` (enums `NEUTRALS`, `RADII`, `DENSITIES`, `SIDEBAR_STYLES`,
+  `COLOR_MODES`, `CONTRASTS`, `BUTTON_STYLES`, `MAX_IMAGE_BYTES`, `MAX_CUSTOM_CSS`, `DEFAULT_ACCENT`), `color.ts` (hex ↔ OKLCH,
+  `generateScale(hex)` 50…950 with 500 = input, gamut mapping, `contrastRatio`, `foregroundOn`), `palettes.ts` (`NEUTRAL_SCALES` with
+  850, `DEFAULT_ACCENT_SCALE` = pre-v0.2 values), `fonts.ts` (`FONTS`: `system` + 16 Google fonts, `googleFontHref(id)` → a
+  fonts.googleapis.com `<link>` only when chosen), `presets.ts` (`PRESETS`: default, ocean, forest, sunset, graphite, rose,
+  high-contrast), `schema.ts` (`DEFAULT_APPEARANCE`, `validateAppearancePatch`, `resolveAppearance`, `validateImageDataUrl`,
+  `dataUrlBytes`), `css.ts` (`computeAppearanceCss(a) → { css /* html:root{…} */, attrs, fontHref }`, `appearanceVars(a)` for scoped
+  previews, `RADIUS_SCALE`, `DENSITY_VARS`), `themes.ts` (`registerExternalTheme`, `getExternalTheme`, `listExternalThemes`,
+  `subscribeExternalThemes`), `apply.ts` (`applyAppearance(a, { theme, persist })` → `<style id="agentcrm-appearance">`,
+  `<html data-density data-sidebar data-contrast data-buttons data-radius>`, `<link id="agentcrm-font">`, `<style id="agentcrm-theme-css">`,
+  `<style id="agentcrm-custom-css">` (last), favicon; writes the anti-FOUC cache `localStorage["agentcrm.appearance"]` =
+  `AppearanceCache { v: 1, css, attrs, fontHref, themeCss?, customCss?, favicon?, defaultMode }` replayed by the inline script of
+  `index.html`; `getAppliedAppearance`, `subscribeAppliedAppearance`, `rowHeightPx()`).
+- **CSS variables** (defaults in `src/index.css` `:root` = the pre-v0.2 palette, tested equal to `appearanceVars(DEFAULT_APPEARANCE)`):
+  `--acc-50…950`, `--srf-50…950` (+850) as `"r g b"`, `--acc-fg`, `--primary`, `--primary-hover`, `--primary-fg`, `--radius-scale`,
+  `--font-sans`, `--row-h`, `--ctl-h`, `--card-pad`, `--card-head-py`, `--page-py`. Tailwind (`tailwind.config.js`): `accent-*`,
+  `surface-*` = `rgb(var(--…) / <alpha-value>)`, new `primary` / `primary-hover` / `primary-fg` colors (Button `primary`), radii =
+  defaults × `--radius-scale`, `font-sans` = `var(--font-sans)`, `h-row` / `h-ctl`, `p-card` / `py-card-head` / `py-page` (Card,
+  PageHeader, Table, DataGrid rows — `useRowHeight()` in `src/app/appearanceHooks.ts` keeps the virtualised grid in sync).
+  Sidebar `dark` / `accent` = the `dark` class on the sidebar (+ `.acrm-sidebar-accent` remapping `--srf-*` to `--acc-*`).
+- **Ops** `src/ops/appearance.ts`: `getAppearance(ctx)` (resolved), `getAppearanceDoc(ctx)`, `setAppearance(ctx, patch)` (validated;
+  `null` resets a key; a visual change without `preset` sets `preset: "custom"`; `themeId` must be an installed enabled theme),
+  `applyPreset(ctx, id)` (built-in preset: its values, keeps logo / favicon / custom CSS / default mode; theme id: `{ preset: id,
+  themeId: id }` + branding), `resetAppearance(ctx, { branding? })` (keeps logo / favicon unless `branding`), `setLogo(ctx, dataUrl | null,
+  { kind: "logo"|"favicon" })`, `listPresets(ctx) → PresetInfo[]` (built-ins + installed themes with `enabled`, `loaded`, `version`).
+  The shell applies it live (`src/app/WorkspaceAppearance.ts` `useWorkspaceAppearance()`); `useAppliedAppearance()` for components.
+
+### Admin UI (`src/features/customize/`)
+
+Settings → **Modules** (`ModulesSection.tsx`: cards per category, Required / Extension badges, dependency hints, cascade confirmation,
+settings link; tab **Installed extensions** `ExtensionsPanel.tsx`: drag & drop ZIP, manifest review + trust checkbox, upgrade
+`v1 → v2`, enable / disable, export ZIP, uninstall, live load status; sub-page `/settings/modules/<id>` renders `Feature.settingsPage`;
+docs link `EXTENSIONS_DOCS_URL` → `docs/extensions.md` — **to be written by the docs agent**). Settings → **Appearance**
+(`AppearanceSection.tsx`: preset gallery with live thumbnails + theme extensions, accent picker / hex / swatches (live while dragging,
+debounced save), neutral, radius, density, font, sidebar, buttons, default mode, contrast, logo / favicon upload, custom CSS editor
+with size counter, reset, live preview). Admins edit, others read-only. i18n namespace `customize` (en + fr; `src/i18n/parity.test.ts`
+checks en ⇔ fr for every bundle). The sidebar shows the workspace logo (or initial) + name.
+
+### AI tools (appended to the catalog, `src/ai/customizeTools.ts`)
+
+`list_modules` (read), `set_module_enabled` (mutating; `cascade`), `get_appearance` (read; appearance + presets), `set_appearance`
+(mutating; patch, `null` resets), `apply_appearance_preset` (mutating), `list_extensions` (read; `kind`), `set_extension_enabled`
+(mutating). Installing code is deliberately NOT exposed as a tool (UI / CLI only).
+
+### For the CLI / skills / docs agent (next)
+
+Build on: `src/ops/{modules,appearance,extensions}.ts` (commands `modules list|enable|disable|config`, `appearance get|set|preset|reset|
+logo`), `src/extensions/package.ts` (`ext check|pack` — validate a folder / built bundle with `validatePackage`, pack with
+`packExtension`), `src/ops/extensions.ts` (`ext install|list|uninstall|enable|disable`), `src/extensions/loader.ts` +
+`nodeImport.ts` + `runtime.ts` (load extensions in the CLI so their AI tools / automation actions run in `tools call`, `mcp`,
+`automations run`; stubs are shipped in `dist/admin/runtime/`), `listAiTools()` instead of `AI_TOOLS`, `external/` +
+`scripts/build-examples.mjs` (`buildExample`) for `ext new` scaffolds, `types/agentcrm-runtime.d.ts` (ship it in the npm package
+`files` — already listed). Docs to write: `docs/extensions.md` (creating a module / theme, runtime API reference, ZIP format, checklist), appearance and
+modules user docs.

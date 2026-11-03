@@ -4,6 +4,7 @@
 // quick-create / log-activity overlays ("record.create", "activity.log").
 import { createElement } from "react";
 import type { Feature } from "../types";
+import { moduleMeta } from "../../core/modules";
 import en from "./i18n/en.json";
 import fr from "./i18n/fr.json";
 import { ObjectListPage } from "./ObjectListPage";
@@ -13,6 +14,7 @@ import { LogActivityHost, QuickCreateHost } from "./create/Overlays";
 
 const feature: Feature = {
   id: "records",
+  module: moduleMeta("records"),
   routes: [
     { path: "/objects/:objectId", element: createElement(ObjectListPage) },
     { path: "/objects/:objectId/trash", element: createElement(TrashPage) },

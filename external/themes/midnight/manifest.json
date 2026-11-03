@@ -1,0 +1,12 @@
+{
+  "id": "midnight",
+  "kind": "theme",
+  "name": "Midnight",
+  "version": "1.0.0",
+  "apiVersion": "1.0.0",
+  "description": "Deep indigo theme: violet accent, slate grays, dark sidebar, dark mode by default.",
+  "author": "AgentCRM",
+  "homepage": "https://github.com/fleox/agentcrm",
+  "entry": "bundle.js",
+  "style": "style.css"
+}

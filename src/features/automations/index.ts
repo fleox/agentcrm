@@ -9,6 +9,7 @@
 import { createElement } from "react";
 import { Zap } from "lucide-react";
 import type { Feature } from "../types";
+import { moduleMeta } from "../../core/modules";
 import en from "./i18n/en.json";
 import fr from "./i18n/fr.json";
 import { installAutomations } from "../../ops/automations";
@@ -23,6 +24,7 @@ const roles: ("admin" | "member")[] = ["admin", "member"];
 
 const feature: Feature = {
   id: "automations",
+  module: moduleMeta("automations"),
   routes: [
     { path: "/automations", element: createElement(AutomationsPage), roles },
     { path: "/automations/runs", element: createElement(RunLogPage), roles },

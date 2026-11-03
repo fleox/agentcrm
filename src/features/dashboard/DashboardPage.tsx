@@ -10,7 +10,7 @@ import { AlertTriangle, LayoutDashboard, Target, TrendingUp, Trophy, UserPlus } 
 import { Card, Checkbox, EmptyState, PageHeader } from "../../components/ui";
 import type { Activity, CrmRecord, ObjectDef } from "../../core/types";
 import { useActivities, useCan, useCollection, useCurrentUser, useOps, usePipelines, useRecordLabel, useSettings, useUsers } from "../../app/CrmDataContext";
-import { getSlot } from "../../app/featureRegistry";
+import { useModuleEnabled, useSlot } from "../../app/featureRegistry";
 import { paths } from "../../app/paths";
 import { completeTask, listTasks } from "../../ops/activities";
 import { forecast } from "../../ops/pipelines";
@@ -99,7 +99,10 @@ export function DashboardPage() {
     const m = new Map(records.map((r) => [r.id, r.object]));
     return (id: string) => m.get(id) ?? "deals";
   }, [records]);
-  const widgets = getSlot("dashboardWidgets");
+  const widgets = useSlot("dashboardWidgets");
+  // Deals & pipelines module off → no pipeline KPIs / charts.
+  const dealsOn = useModuleEnabled("deals");
+  const reportsOn = useModuleEnabled("reports");
 
   if (!data) {
     return (
@@ -111,17 +114,21 @@ export function DashboardPage() {
   }
 
   const { stats, fc, byStage, wl, thisMonth, sources, activity, stale, myTasks } = data;
-  const hasPipeline = !!fc;
+  const hasPipeline = !!fc && dealsOn;
   const activityUsers = activity?.users.filter((u) => u.total > 0) ?? [];
 
   return (
     <div>
       <PageHeader title={t("title")} icon={<LayoutDashboard />} description={t("greeting", { name: me.name.split(" ")[0] })} />
       <div className="space-y-4 p-4 sm:p-6">
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5" data-testid="kpis">
-          <KpiTile icon={<TrendingUp />} label={t("openPipeline")} value={fc ? money(fc.openAmount) : "—"} sub={fc ? t("openDeals", { count: fc.openCount }) : t("noPipeline")} />
-          <KpiTile icon={<Target />} label={t("weighted")} value={fc ? money(fc.weightedAmount) : "—"} sub={fc && fc.openAmount ? t("ofPipeline", { pct: Math.round((fc.weightedAmount / fc.openAmount) * 100) }) : undefined} />
-          <KpiTile icon={<Trophy />} label={t("wonThisMonth")} value={thisMonth ? money(thisMonth.wonAmount) : "—"} sub={thisMonth ? t("dealsCount", { count: thisMonth.wonCount }) : undefined} />
+        <div className={cn("grid grid-cols-2 gap-3 md:grid-cols-3", dealsOn ? "xl:grid-cols-5" : "xl:grid-cols-2")} data-testid="kpis">
+          {dealsOn && (
+            <>
+              <KpiTile icon={<TrendingUp />} label={t("openPipeline")} value={fc ? money(fc.openAmount) : "—"} sub={fc ? t("openDeals", { count: fc.openCount }) : t("noPipeline")} />
+              <KpiTile icon={<Target />} label={t("weighted")} value={fc ? money(fc.weightedAmount) : "—"} sub={fc && fc.openAmount ? t("ofPipeline", { pct: Math.round((fc.weightedAmount / fc.openAmount) * 100) }) : undefined} />
+              <KpiTile icon={<Trophy />} label={t("wonThisMonth")} value={thisMonth ? money(thisMonth.wonAmount) : "—"} sub={thisMonth ? t("dealsCount", { count: thisMonth.wonCount }) : undefined} />
+            </>
+          )}
           <KpiTile icon={<UserPlus />} label={t("newPeopleThisMonth")} value={formatNumber(data.newPeople)} sub={t("leadsCount", { count: data.newLeads })} />
           <KpiTile
             icon={<AlertTriangle />}
@@ -135,7 +142,7 @@ export function DashboardPage() {
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-12">
           {hasPipeline && byStage && (
-            <Card className="md:col-span-2 lg:col-span-7" title={t("byStage")} actions={<Link to={paths.reports()} className="text-xs text-surface-500 hover:text-surface-900 dark:hover:text-white">{t("viewReports")}</Link>}>
+            <Card className="md:col-span-2 lg:col-span-7" title={t("byStage")} actions={reportsOn ? <Link to={paths.reports()} className="text-xs text-surface-500 hover:text-surface-900 dark:hover:text-white">{t("viewReports")}</Link> : undefined}>
               <PipelineStageChart stages={byStage.stages} money={money} />
               <StageLegend stages={byStage.stages} money={money} />
             </Card>

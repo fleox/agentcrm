@@ -1,0 +1,14 @@
+{
+  "id": "sales-goals",
+  "kind": "module",
+  "name": "Sales goals",
+  "version": "1.0.0",
+  "apiVersion": "1.0.0",
+  "description": "Monthly sales targets per user, a dashboard widget with progress against won deals, an AI tool and a “goal reached” automation action.",
+  "author": "AgentCRM",
+  "homepage": "https://github.com/fleox/agentcrm",
+  "entry": "bundle.js",
+  "icon": "Target",
+  "category": "sales",
+  "dependsOn": ["deals"]
+}

@@ -21,7 +21,7 @@ export function RunLogPage() {
   const [search, setSearch] = useSearchParams();
   const runs = useAutomationRuns() as AutomationRunDoc[];
   const automations = useAutomations();
-  const objects = useObjects();
+  const objects = useObjects({ includeHidden: true });
   const recordLabel = useRecordLabel();
   const canWrite = useCan("automations.write");
   const [open, setOpen] = useState<string | null>(null);

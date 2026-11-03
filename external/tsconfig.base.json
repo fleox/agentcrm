@@ -1,0 +1,19 @@
+{
+  // Shared by the example extensions. Each example maps `@agent-crm/runtime`
+  // to the public typings (types/agentcrm-runtime.d.ts) in its own tsconfig.
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noEmit": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "types": []
+  }
+}

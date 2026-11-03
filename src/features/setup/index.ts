@@ -7,6 +7,7 @@
 import { createElement } from "react";
 import { Database, Globe, ShieldCheck } from "lucide-react";
 import type { Feature } from "../types";
+import { moduleMeta } from "../../core/modules";
 import en from "./i18n/en.json";
 import fr from "./i18n/fr.json";
 import { SetupWizard } from "./SetupWizard";
@@ -17,6 +18,7 @@ import { SecuritySection } from "./settings/SecuritySection";
 
 const feature: Feature = {
   id: "setup",
+  module: moduleMeta("setup"),
   routes: [],
   unconfiguredRoutes: [{ path: "*", element: createElement(SetupWizard) }],
   i18n: { en, fr },
