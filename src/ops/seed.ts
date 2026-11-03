@@ -146,6 +146,21 @@ const FIRST = ["Ada", "Alan", "Grace", "Linus", "Margaret", "Dennis", "Barbara",
 const LAST = ["Lovelace", "Turing", "Hopper", "Torvalds", "Hamilton", "Ritchie", "Liskov", "Thompson", "Allen", "Berners-Lee", "Perlman", "Cerf", "Lamarr", "McCarthy", "Johnson", "van Rossum", "Martin", "Bernard", "Dubois", "Durand", "Lefebvre", "Moreau", "Laurent", "Simon", "Michel", "Garcia", "Roux", "Fournier", "Girard", "Bonnet", "Smith", "Brown", "Wilson", "Taylor", "Clark", "Lewis", "Walker", "Young", "King", "Wright"];
 const TITLES = ["CEO", "CTO", "VP Sales", "Head of Marketing", "Procurement Manager", "Operations Director", "Product Manager", "Engineering Manager", "CFO", "Office Manager", "Account Executive", "Data Analyst"];
 const CITIES = ["Paris", "London", "New York", "Berlin", "Lyon", "Madrid", "Amsterdam", "Montréal", "San Francisco", "Lisbon", "Brussels", "Toronto"];
+// Country and calling code of each demo city (company addresses / phones stay consistent).
+const CITY_COUNTRY: Record<string, [string, string]> = {
+  Paris: ["France", "+33 1"],
+  London: ["United Kingdom", "+44 20"],
+  "New York": ["United States", "+1 212"],
+  Berlin: ["Germany", "+49 30"],
+  Lyon: ["France", "+33 4"],
+  Madrid: ["Spain", "+34 91"],
+  Amsterdam: ["Netherlands", "+31 20"],
+  Montréal: ["Canada", "+1 514"],
+  "San Francisco": ["United States", "+1 415"],
+  Lisbon: ["Portugal", "+351 21"],
+  Brussels: ["Belgium", "+32 2"],
+  Toronto: ["Canada", "+1 416"],
+};
 const DEAL_KINDS = ["Annual license", "Pilot", "Expansion", "Renewal", "Onboarding package", "Enterprise plan", "Support contract", "Consulting retainer"];
 const LIFECYCLE = ["subscriber", "lead", "lead", "mql", "sql", "opportunity", "customer", "customer", "evangelist"];
 const SOURCES = ["website", "referral", "event", "outbound", "partner", "ads", "social"];
@@ -206,19 +221,23 @@ export async function seedDemoData(ctx: OpsContext, opts: { ownerId?: string; cu
     ...(opts.ownerId ? { createdBy: opts.ownerId } : {}),
   });
 
-  const companies: CrmRecord[] = COMPANIES.map(([name, domain, industry, employees], i) =>
-    rec(seededId(`demo:company:${i}`), "companies", {
+  const companies: CrmRecord[] = COMPANIES.map(([name, domain, industry, employees], i) => {
+    const annualRevenue = Math.round(employees * (60_000 + rand() * 140_000) / 1000) * 1000;
+    const city = pick(CITIES);
+    rand(); // keeps the random sequence of earlier releases (country used to be drawn separately)
+    const [country, dial] = CITY_COUNTRY[city];
+    return rec(seededId(`demo:company:${i}`), "companies", {
       name,
       domain: `https://${domain}`,
       industry,
       employees,
-      annualRevenue: Math.round(employees * (60_000 + rand() * 140_000) / 1000) * 1000,
-      address: { city: pick(CITIES), country: pick(["France", "United Kingdom", "United States", "Germany", "Canada", "Spain"]) },
+      annualRevenue,
+      address: { city, country },
       linkedin: `https://www.linkedin.com/company/${domain.split(".")[0]}`,
-      phone: `+33 1 ${String(10 + i).padStart(2, "0")} ${String(Math.floor(rand() * 90) + 10)} ${String(Math.floor(rand() * 90) + 10)} ${String(Math.floor(rand() * 90) + 10)}`,
+      phone: `${dial} ${String(10 + i).padStart(2, "0")} ${String(Math.floor(rand() * 90) + 10)} ${String(Math.floor(rand() * 90) + 10)} ${String(Math.floor(rand() * 90) + 10)}`,
       ...(rand() < 0.3 ? { tags: [pick(["vip", "partner", "strategic", "smb", "enterprise"])] } : {}),
-    }, i, 30 + rand() * 300),
-  );
+    }, i, 30 + rand() * 300);
+  });
 
   const people: CrmRecord[] = [];
   for (let i = 0; i < 80; i++) {
