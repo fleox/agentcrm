@@ -36,7 +36,8 @@
     "hermes:build": "node scripts/build-hermes.mjs",
     "check:hermes": "node scripts/build-hermes.mjs --check && python3 -m unittest discover -s hermes/tests",
     "version": "node scripts/sync-version.mjs && npm run build && node scripts/build-hermes.mjs && git add -A plugin hermes .claude-plugin",
-    "gen:runtime-stubs": "node scripts/gen-runtime-stubs.mjs"
+    "gen:runtime-stubs": "node scripts/gen-runtime-stubs.mjs",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build && npm run check:skills"
   },
   "devDependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -88,5 +89,11 @@
     "pipeline",
     "s3",
     "encrypted"
-  ]
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "bugs": {
+    "url": "https://github.com/fleox/agentcrm/issues"
+  }
 }

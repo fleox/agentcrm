@@ -1,0 +1,75 @@
+name: Release
+
+# Push a tag made by `npm version <patch|minor|major>` (vX.Y.Z) to publish
+# that version to npm and create the GitHub Release. See docs/releasing.md.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write # GitHub Release
+  id-token: write # npm trusted publishing (OIDC, no npm token stored)
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          registry-url: https://registry.npmjs.org
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Tag matches package.json
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $version."
+            exit 1
+          fi
+      - run: npm ci --legacy-peer-deps
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npx vitest run agent/bundle.test.ts
+      - run: npm run check:skills
+      - run: npm run check:hermes
+      - name: CLI smoke test (packed tarball)
+        run: |
+          npm pack
+          mkdir -p /tmp/smoke && cd /tmp/smoke
+          npm init -y >/dev/null
+          npm install "$GITHUB_WORKSPACE"/agent-crm-agentcrm-*.tgz
+          npx agentcrm version --json
+          npx agentcrm help --json > /dev/null
+      # Trusted publishing needs npm >= 11.5.1.
+      - run: npm install -g npm@latest
+      # Idempotent: the very first version is published by hand (npm only
+      # allows trusted publishing on an existing package).
+      - name: Publish to npm
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if curl -fsS "https://registry.npmjs.org/@agent-crm%2fagentcrm/$version" >/dev/null 2>&1; then
+            echo "@agent-crm/agentcrm@$version is already on npm — skipping publish."
+          else
+            npm publish --provenance --access public --ignore-scripts
+          fi
+      - name: GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node -e '
+            const v = require("./package.json").version;
+            const e = require("./changelog.json").versions.find((x) => x.version === v);
+            const lines = [];
+            if (e?.breaking) lines.push("**Breaking changes — read before updating.**", "");
+            lines.push(...(e?.changes ?? []).map((c) => "- " + c));
+            if (e?.actions?.length) lines.push("", "After updating a hosted admin: " + e.actions.map((a) => "`" + a + "`").join(", "));
+            lines.push("", "Install / update: `npx -y @agent-crm/agentcrm@" + v + " help` — Claude Code: `/plugin marketplace update agentcrm`.");
+            require("fs").writeFileSync("release-notes.md", lines.join("\n") + "\n");
+          '
+          gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file release-notes.md
