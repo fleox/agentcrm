@@ -258,7 +258,7 @@ agentcrm fields <add|update|delete> --object <id> …
 
 | Action | Usage | What it does |
 |---|---|---|
-| `add` | `agentcrm fields add --object <id> --label <label> --type <text\|longText\|number\|currency\|percent\|date\|datetime\|boolean\|select\|multiSelect\|email\|phone\|url\|relation\|user\|rating\|address\|tags> [--options a,b,c] [--relation-object <id> --cardinality one\|many] [--required] [--unique] [--description …] [--id <fieldId>]` | Add a field. |
+| `add` | `agentcrm fields add --object <id> --label <label> --type <text\|longText\|number\|currency\|percent\|date\|datetime\|boolean\|select\|multiSelect\|email\|phone\|url\|relation\|user\|rating\|address\|tags\|image\|files> [--options a,b,c] [--relation-object <id> --cardinality one\|many] [--required] [--unique] [--description …] [--id <fieldId>]` | Add a field. |
 | `update` | `agentcrm fields update <fieldId> --object <id> [--label …] [--options a,b] [--type <t>] [--required\|--optional] [--data <json>]` | Change a field (type changes migrate existing values). |
 | `delete` ⚠ | `agentcrm fields delete <fieldId> --object <id> [--yes]` | Delete a custom field and clear its values. Plan unless --yes. |
 
@@ -266,7 +266,7 @@ agentcrm fields <add|update|delete> --object <id> …
 |---|---|
 | `--object <value>` | Object id. |
 | `--label <value>` | Field label. |
-| `--type <value>` | Field type: text, longText, number, currency, percent, date, datetime, boolean, select, multiSelect, email, phone, url, relation, user, rating, address, tags. |
+| `--type <value>` | Field type: text, longText, number, currency, percent, date, datetime, boolean, select, multiSelect, email, phone, url, relation, user, rating, address, tags, image, files. |
 | `--id <value>` | add: field id (default: camelCase of the label). |
 | `--options <value>` | select / multiSelect option labels, comma-separated. |
 | `--relation-object <value>` | relation: target object id. |

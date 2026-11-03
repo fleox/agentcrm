@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { installBrowserEnv } from "../browserEnv";
 import { CliError, printResult } from "../output";
+import { localAdminFolder } from "../remote";
 import { getSite, lockSite, putSite } from "../sites";
 import type { Command } from "./types";
 import { strOpt, usage } from "./util";
@@ -15,7 +16,7 @@ function readPlan(source: string): unknown {
   try {
     return JSON.parse(text);
   } catch (err) {
-    throw new CliError("invalid-plan", `The plan is not valid JSON: ${(err as Error).message}`, undefined, 2);
+    throw new CliError("invalid-plan", `The plan is not valid JSON: ${(err as Error).message}`, "Write the plan as one JSON object (`agentcrm options --json` documents every field).", 2);
   }
 }
 
@@ -55,7 +56,9 @@ export const installCommand: Command = {
       throw new CliError(
         "check-failed",
         [!checks.data.ok && `Data: ${checks.data.detail}`, checks.hosting && !checks.hosting.ok && `Hosting: ${checks.hosting.detail}`].filter(Boolean).join(" — "),
-        "Fix the access (key / token permissions, bucket / repo names, URL, CORS) and retry the dry run.",
+        checks.data.existing && !checks.data.ok
+          ? `Reuse it: the user stores its passphrase (\`agentcrm credentials set ${plan.passphraseAccount ?? `passphrase:${plan.alias}`}\` in their own terminal, or --from-env), then add "encryption": { "credential": "${plan.passphraseAccount ?? `passphrase:${plan.alias}`}" } to the plan's data and retry the dry run. Or pick another folder / root for a new CRM.`
+          : "Fix the access (key / token permissions, bucket / repo names, URL, CORS) and retry the dry run.",
       );
     }
     if (options["dry-run"] === true) {
@@ -81,6 +84,8 @@ export const installCommand: Command = {
       });
       const nextSteps: string[] = [];
       if (plan.adminUrl) nextSteps.push(`Open the admin: ${plan.adminUrl}`);
+      else if (localAdminFolder(plan.hosting)) nextSteps.push(`The admin is in ${localAdminFolder(plan.hosting)} (no public URL): open it with \`agentcrm serve --dir ${localAdminFolder(plan.hosting)}\`, or serve that folder over HTTPS.`);
+      else if (plan.hosting) nextSteps.push(`The admin was uploaded to the ${plan.hosting.type} hosting; its public URL is unknown (add siteUrl to the plan's hosting settings next time).`);
       else nextSteps.push("The admin was not uploaded: run `agentcrm serve` to use it on this computer.");
       if (plan.backend === "journal") {
         nextSteps.push(`Each new browser asks once for the data location keys${plan.passphraseAccount ? " and the passphrase" : ""} (they stay in that browser).`);

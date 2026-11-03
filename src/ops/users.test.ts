@@ -37,6 +37,14 @@ describe("settings ops", () => {
     expect((await updateSettings(crm.admin, { defaultCurrency: "eur" })).defaultCurrency).toBe("EUR");
     await expect(updateSettings(crm.admin, { defaultCurrency: "euro" })).rejects.toMatchObject({ code: "validation" });
     await expect(updateSettings(crm.as("member"), { name: "x" })).rejects.toMatchObject({ code: "forbidden" });
+    // Unknown keys (typos from the CLI `--set`) and bad values are refused, nothing stored.
+    await expect(updateSettings(crm.admin, { bogusKey: 1 } as never)).rejects.toThrow(/Unknown setting "bogusKey"/);
+    await expect(updateSettings(crm.admin, { weekStartsOn: 3 as never })).rejects.toMatchObject({ code: "validation" });
+    await expect(updateSettings(crm.admin, { locale: "not a locale" })).rejects.toMatchObject({ code: "validation" });
+    await expect(updateSettings(crm.admin, { timezone: "Mars/Olympus" })).rejects.toMatchObject({ code: "validation" });
+    await expect(updateSettings(crm.admin, { name: " " })).rejects.toMatchObject({ code: "validation" });
+    expect(getSettings(crm.admin)).not.toHaveProperty("bogusKey");
+    expect(await updateSettings(crm.admin, { locale: "fr-FR", timezone: "Europe/Paris", weekStartsOn: 0 })).toMatchObject({ locale: "fr-FR", timezone: "Europe/Paris", weekStartsOn: 0 });
     await setConfigDoc(crm.admin, "hosting", { connectorId: "s3", settings: { bucket: "b" } });
     expect(getConfigDoc(crm.admin, "hosting")).toMatchObject({ connectorId: "s3" });
     await expect(setConfigDoc(crm.admin, "hosting", { settings: { secretAccessKey: "SK" } })).rejects.toThrow(/secret/);

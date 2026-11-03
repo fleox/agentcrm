@@ -79,6 +79,55 @@ export function exportJson(ctx: OpsContext, opts: { collections?: CollectionName
   };
 }
 
+export interface ImportJsonPlan {
+  mode: "merge" | "replace";
+  // Per collection present in the export: documents added, overwritten
+  // (same id already in this CRM) and deleted (replace mode only).
+  collections: Partial<Record<CollectionName, { added: number; overwritten: number; deleted: number }>>;
+  added: number;
+  overwritten: number;
+  deleted: number;
+  // The export's CRM name when it differs from this CRM's.
+  sourceName?: string;
+  warnings: string[];
+}
+
+// What importJson would change, without writing (the restore plan).
+export function planImportJson(ctx: OpsContext, data: JsonExport, opts: { mode?: "merge" | "replace" } = {}): ImportJsonPlan {
+  assertCan(ctx, "settings.write");
+  if (data?.format !== "agentcrm-export") throw new OpsError("validation", "Not an AgentCRM JSON export.");
+  const mode = opts.mode ?? "merge";
+  const plan: ImportJsonPlan = { mode, collections: {}, added: 0, overwritten: 0, deleted: 0, warnings: [] };
+  for (const c of COLLECTIONS) {
+    const docs = data.collections[c];
+    if (!docs) continue;
+    const ids = new Set(docs.filter((d) => d && typeof d.id === "string").map((d) => d.id));
+    let added = 0;
+    let overwritten = 0;
+    for (const id of ids) (ctx.store.get(c, id) ? overwritten++ : added++);
+    const deleted = mode === "replace" ? ctx.store.list(c).filter((d) => !ids.has(d.id)).length : 0;
+    plan.collections[c] = { added, overwritten, deleted };
+    plan.added += added;
+    plan.overwritten += overwritten;
+    plan.deleted += deleted;
+  }
+  const here = ctx.store.get("settings", "general") as { name?: string } | undefined;
+  const there = (data.collections.settings ?? []).find((d) => d.id === "general") as { name?: string } | undefined;
+  if (here?.name && there?.name && here.name !== there.name) {
+    plan.sourceName = there.name;
+    plan.warnings.push(`This backup comes from another CRM ("${there.name}"): its settings, users and schema replace the ones with the same ids here (this CRM becomes "${there.name}").`);
+  }
+  const users = (data.collections.users ?? []) as unknown as { id: string; email?: string }[];
+  const replacedUsers = users.filter((u) => {
+    const cur = ctx.store.get("users", u.id) as { email?: string } | undefined;
+    return cur?.email && u.email && cur.email.toLowerCase() !== u.email.toLowerCase();
+  });
+  if (replacedUsers.length) {
+    plan.warnings.push(`${replacedUsers.length} user(s) of this CRM are replaced by different people with the same id: ${replacedUsers.map((u) => `${String((ctx.store.get("users", u.id) as { email?: string }).email)} → ${String(u.email)}`).join(", ")}.`);
+  }
+  return plan;
+}
+
 // Restores an export into the store. "merge" (default) upserts every
 // document; "replace" also deletes documents absent from the export.
 export async function importJson(ctx: OpsContext, data: JsonExport, opts: { mode?: "merge" | "replace" } = {}): Promise<{ written: number; deleted: number }> {

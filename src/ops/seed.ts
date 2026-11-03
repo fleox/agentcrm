@@ -146,6 +146,26 @@ const FIRST = ["Ada", "Alan", "Grace", "Linus", "Margaret", "Dennis", "Barbara",
 const LAST = ["Lovelace", "Turing", "Hopper", "Torvalds", "Hamilton", "Ritchie", "Liskov", "Thompson", "Allen", "Berners-Lee", "Perlman", "Cerf", "Lamarr", "McCarthy", "Johnson", "van Rossum", "Martin", "Bernard", "Dubois", "Durand", "Lefebvre", "Moreau", "Laurent", "Simon", "Michel", "Garcia", "Roux", "Fournier", "Girard", "Bonnet", "Smith", "Brown", "Wilson", "Taylor", "Clark", "Lewis", "Walker", "Young", "King", "Wright"];
 const TITLES = ["CEO", "CTO", "VP Sales", "Head of Marketing", "Procurement Manager", "Operations Director", "Product Manager", "Engineering Manager", "CFO", "Office Manager", "Account Executive", "Data Analyst"];
 const CITIES = ["Paris", "London", "New York", "Berlin", "Lyon", "Madrid", "Amsterdam", "Montréal", "San Francisco", "Lisbon", "Brussels", "Toronto"];
+const COUNTRY_OF_CITY: Record<string, string> = {
+  Paris: "France",
+  London: "United Kingdom",
+  "New York": "United States",
+  Berlin: "Germany",
+  Lyon: "France",
+  Madrid: "Spain",
+  Amsterdam: "Netherlands",
+  Montréal: "Canada",
+  "San Francisco": "United States",
+  Lisbon: "Portugal",
+  Brussels: "Belgium",
+  Toronto: "Canada",
+};
+// The country matches the city. The second pick() only keeps the random
+// sequence (and so every other demo value) identical to earlier releases.
+function demoAddress(city: string, pick: <T>(items: readonly T[]) => T): { city: string; country: string } {
+  pick(CITIES);
+  return { city, country: COUNTRY_OF_CITY[city] ?? "France" };
+}
 const DEAL_KINDS = ["Annual license", "Pilot", "Expansion", "Renewal", "Onboarding package", "Enterprise plan", "Support contract", "Consulting retainer"];
 const LIFECYCLE = ["subscriber", "lead", "lead", "mql", "sql", "opportunity", "customer", "customer", "evangelist"];
 const SOURCES = ["website", "referral", "event", "outbound", "partner", "ads", "social"];
@@ -213,7 +233,7 @@ export async function seedDemoData(ctx: OpsContext, opts: { ownerId?: string; cu
       industry,
       employees,
       annualRevenue: Math.round(employees * (60_000 + rand() * 140_000) / 1000) * 1000,
-      address: { city: pick(CITIES), country: pick(["France", "United Kingdom", "United States", "Germany", "Canada", "Spain"]) },
+      address: demoAddress(pick(CITIES), pick),
       linkedin: `https://www.linkedin.com/company/${domain.split(".")[0]}`,
       phone: `+33 1 ${String(10 + i).padStart(2, "0")} ${String(Math.floor(rand() * 90) + 10)} ${String(Math.floor(rand() * 90) + 10)} ${String(Math.floor(rand() * 90) + 10)}`,
       ...(rand() < 0.3 ? { tags: [pick(["vip", "partner", "strategic", "smb", "enterprise"])] } : {}),

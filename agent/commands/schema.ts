@@ -37,7 +37,8 @@ export const objectsCommand: Command = {
         }, (rows) => table(rows, ["id", "labelPlural", "fields", "records", "standard"]));
       case "get": {
         const objectId = positional(positionals, 1, "object id", "objects get <id>");
-        return withSession(io, options, {}, async ({ ctx }) => (await import("../../src/ops/schema")).describeSchema(ctx, objectId));
+        // One object in, one object out (describeSchema lists every object).
+        return withSession(io, options, {}, async ({ ctx }) => (await import("../../src/ops/schema")).describeSchema(ctx, objectId)[0]);
       }
       case "create": {
         const data = jsonObjectOpt(options, "data") ?? {};

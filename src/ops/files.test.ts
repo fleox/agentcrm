@@ -232,6 +232,28 @@ describe("backup ZIP (data + files)", () => {
     await expect(importBackupZip(target.admin, new Uint8Array([1, 2, 3]))).rejects.toThrow(/ZIP/);
     await expect(importBackupZip(target.as("member"), zip)).rejects.toThrow(/Not allowed/);
   });
+
+  it("plans a restore without writing: counts, other-CRM warnings, invalid archives", async () => {
+    const { exportBackupZip, planBackupZip } = await import("./backup");
+    const { updateSettings } = await import("./settings");
+    const { crm, person } = await crmWithPerson();
+    await uploadFile(crm.admin, { name: "a.png", bytes: PNG, targets: [person.id] });
+    await updateSettings(crm.admin, { name: "Source CRM" });
+    const { zip } = await exportBackupZip(crm.admin);
+    const target = await setupTestCrm();
+    await target.store.write([{ op: "patch", collection: "users", id: "owner", fields: { email: "someone-else@example.com" } }]);
+    const before = target.store.list("records").length;
+    const plan = await planBackupZip(target.admin, zip);
+    expect(plan).toMatchObject({ mode: "merge", files: 1, sourceName: "Source CRM", deleted: 0 });
+    expect(plan.collections.records).toMatchObject({ added: 2, overwritten: 0 });
+    expect(plan.collections.settings).toMatchObject({ overwritten: 1 });
+    expect(plan.warnings.join(" ")).toMatch(/another CRM \("Source CRM"\)/);
+    expect(plan.warnings.join(" ")).toMatch(/someone-else@example.com → /);
+    expect(target.store.list("records").length).toBe(before);
+    expect((await planBackupZip(target.admin, zip, { mode: "replace" })).mode).toBe("replace");
+    await expect(planBackupZip(target.admin, new Uint8Array([1, 2, 3]))).rejects.toThrow(/ZIP/);
+    await expect(planBackupZip(target.as("member"), zip)).rejects.toThrow(/Not allowed/);
+  });
 });
 
 describe("demo files", () => {

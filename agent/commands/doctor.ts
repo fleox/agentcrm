@@ -1,8 +1,10 @@
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { getCredential } from "../credentials";
 import { installBrowserEnv } from "../browserEnv";
 import { toCliError, printResult } from "../output";
 import { readVersionInfo } from "../paths";
-import { fetchHostedAdmin, fetchText, findSecretKeys, parseConfigJs } from "../remote";
+import { fetchHostedAdmin, fetchText, findSecretKeys, localAdminFolder, parseConfigJs, readLocalAdmin } from "../remote";
 import { compareVersions } from "../semver";
 import { resolveSite, type SiteRecord } from "../sites";
 import type { Command } from "./types";
@@ -133,22 +135,39 @@ export async function runDoctor(site: SiteRecord, opts: { repair?: boolean } = {
 
   // ── Hosted admin ──────────────────────────────────────────────────────
   const adminUrl = site.adminUrl;
+  const adminFolder = adminUrl ? null : localAdminFolder(site.hosting);
   let origin: string | null = null;
-  if (!adminUrl) {
+  if (!adminUrl && !adminFolder) {
     add({ id: "admin", status: "skip", message: "Admin not hosted (use `agentcrm serve`)." });
   } else {
-    origin = new URL(adminUrl).origin;
-    add(
-      adminUrl.startsWith("https://") || /^http:\/\/(localhost|127\.0\.0\.1)/.test(adminUrl)
-        ? { id: "https", status: "ok", message: "Admin served over HTTPS (or localhost)." }
-        : { id: "https", status: "fail", message: `${adminUrl} is plain HTTP: browsers refuse WebCrypto (signing, encryption) there.`, fix: "Serve the admin over HTTPS (CDN / custom domain with TLS, the bucket's https endpoint, GitHub Pages)." },
-    );
-    const index = await fetchText(`${adminUrl}index.html`);
+    if (adminUrl) {
+      origin = new URL(adminUrl).origin;
+      add(
+        adminUrl.startsWith("https://") || /^http:\/\/(localhost|127\.0\.0\.1)/.test(adminUrl)
+          ? { id: "https", status: "ok", message: "Admin served over HTTPS (or localhost)." }
+          : { id: "https", status: "fail", message: `${adminUrl} is plain HTTP: browsers refuse WebCrypto (signing, encryption) there.`, fix: "Serve the admin over HTTPS (CDN / custom domain with TLS, the bucket's https endpoint, GitHub Pages)." },
+      );
+    }
+    // What a browser gets (URL), or what `serve --dir` would serve (folder).
+    const read = async (name: string): Promise<{ ok: boolean; text: string; error?: string }> => {
+      if (adminUrl) {
+        const res = await fetchText(`${adminUrl}${name}`);
+        return { ok: res.ok, text: res.text, error: res.error ?? (res.ok ? undefined : `HTTP ${res.status}`) };
+      }
+      const file = join(adminFolder!, name);
+      if (!existsSync(file)) return { ok: false, text: "", error: `${file} not found` };
+      return { ok: true, text: readFileSync(file, "utf8") };
+    };
+    const index = await read("index.html");
     if (!index.ok) {
-      add({ id: "admin", status: "fail", message: `Admin page not served (${index.error ?? `HTTP ${index.status}`}).`, fix: `\`agentcrm deploy-admin --site ${site.alias} --yes\` (Pages hosts take a minute after a commit).` });
+      add({ id: "admin", status: "fail", message: `Admin page not ${adminUrl ? "served" : "found"} (${index.error}).`, fix: `\`agentcrm deploy-admin --site ${site.alias} --yes\`${adminUrl ? " (Pages hosts take a minute after a commit)" : ""}.` });
     } else {
-      add({ id: "admin", status: "ok", message: `Admin served at ${adminUrl}.` });
-      const hosted = await fetchHostedAdmin(adminUrl);
+      add(
+        adminUrl
+          ? { id: "admin", status: "ok", message: `Admin served at ${adminUrl}.` }
+          : { id: "admin", status: "ok", message: `Admin in the folder ${adminFolder} (no public URL): open it with \`agentcrm serve --dir ${adminFolder}\`.` },
+      );
+      const hosted = adminUrl ? await fetchHostedAdmin(adminUrl) : readLocalAdmin(adminFolder!);
       add(
         !hosted.version
           ? { id: "admin-version", status: "warn", message: "version.json missing next to the admin.", fix: `\`agentcrm deploy-admin --site ${site.alias} --yes\`.` }
@@ -156,9 +175,9 @@ export async function runDoctor(site: SiteRecord, opts: { repair?: boolean } = {
             ? { id: "admin-version", status: "ok", message: `Admin ${hosted.version} is up to date.` }
             : { id: "admin-version", status: "warn", message: `Admin ${hosted.version} is older than ${info.version}.`, fix: `Offer \`agentcrm deploy-admin --site ${site.alias}\`.` },
       );
-      const cfg = await fetchText(`${adminUrl}config.js`);
+      const cfg = await read("config.js");
       try {
-        if (!cfg.ok) throw new Error(cfg.error ?? `HTTP ${cfg.status}`);
+        if (!cfg.ok) throw new Error(cfg.error);
         const runtime = parseConfigJs(cfg.text);
         const secrets = findSecretKeys(runtime);
         if (secrets.length) add({ id: "config-js", status: "fail", message: `config.js publishes secrets: ${secrets.join(", ")}.`, fix: "Revoke those keys NOW, then redeploy the admin (config.js is regenerated without secrets)." });

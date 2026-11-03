@@ -49,7 +49,8 @@ describe("journal CRM in a local folder", () => {
     expect(project.fields.phase).toBeTruthy();
     expect((await crm.ok(["fields", "delete", field.id, "--object", obj.id])).needsConfirmation).toBe(true);
     await crm.ok(["fields", "delete", field.id, "--object", obj.id, "--yes"]);
-    expect((await crm.ok(["objects", "get", obj.id])).objects?.[0]?.fields ?? []).not.toContainEqual(expect.objectContaining({ id: field.id }));
+    expect((await crm.ok(["objects", "get", obj.id])).fields).toBeDefined();
+    expect((await crm.ok(["objects", "get", obj.id])).fields).not.toContainEqual(expect.objectContaining({ id: field.id }));
     expect((await crm.ok(["objects", "delete", obj.id])).needsConfirmation).toBe(true);
     await crm.ok(["objects", "delete", obj.id, "--yes"]);
 
@@ -89,7 +90,9 @@ describe("journal CRM in a local folder", () => {
     for (const name of ["pipeline", "forecast", "won-lost", "activity", "lead-sources", "stale", "conversion"]) {
       expect((await crm.ok(["report", name])).report).toBe(name);
     }
-    expect((await crm.run(["report", "nope"])).body.error?.code).toBe("notFound");
+    const unknownReport = await crm.run(["report", "nope"]);
+    expect(unknownReport.code).toBe(2);
+    expect(unknownReport.body.error).toMatchObject({ code: "usage", hint: expect.stringContaining("won-lost") });
 
     // Export → CSV file → re-import (updates by id, dry run).
     const out = join(root, "companies.csv");
@@ -103,5 +106,64 @@ describe("journal CRM in a local folder", () => {
 
     const doctor = await cli(["doctor", "--site", "local"]);
     expect(doctor.body.data.checks.find((c: { id: string }) => c.id === "dataset").status).toBe("ok");
+  }, 120_000);
+
+  it("admin in a local folder without URL, exports, restore plans and error hints", async () => {
+    const plan = writePlan(root, "folder", {
+      alias: "folder",
+      owner: { name: "Folder Owner", email: "folder@example.com" },
+      data: { backend: "journal", location: { type: "local-folder", settings: { path: join(root, "folder-data") } } },
+      hosting: { type: "local-folder", settings: { path: join(root, "folder-site") } },
+    });
+    const res = await cli(["install", "--plan", plan]);
+    expect(res.code).toBe(0);
+    const adminFolder = join(root, "folder-site", "admin");
+    // The admin WAS uploaded: say where it is, not "not uploaded".
+    expect(res.body.data.nextSteps[0]).toContain(`serve --dir ${adminFolder}`);
+    const doctor = await cli(["doctor", "--site", "folder"]);
+    const check = (id: string) => doctor.body.data.checks.find((c: { id: string }) => c.id === id);
+    expect(check("admin")).toMatchObject({ status: "ok", message: expect.stringContaining(adminFolder) });
+    expect(check("admin-version").status).toBe("ok");
+    expect(check("config-js").status).toBe("ok");
+    const status = await cli(["status", "--site", "folder"]);
+    expect(status.body.data.sites[0]).toMatchObject({ state: "current", adminFolder, adminVersion: "0.1.0" });
+    expect((await cli(["deploy-admin", "--site", "folder"])).body.data.plans[0].from).toBe("0.1.0");
+
+    const crm = siteCli("folder");
+    // objects get: one object.
+    expect((await crm.ok(["objects", "get", "people"])).id).toBe("people");
+    // CSV rows are records, not lines (quoted values hold line breaks).
+    await crm.ok(["records", "create", "--object", "companies", "--set", "name=Multi\nline"]);
+    await crm.ok(["records", "create", "--object", "companies", "--set", "name=Plain"]);
+    const csvOut = join(root, "nested", "dir", "companies.csv");
+    expect((await crm.ok(["export", "csv", "--object", "companies", "--out", csvOut])).rows).toBe(2);
+    expect(existsSync(csvOut)).toBe(true);
+    // --out creates missing folders (files get, export zip).
+    const company = (await crm.ok(["records", "list", "--object", "companies", "--search", "Plain"])).records[0];
+    writeFileSync(join(root, "doc.txt"), "hello");
+    const up = await crm.ok(["files", "upload", join(root, "doc.txt"), "--record", company.id]);
+    const got = await crm.ok(["files", "get", up.uploaded[0].id, "--out", join(root, "new-folder", "doc.txt")]);
+    expect(readFileSync(got.path, "utf8")).toBe("hello");
+    const zipOut = join(root, "backups", "b.zip");
+    await crm.ok(["export", "zip", "--out", zipOut]);
+    // Restore plan: validated, counted, warns about another CRM's data.
+    const restore = await cli(["import", "zip", zipOut, "--site", "local"]);
+    expect(restore.body.data.needsConfirmation).toBe(true);
+    expect(restore.body.data.plan).toMatchObject({ mode: "merge", files: 1 });
+    expect(restore.body.data.plan.added).toBeGreaterThan(0);
+    expect(restore.body.data.plan.warnings.join(" ")).toMatch(/another CRM/);
+    const notZip = await cli(["import", "zip", join(root, "doc.txt"), "--site", "local"]);
+    expect(notZip.body.error?.code).toBe("validation");
+    // Settings: unknown keys refused.
+    const bogus = await crm.run(["settings", "set", "--set", "bogusKey=1"]);
+    expect(bogus.code).toBe(2);
+    expect(bogus.body.error?.message).toMatch(/Unknown setting "bogusKey"/);
+    // Usage errors always carry a hint.
+    const noOut = await crm.run(["files", "get", up.uploaded[0].id]);
+    expect(noOut.code).toBe(2);
+    expect(noOut.body.error?.hint).toContain("agentcrm files");
+    const notJson = join(root, "broken.json");
+    writeFileSync(notJson, "{ not json");
+    expect((await cli(["install", "--plan", notJson])).body.error?.hint).toBeTruthy();
   }, 120_000);
 });

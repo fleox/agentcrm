@@ -99,7 +99,7 @@ export async function checkPlan(plan: ResolvedPlan): Promise<CheckReport> {
         }
       } catch (err) {
         const e = err as Error;
-        data = { ok: false, detail: e.name === "PassphraseError" ? `wrong passphrase in ${plan.passphraseAccount}` : e.message, existing: false };
+        data = { ok: false, detail: e.name === "PassphraseError" ? `wrong passphrase in ${plan.passphraseAccount}` : e.message, existing: e.name === "PassphraseError" };
       }
     }
   } else if (plan.runtime.backend === "git-json") {

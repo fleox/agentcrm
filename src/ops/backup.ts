@@ -8,7 +8,7 @@ import JSZip from "jszip";
 import type { FileMeta } from "../core/types";
 import { FILE_ID_RE } from "../data/files/ids";
 import { assertCan, OpsError, type OpsContext } from "./context";
-import { exportJson, importJson, type JsonExport } from "./exportCsv";
+import { exportJson, importJson, planImportJson, type ImportJsonPlan, type JsonExport } from "./exportCsv";
 import { filesOf } from "./store";
 
 export const BACKUP_DATA_FILE = "data.json";
@@ -93,4 +93,19 @@ export async function readBackupZipInfo(input: Uint8Array | ArrayBuffer): Promis
   const metaIds = new Set(((data.collections.files ?? []) as unknown as FileMeta[]).map((f) => f.id));
   const files = Object.keys(zip.files).filter((p) => p.startsWith(BACKUP_FILES_DIR) && metaIds.has(p.slice(BACKUP_FILES_DIR.length, -".bin".length))).length;
   return { data, files };
+}
+
+// The restore plan of a backup ZIP: validates the archive and tells what
+// importBackupZip would change (no write).
+export async function planBackupZip(ctx: OpsContext, input: Uint8Array | ArrayBuffer, opts: { mode?: "merge" | "replace" } = {}): Promise<ImportJsonPlan & { files: number; exportedAt?: string }> {
+  assertCan(ctx, "settings.write");
+  let info: Awaited<ReturnType<typeof readBackupZipInfo>>;
+  try {
+    info = await readBackupZipInfo(input);
+  } catch (err) {
+    if (err instanceof SyntaxError) throw new OpsError("validation", `${BACKUP_DATA_FILE} is not valid JSON.`);
+    throw err;
+  }
+  if (info.files && !ctx.store.files) throw new OpsError("invalid", `The "${ctx.store.kind}" backend can't store files: restore the data JSON only.`);
+  return { ...planImportJson(ctx, info.data, opts), files: info.files, ...(info.data.exportedAt ? { exportedAt: info.data.exportedAt } : {}) };
 }

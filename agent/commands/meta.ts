@@ -2,7 +2,7 @@ import { DATA_BACKENDS, HOSTINGS, LOCATIONS } from "../catalog";
 import { CREDENTIAL_TYPES } from "../credentials";
 import { printResult } from "../output";
 import { isBundled, PACKAGE_NAME, readVersionInfo } from "../paths";
-import { changesBetween, fetchHostedAdmin, fetchLatestVersion, readChangelog } from "../remote";
+import { changesBetween, fetchLatestVersion, localAdminFolder, readChangelog, siteAdminVersion } from "../remote";
 import { compareVersions } from "../semver";
 import { listSites, putSite, resolveSite, type SiteRecord } from "../sites";
 import type { Command } from "./types";
@@ -22,6 +22,8 @@ export const versionCommand: Command = {
 export interface SiteStatus {
   alias: string;
   adminUrl: string | null;
+  // local-folder hosting without a public URL: where the admin is.
+  adminFolder?: string;
   adminVersion: string | null;
   // current | update (deploy-admin proposed) | newer (update the tool first) | not-hosted | unreachable
   state: "current" | "update" | "newer" | "not-hosted" | "unreachable";
@@ -31,9 +33,11 @@ export interface SiteStatus {
 }
 
 export async function siteStatus(site: SiteRecord, version: string, dataSchema: number): Promise<SiteStatus> {
-  const base = { alias: site.alias, adminUrl: site.adminUrl };
-  if (!site.adminUrl) return { ...base, adminVersion: null, state: "not-hosted" };
-  const hosted = await fetchHostedAdmin(site.adminUrl);
+  const folder = site.adminUrl ? null : localAdminFolder(site.hosting);
+  const base = { alias: site.alias, adminUrl: site.adminUrl, ...(folder ? { adminFolder: folder } : {}) };
+  // An admin in a local folder (no public URL) is checked on disk.
+  const hosted = await siteAdminVersion(site);
+  if (hosted.source === "none") return { ...base, adminVersion: null, state: "not-hosted" };
   if (!hosted.version) return { ...base, adminVersion: null, state: "unreachable", error: hosted.error };
   if (hosted.version !== site.adminVersion) putSite({ ...site, adminVersion: hosted.version });
   const cmp = compareVersions(hosted.version, version);

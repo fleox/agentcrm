@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { copyToClipboard, fromAwsProfile, fromEnv, fromGh, promptHidden } from "../credentialSources";
 import { CREDENTIAL_TYPES, listCredentials, parseAccount, removeCredential, requireCredential, setCredential } from "../credentials";
 import { CliError, printResult } from "../output";
+import { PACKAGE_NAME, readVersionInfo } from "../paths";
 import { listSites } from "../sites";
 import type { Command } from "./types";
 import { strOpt, usage } from "./util";
@@ -62,7 +63,7 @@ export const credentialsCommand: Command = {
         return;
       }
       if (!process.stdin.isTTY) {
-        throw new CliError("needs-terminal", "verify reads the value the USER pastes in their own terminal.", `Ask the user to run it themselves (in Claude Code: \`! npx -y @fleox-agent-crm/agentcrm credentials verify ${account}\`).`);
+        throw new CliError("needs-terminal", "verify reads the value the USER pastes in their own terminal.", `Ask the user to run it themselves (in Claude Code: \`! npx -y ${PACKAGE_NAME}@${readVersionInfo().version} credentials verify ${account}\`).`);
       }
       try {
         copyToClipboard("");

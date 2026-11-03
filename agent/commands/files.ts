@@ -1,10 +1,10 @@
-import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { basename, resolve } from "node:path";
 import type { FileMeta } from "../../src/core/types";
 import type { OpsContext } from "../../src/ops/context";
 import { withSession } from "../ops/session";
 import type { Command } from "./types";
-import { AS_OPTION, boolOpt, numOpt, positional, SITE_OPTION, strOpt, table, usage, YES_OPTION } from "./util";
+import { AS_OPTION, boolOpt, numOpt, positional, SITE_OPTION, strOpt, table, usage, writeOutFile, YES_OPTION } from "./util";
 
 // Files (images & attachments) from the command line. Bytes are read
 // from / written to local paths; the CRM's size limit applies; images
@@ -117,7 +117,7 @@ export const filesCommand: Command = {
           const { getFile, getFileBytes } = await import("../../src/ops/files");
           const meta = getFile(ctx, id);
           const bytes = await getFileBytes(ctx, id, { thumb: boolOpt(options, "thumb") });
-          writeFileSync(resolve(out), bytes);
+          writeOutFile(out, bytes);
           return { id, name: meta.name, mime: meta.mime, bytes: bytes.length, path: resolve(out) };
         }, (r) => `Wrote ${r.bytes} bytes (${r.name}) to ${r.path}`);
       }

@@ -1,7 +1,7 @@
 import { installBrowserEnv } from "../browserEnv";
 import { CliError, printResult } from "../output";
 import { readVersionInfo } from "../paths";
-import { changesBetween, fetchHostedAdmin, readChangelog } from "../remote";
+import { changesBetween, readChangelog, siteAdminVersion } from "../remote";
 import { compareVersions } from "../semver";
 import { listSites, lockSite, putSite, resolveSite, type SiteRecord } from "../sites";
 import type { Command } from "./types";
@@ -42,7 +42,7 @@ export const deployAdminCommand: Command = {
     const plans: DeployPlan[] = [];
     for (const site of sites) {
       if (!site.hosting) throw new CliError("not-hosted", `${site.alias} has no hosting recorded.`, "Register it with `site add --admin-url …` from a CRM whose admin is hosted, or reinstall with a hosting.");
-      const hosted = site.adminUrl ? await fetchHostedAdmin(site.adminUrl) : { version: null, dataSchema: null };
+      const hosted = await siteAdminVersion(site);
       const plan: DeployPlan = {
         alias: site.alias,
         adminUrl: site.adminUrl,
