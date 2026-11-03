@@ -140,7 +140,9 @@ export function syncExtensions(store: DataStore, opts: LoaderOptions = {}): Prom
         report.loaded.push(doc.id);
       } catch (err) {
         const error = err instanceof Error ? err : new Error(String(err));
-        console.error(`[extensions] ${doc.id} failed to load:`, error);
+        // A caller that handles errors (CLI check / sessions) reports them
+        // its own way; otherwise log them for the developer console.
+        if (!opts.onError) console.error(`[extensions] ${doc.id} failed to load:`, error);
         setExtensionStatus(doc, "error", error.message);
         const st = getLoadedExtension(doc.id);
         if (st) st.fingerprint = fp;

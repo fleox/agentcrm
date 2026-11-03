@@ -82,6 +82,19 @@ async function install({ io, options, positionals }: CommandContext) {
   const { pkg, raw } = await readPackage(target);
   const apply = options.yes === true;
   const disabled = boolOpt(options, "disabled");
+  // Load it in a throw-away CRM first (like `ext check`): a bundle that
+  // doesn't load must not replace a working version on the real CRM.
+  if (!boolOpt(options, "force")) {
+    const { checkExtension } = await import("../ops/extCheck");
+    const report = await checkExtension(raw, { callTools: false });
+    if (!report.valid) {
+      throw new CliError(
+        "invalid-package",
+        `The extension doesn't pass the check: ${report.errors.map((e) => e.message).join(" ")}`,
+        `Nothing was installed. Run \`agentcrm ext check ${target}\` for the full report (--force installs it anyway).`,
+      );
+    }
+  }
   return withSession(io, options, { lock: apply }, async (s) => {
     const ext = await import("../../src/ops/extensions");
     const existing = s.store.get("extensions", pkg.manifest.id) as { manifest?: { version: string }; enabled?: boolean; kind?: string } | undefined;
@@ -124,7 +137,7 @@ async function install({ io, options, positionals }: CommandContext) {
           `  ${r.plan.warning}`,
           "Nothing changed — re-run with --yes once the user agrees.",
         ].join("\n")
-      : `${r.mode === "upgrade" ? `Upgraded ${r.previousVersion} → ` : "Installed "}${r.id} ${r.version} (${r.enabled ? "enabled" : "disabled"}; load: ${r.load.status}${"error" in r.load ? ` — ${r.load.error}` : ""})${r.warnings.length ? `\n  ${r.warnings.join("\n  ")}` : ""}`);
+      : `${r.mode === "upgrade" ? `Upgraded ${r.id} ${r.previousVersion} → ${r.version}` : `Installed ${r.id} ${r.version}`} (${r.enabled ? "enabled" : "disabled"}; load: ${r.load.status}${"error" in r.load ? ` — ${r.load.error}` : ""})${r.warnings.length ? `\n  ${r.warnings.join("\n  ")}` : ""}`);
 }
 
 export const extCommand: Command = {
@@ -136,7 +149,7 @@ export const extCommand: Command = {
     { name: "new", usage: "ext new <module|theme> <id> [--dir <path>] [--name <name>] [--description <text>] [--author <name>] [--force]", summary: "Scaffold a standalone extension project (package.json, vite.config.ts, tsconfig + runtime typings, src/index.tsx, README).", writes: true },
     { name: "check", usage: "ext check [<dir|zip>] [--kind module|theme] [--no-call]", summary: "Validate manifest, ids, apiVersion, sizes, imports; load the bundle in a throw-away CRM and report routes, nav, slots, AI tools, automation actions, theme values." },
     { name: "pack", usage: "ext pack [<dir>] [--out <file.zip>]", summary: "ZIP manifest.json + bundle.js (+ style.css) for Settings → Modules → Install or `ext install`.", writes: true },
-    { name: "install", usage: "ext install <zip|dir> [--site <alias>] [--disabled] [--yes]", summary: "Install or upgrade an extension on a CRM. Prints the plan (id, version, author, upgrade, size) unless --yes.", writes: true, destructive: true },
+    { name: "install", usage: "ext install <zip|dir> [--site <alias>] [--disabled] [--force] [--yes]", summary: "Install or upgrade an extension on a CRM. The bundle is first loaded in a throw-away CRM (like ext check; --force skips it). Prints the plan (id, version, author, upgrade, size) unless --yes.", writes: true, destructive: true },
     { name: "list", usage: "ext list [--kind module|theme]", summary: "Installed extensions with version, enabled state and load status in this process." },
     { name: "enable", usage: "ext enable <id> [--cascade] [--yes]", summary: "Enable an installed extension (plan unless --yes).", writes: true },
     { name: "disable", usage: "ext disable <id> [--cascade] [--yes]", summary: "Disable it without uninstalling (plan unless --yes).", writes: true },
@@ -151,7 +164,7 @@ export const extCommand: Command = {
     { name: "name", type: "string", description: "new: display name." },
     { name: "description", type: "string", description: "new: one-sentence description." },
     { name: "author", type: "string", description: "new: author shown in the install plan and Settings → Modules." },
-    { name: "force", type: "boolean", description: "new: write into a non-empty folder. uninstall: even if enabled modules depend on it." },
+    { name: "force", type: "boolean", description: "new: write into a non-empty folder. install: skip the trial load (ext check). uninstall: even if enabled modules depend on it." },
     { name: "kind", type: "string", description: "check: expected kind. list: only modules or themes." },
     { name: "no-call", type: "boolean", description: "check: don't smoke-call the AI tools on the demo data." },
     { name: "out", type: "string", description: "pack / export: ZIP path (default: <dir>/<id>-<version>.zip, ./<id>-<version>.zip)." },

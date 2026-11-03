@@ -112,12 +112,21 @@ export async function checkExtension(raw: RawPackage, opts: { kind?: "module" | 
   }
   if (manifest?.style && style === undefined) errors.push({ code: "missingStyle", message: 'manifest.json declares "style": "style.css" but there is no style.css.', hint: "Add src/style.css (projects) or style.css next to bundle.js." });
   if (style !== undefined && bytes(style) > EXTENSION_LIMITS.style) errors.push({ code: "tooLarge", message: `style.css is larger than ${EXTENSION_LIMITS.style / 1024} KB.` });
+  if (style !== undefined) cssWarnings(style, "style.css", warnings);
   for (const f of raw.ignored) warnings.push({ code: "ignored", message: `${f} is not part of the package (only manifest.json, bundle.js and style.css are).${/style\.css$/.test(f) ? ' Declare "style": "style.css" in manifest.json to ship it.' : ""}` });
 
   // 3. Load it like the admin, in a throw-away CRM.
   if (!errors.length && manifest && bundle) await loadInSandbox(report, manifest, { "bundle.js": bundle, ...(style ? { "style.css": style } : {}) }, opts);
   report.valid = errors.length === 0;
   return report;
+}
+
+// CSS shipped by an extension (style.css, a theme's `css`): remote imports
+// load a third-party stylesheet for every user (docs/creating-a-theme.md:
+// no remote @import), and HTML tags have no place in CSS.
+function cssWarnings(css: string, label: string, warnings: CheckIssue[]): void {
+  if (/@import\s+(?:url\(\s*)?["']?\s*(?:https?:)?\/\//i.test(css)) warnings.push({ code: "css", message: `${label} @imports a remote stylesheet: every user's browser would fetch it.`, hint: 'Inline the CSS; for fonts set the theme\'s "font" (the CRM loads Google Fonts itself).' });
+  if (/<\/?(?:style|script)/i.test(css)) warnings.push({ code: "css", message: `${label} contains <style> / <script> tags: it must be plain CSS.` });
 }
 
 async function loadInSandbox(report: CheckReport, manifest: ExtensionManifest, files: ExtensionDoc["files"], opts: { callTools?: boolean }): Promise<void> {
@@ -170,6 +179,9 @@ async function loadInSandbox(report: CheckReport, manifest: ExtensionManifest, f
       const { errors } = schema.validateAppearancePatch(theme.appearance);
       for (const e of errors) report.errors.push({ code: "appearance", message: `Theme appearance: ${e}` });
       for (const k of ["logo", "favicon", "themeId", "preset"] as const) if (k in (theme.appearance ?? {})) report.warnings.push({ code: "appearance", message: `Theme appearance sets "${k}" — themes should leave it to the workspace.` });
+      // theme.css = defineTheme's css + style.css (checked above).
+      const ownCss = (theme.css ?? "").replace(files["style.css"] ?? "", "");
+      if (ownCss.trim()) cssWarnings(ownCss, "The theme's css", report.warnings);
       report.theme = { name: theme.name, appearance: { ...theme.appearance }, css: bytes(theme.css) };
       return;
     }

@@ -69,14 +69,8 @@ export async function loadSessionExtensions(store: DataStore, opts: { safe?: boo
       const importBundle = await nodeImportBundle();
       const { syncExtensions } = await import("../../src/extensions/loader");
       loadedAny = true;
-      const original = console.error;
-      // The loader logs failures with console.error; they are reported.
-      console.error = () => undefined;
-      try {
-        return await syncExtensions(store, { importBundle });
-      } finally {
-        console.error = original;
-      }
+      // Failures are in the report (printed as notes by the caller).
+      return await syncExtensions(store, { importBundle, onError: () => undefined });
     } catch (err) {
       return { loaded: [], unloaded: [], failed: [{ id: "*", error: (err as Error).message }], skipped: [] };
     }

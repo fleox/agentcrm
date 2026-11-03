@@ -31,6 +31,8 @@ npx -y @fleox-agent-crm/agentcrm@0.3.0 ext list --site acme --json
 ```
 
 - The plan (`needsConfirmation: true`) shows `id`, `kind`, `name`, `version`, `author`, `mode` (`install` / `upgrade` with `from`), `dependsOn`, `size`, `warnings` and the trust warning. **Show it to the user and ask before `--yes`.**
+- Before anything else, `ext install` loads the bundle in a throw-away CRM like `ext check`: when it fails the command answers `invalid-package` and nothing is installed (the current version keeps running). Fix it and run `ext check`; `--force` skips the trial load (only for bundles that can't load in Node on purpose).
+- `warnings` also flag a downgrade or a re-install of the same version: bump `version` instead.
 - After `--yes`, `data.load.status` is `loaded` when the bundle ran in the CLI session. `error` comes with `data.load.error`.
 - A module whose dependencies are off is installed disabled (see `warnings`); enable them first or `ext enable <id> --cascade`.
 - `ext install <dir>` works on a built project too (no ZIP needed).
