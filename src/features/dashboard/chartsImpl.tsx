@@ -102,7 +102,7 @@ export function WonLostChart({ months, money, height }: { months: WonLostRow[]; 
 
 export function LeadSourcesChart({ sources, height }: { sources: LeadSourceRow[]; height?: number }) {
   const { t } = useTranslation("dashboard");
-  const h = height ?? Math.max(120, sources.length * 28 + 24);
+  const h = height ?? Math.max(144, sources.length * 28 + 48);
   return (
     <ChartBox height={h}>
       <BarChart data={sources} layout="vertical" margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
@@ -110,7 +110,8 @@ export function LeadSourcesChart({ sources, height }: { sources: LeadSourceRow[]
         <XAxis type="number" tick={TICK} tickLine={false} axisLine={false} allowDecimals={false} />
         <YAxis type="category" dataKey="label" tick={TICK} tickLine={false} axisLine={false} width={124} />
         <Tooltip cursor={CURSOR} content={<ChartTooltip />} />
-        <Bar dataKey="count" name={t("people")} radius={[0, 4, 4, 0]} maxBarSize={18}>
+        <Legend iconSize={8} wrapperStyle={{ fontSize: 11 }} />
+        <Bar dataKey="count" name={t("people")} fill={chartColor("blue")} radius={[0, 4, 4, 0]} maxBarSize={18}>
           {sources.map((s) => (
             <Cell key={s.id ?? "none"} fill={chartColor(s.color ?? "blue")} />
           ))}
