@@ -1,0 +1,8 @@
+{
+  "nav": {
+    "title": "Automations"
+  },
+  "title": "Automations",
+  "empty": "No automations yet",
+  "emptyHint": "Create tasks, update fields or call webhooks when records change."
+}

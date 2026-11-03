@@ -1,0 +1,15 @@
+{
+  "title": "Configurer AgentCRM",
+  "subtitle": "Choisissez où vivent les données de votre CRM. Vous pourrez les déplacer plus tard.",
+  "local": "Ce navigateur",
+  "localHint": "Les données restent dans ce navigateur (IndexedDB). Un seul utilisateur, sans compte — idéal pour essayer AgentCRM.",
+  "journal": "Fichier chiffré sur mon stockage",
+  "firebase": "Firebase",
+  "git": "Dépôt git privé",
+  "comingSoon": "Disponible dans l'assistant complet",
+  "name": "Votre nom",
+  "email": "Votre e-mail",
+  "demo": "Ajouter des données de démo (30 entreprises, 80 personnes, 40 affaires)",
+  "install": "Installer",
+  "installing": "Installation…"
+}

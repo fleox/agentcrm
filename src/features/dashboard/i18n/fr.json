@@ -1,0 +1,14 @@
+{
+  "nav": {
+    "dashboard": "Tableau de bord",
+    "reports": "Rapports"
+  },
+  "title": "Tableau de bord",
+  "openPipeline": "Pipeline ouvert",
+  "weighted": "Prévision pondérée",
+  "openTasks": "Tâches ouvertes",
+  "overdue": "{{count}} en retard",
+  "byStage": "Pipeline par étape",
+  "reportsTitle": "Rapports",
+  "reportsSoon": "Les graphiques de chaque rapport arrivent ici."
+}

@@ -1,0 +1,11 @@
+{
+  "nav": {
+    "title": "Settings"
+  },
+  "title": "Settings",
+  "general": "General",
+  "name": "CRM name",
+  "currency": "Default currency",
+  "backend": "Data backend",
+  "saved": "Settings saved"
+}

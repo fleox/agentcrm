@@ -1,0 +1,172 @@
+{
+  "app": {
+    "name": "AgentCRM",
+    "loading": "Loading…",
+    "loadError": "Could not load the CRM data.",
+    "retry": "Retry",
+    "notFound": "Page not found",
+    "backHome": "Back to dashboard",
+    "passphraseTitle": "Unlock your CRM",
+    "passphraseHint": "The data is encrypted. Enter the passphrase created at install — it stays in this browser only.",
+    "passphrase": "Passphrase",
+    "passphraseWrong": "Wrong passphrase: the data could not be decrypted.",
+    "unlock": "Unlock",
+    "resetSetup": "Use another CRM",
+    "emptyTitle": "This CRM is empty",
+    "emptyHint": "Create the standard objects (companies, people, deals) and the Sales pipeline — with or without demo data.",
+    "installDemo": "Install with demo data",
+    "installEmpty": "Install empty"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "tasks": "Tasks",
+    "automations": "Automations",
+    "forms": "Forms",
+    "reports": "Reports",
+    "settings": "Settings",
+    "objects": "Records",
+    "workspace": "Workspace",
+    "collapse": "Collapse sidebar",
+    "expand": "Expand sidebar"
+  },
+  "topbar": {
+    "search": "Search…",
+    "searchShortcut": "⌘K",
+    "darkMode": "Dark mode",
+    "lightMode": "Light mode",
+    "language": "Language",
+    "userMenu": "Account",
+    "signOut": "Sign out",
+    "profile": "Profile",
+    "role": "Role: {{role}}"
+  },
+  "roles": {
+    "admin": "Admin",
+    "member": "Member",
+    "viewer": "Viewer"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "add": "Add",
+    "remove": "Remove",
+    "confirm": "Confirm",
+    "search": "Search",
+    "clear": "Clear",
+    "none": "None",
+    "yes": "Yes",
+    "no": "No",
+    "loading": "Loading…",
+    "empty": "Nothing here yet.",
+    "noResults": "No results",
+    "select": "Select…",
+    "more": "More",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "done": "Done",
+    "today": "Today",
+    "saved": "Saved",
+    "copied": "Copied",
+    "copy": "Copy",
+    "unknown": "Unknown",
+    "comingSoon": "Coming soon",
+    "readOnly": "Read-only access",
+    "error": "Something went wrong."
+  },
+  "confirm": {
+    "title": "Are you sure?",
+    "deleteTitle": "Delete {{name}}?",
+    "irreversible": "This can't be undone."
+  },
+  "fieldTypes": {
+    "text": "Text",
+    "longText": "Long text",
+    "number": "Number",
+    "currency": "Currency",
+    "percent": "Percent",
+    "date": "Date",
+    "datetime": "Date & time",
+    "boolean": "Checkbox",
+    "select": "Select",
+    "multiSelect": "Multi-select",
+    "email": "Email",
+    "phone": "Phone",
+    "url": "Link",
+    "relation": "Relation",
+    "user": "User",
+    "rating": "Rating",
+    "address": "Address",
+    "tags": "Tags"
+  },
+  "fieldInput": {
+    "empty": "Empty",
+    "searchRecords": "Search {{object}}…",
+    "noMatch": "No match",
+    "addTag": "Add a tag…",
+    "street": "Street",
+    "city": "City",
+    "postalCode": "Postal code",
+    "region": "Region",
+    "country": "Country",
+    "pickUser": "Pick a user…",
+    "clearValue": "Clear value"
+  },
+  "activityTypes": {
+    "note": "Note",
+    "task": "Task",
+    "call": "Call",
+    "email": "Email",
+    "meeting": "Meeting"
+  },
+  "storage": {
+    "actions": {
+      "upload": "Uploading file",
+      "delete": "Deleting file",
+      "rename": "Renaming file",
+      "get": "Reading file",
+      "list": "Listing files",
+      "createFolder": "Creating folder",
+      "renameFolder": "Renaming folder",
+      "deleteFolder": "Deleting folder",
+      "commit": "Saving changes"
+    },
+    "errors": {
+      "network": "{{action}}: network error or CORS blocked. Check your connection.",
+      "auth": "{{action}}: authentication failed. Check the storage credentials in Settings.",
+      "notFound": "{{action}}: not found on the storage.",
+      "tooLarge": "{{action}}: file too large for the storage.",
+      "rateLimited": "{{action}}: too many requests, please retry in a moment.",
+      "serverError": "{{action}}: storage server error ({{status}}). Please retry.",
+      "generic": "{{action}} failed ({{status}}){{detail}}.",
+      "unsupported": "{{action}}: not supported by the \"{{connector}}\" storage.",
+      "unknownConnector": "Unknown storage \"{{connector}}\". Check Settings.",
+      "folderAccess": "No access to the local folder. Open Settings and click “Reconnect folder”."
+    }
+  },
+  "connectors": {
+    "pages": {
+      "enabled": "GitHub Pages enabled for this repository.",
+      "enableHint": "Enable GitHub Pages for {{repo}}: Settings → Pages → Deploy from branch {{branch}}, folder {{folder}}."
+    }
+  },
+  "errors": {
+    "forbidden": "You don't have permission to do that.",
+    "notFound": "Not found.",
+    "validation": "Some fields are invalid."
+  },
+  "ui": {
+    "empty": "Nothing to show",
+    "dismiss": "Dismiss",
+    "openMenu": "Open menu",
+    "sortAsc": "Sort ascending",
+    "sortDesc": "Sort descending"
+  },
+  "setupRequired": {
+    "title": "Set up AgentCRM"
+  }
+}

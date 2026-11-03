@@ -1,0 +1,19 @@
+{
+  "list": {
+    "new": "Nouveau",
+    "empty": "Aucun(e) {{object}} pour l'instant",
+    "emptyHint": "Créez le premier, ou importez un CSV.",
+    "count": "{{count}} fiches",
+    "unknownObject": "Objet inconnu",
+    "untitled": "Sans titre"
+  },
+  "detail": {
+    "fields": "Champs",
+    "timeline": "Historique",
+    "notFound": "Fiche introuvable",
+    "deleted": "Cette fiche est dans la corbeille.",
+    "related": "Liées",
+    "noActivity": "Aucune activité pour l'instant.",
+    "delete": "Supprimer la fiche"
+  }
+}

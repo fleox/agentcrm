@@ -1,0 +1,8 @@
+{
+  "nav": {
+    "title": "Automatisations"
+  },
+  "title": "Automatisations",
+  "empty": "Aucune automatisation",
+  "emptyHint": "Créez des tâches, mettez à jour des champs ou appelez des webhooks quand des fiches changent."
+}

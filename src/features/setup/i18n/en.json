@@ -1,0 +1,15 @@
+{
+  "title": "Set up AgentCRM",
+  "subtitle": "Choose where your CRM data lives. You can move it later.",
+  "local": "This browser",
+  "localHint": "Data stays in this browser (IndexedDB). Single user, no account — ideal to try AgentCRM.",
+  "journal": "Encrypted file on my storage",
+  "firebase": "Firebase",
+  "git": "Private git repository",
+  "comingSoon": "Available in the full setup wizard",
+  "name": "Your name",
+  "email": "Your email",
+  "demo": "Add demo data (30 companies, 80 people, 40 deals)",
+  "install": "Install",
+  "installing": "Installing…"
+}

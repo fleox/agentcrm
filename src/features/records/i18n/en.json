@@ -1,0 +1,19 @@
+{
+  "list": {
+    "new": "New",
+    "empty": "No {{object}} yet",
+    "emptyHint": "Create the first one, or import a CSV.",
+    "count": "{{count}} records",
+    "unknownObject": "Unknown object",
+    "untitled": "Untitled"
+  },
+  "detail": {
+    "fields": "Fields",
+    "timeline": "Timeline",
+    "notFound": "Record not found",
+    "deleted": "This record is in the trash.",
+    "related": "Related",
+    "noActivity": "No activity yet.",
+    "delete": "Delete record"
+  }
+}

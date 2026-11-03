@@ -1,0 +1,14 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "reports": "Reports"
+  },
+  "title": "Dashboard",
+  "openPipeline": "Open pipeline",
+  "weighted": "Weighted forecast",
+  "openTasks": "Open tasks",
+  "overdue": "{{count}} overdue",
+  "byStage": "Pipeline by stage",
+  "reportsTitle": "Reports",
+  "reportsSoon": "Charts for every report are coming here."
+}

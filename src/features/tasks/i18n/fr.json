@@ -1,0 +1,9 @@
+{
+  "nav": {
+    "title": "Tâches"
+  },
+  "title": "Mes tâches",
+  "empty": "Aucune tâche ouverte",
+  "emptyHint": "Les tâches créées sur les fiches apparaissent ici.",
+  "due": "Échéance {{date}}"
+}

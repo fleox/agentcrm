@@ -1,0 +1,172 @@
+{
+  "app": {
+    "name": "AgentCRM",
+    "loading": "Chargement…",
+    "loadError": "Impossible de charger les données du CRM.",
+    "retry": "Réessayer",
+    "notFound": "Page introuvable",
+    "backHome": "Retour au tableau de bord",
+    "passphraseTitle": "Déverrouiller votre CRM",
+    "passphraseHint": "Les données sont chiffrées. Saisissez la phrase secrète créée à l'installation — elle reste uniquement dans ce navigateur.",
+    "passphrase": "Phrase secrète",
+    "passphraseWrong": "Phrase secrète incorrecte : les données n'ont pas pu être déchiffrées.",
+    "unlock": "Déverrouiller",
+    "resetSetup": "Utiliser un autre CRM",
+    "emptyTitle": "Ce CRM est vide",
+    "emptyHint": "Créez les objets standard (entreprises, personnes, affaires) et le pipeline Ventes — avec ou sans données de démonstration.",
+    "installDemo": "Installer avec des données de démo",
+    "installEmpty": "Installer à vide"
+  },
+  "nav": {
+    "dashboard": "Tableau de bord",
+    "tasks": "Tâches",
+    "automations": "Automatisations",
+    "forms": "Formulaires",
+    "reports": "Rapports",
+    "settings": "Paramètres",
+    "objects": "Fiches",
+    "workspace": "Espace de travail",
+    "collapse": "Réduire la barre latérale",
+    "expand": "Déplier la barre latérale"
+  },
+  "topbar": {
+    "search": "Rechercher…",
+    "searchShortcut": "⌘K",
+    "darkMode": "Mode sombre",
+    "lightMode": "Mode clair",
+    "language": "Langue",
+    "userMenu": "Compte",
+    "signOut": "Se déconnecter",
+    "profile": "Profil",
+    "role": "Rôle : {{role}}"
+  },
+  "roles": {
+    "admin": "Administrateur",
+    "member": "Membre",
+    "viewer": "Lecteur"
+  },
+  "common": {
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "close": "Fermer",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "create": "Créer",
+    "add": "Ajouter",
+    "remove": "Retirer",
+    "confirm": "Confirmer",
+    "search": "Rechercher",
+    "clear": "Effacer",
+    "none": "Aucun",
+    "yes": "Oui",
+    "no": "Non",
+    "loading": "Chargement…",
+    "empty": "Rien pour l'instant.",
+    "noResults": "Aucun résultat",
+    "select": "Sélectionner…",
+    "more": "Plus",
+    "back": "Retour",
+    "next": "Suivant",
+    "previous": "Précédent",
+    "done": "Terminé",
+    "today": "Aujourd'hui",
+    "saved": "Enregistré",
+    "copied": "Copié",
+    "copy": "Copier",
+    "unknown": "Inconnu",
+    "comingSoon": "Bientôt disponible",
+    "readOnly": "Accès en lecture seule",
+    "error": "Une erreur est survenue."
+  },
+  "confirm": {
+    "title": "Êtes-vous sûr ?",
+    "deleteTitle": "Supprimer {{name}} ?",
+    "irreversible": "Cette action est irréversible."
+  },
+  "fieldTypes": {
+    "text": "Texte",
+    "longText": "Texte long",
+    "number": "Nombre",
+    "currency": "Montant",
+    "percent": "Pourcentage",
+    "date": "Date",
+    "datetime": "Date et heure",
+    "boolean": "Case à cocher",
+    "select": "Liste",
+    "multiSelect": "Liste multiple",
+    "email": "E-mail",
+    "phone": "Téléphone",
+    "url": "Lien",
+    "relation": "Relation",
+    "user": "Utilisateur",
+    "rating": "Note",
+    "address": "Adresse",
+    "tags": "Étiquettes"
+  },
+  "fieldInput": {
+    "empty": "Vide",
+    "searchRecords": "Rechercher {{object}}…",
+    "noMatch": "Aucune correspondance",
+    "addTag": "Ajouter une étiquette…",
+    "street": "Rue",
+    "city": "Ville",
+    "postalCode": "Code postal",
+    "region": "Région",
+    "country": "Pays",
+    "pickUser": "Choisir un utilisateur…",
+    "clearValue": "Effacer la valeur"
+  },
+  "activityTypes": {
+    "note": "Note",
+    "task": "Tâche",
+    "call": "Appel",
+    "email": "E-mail",
+    "meeting": "Réunion"
+  },
+  "storage": {
+    "actions": {
+      "upload": "Envoi du fichier",
+      "delete": "Suppression du fichier",
+      "rename": "Renommage du fichier",
+      "get": "Lecture du fichier",
+      "list": "Liste des fichiers",
+      "createFolder": "Création du dossier",
+      "renameFolder": "Renommage du dossier",
+      "deleteFolder": "Suppression du dossier",
+      "commit": "Enregistrement des modifications"
+    },
+    "errors": {
+      "network": "{{action}} : erreur réseau ou CORS bloqué. Vérifiez votre connexion.",
+      "auth": "{{action}} : échec d'authentification. Vérifiez les identifiants du stockage dans les Paramètres.",
+      "notFound": "{{action}} : introuvable sur le stockage.",
+      "tooLarge": "{{action}} : fichier trop volumineux pour le stockage.",
+      "rateLimited": "{{action}} : trop de requêtes, réessayez dans un instant.",
+      "serverError": "{{action}} : erreur du serveur de stockage ({{status}}). Réessayez.",
+      "generic": "{{action}} a échoué ({{status}}){{detail}}.",
+      "unsupported": "{{action}} : non pris en charge par le stockage « {{connector}} ».",
+      "unknownConnector": "Stockage inconnu « {{connector}} ». Vérifiez les Paramètres.",
+      "folderAccess": "Pas d'accès au dossier local. Ouvrez les Paramètres et cliquez sur « Reconnecter le dossier »."
+    }
+  },
+  "connectors": {
+    "pages": {
+      "enabled": "GitHub Pages activé pour ce dépôt.",
+      "enableHint": "Activez GitHub Pages pour {{repo}} : Settings → Pages → Deploy from branch {{branch}}, dossier {{folder}}."
+    }
+  },
+  "errors": {
+    "forbidden": "Vous n'avez pas la permission de faire cela.",
+    "notFound": "Introuvable.",
+    "validation": "Certains champs sont invalides."
+  },
+  "ui": {
+    "empty": "Rien à afficher",
+    "dismiss": "Ignorer",
+    "openMenu": "Ouvrir le menu",
+    "sortAsc": "Tri croissant",
+    "sortDesc": "Tri décroissant"
+  },
+  "setupRequired": {
+    "title": "Configurer AgentCRM"
+  }
+}

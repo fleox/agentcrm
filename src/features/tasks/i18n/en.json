@@ -1,0 +1,9 @@
+{
+  "nav": {
+    "title": "Tasks"
+  },
+  "title": "My tasks",
+  "empty": "No open tasks",
+  "emptyHint": "Tasks created on records show up here.",
+  "due": "Due {{date}}"
+}

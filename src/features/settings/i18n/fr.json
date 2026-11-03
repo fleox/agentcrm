@@ -1,0 +1,11 @@
+{
+  "nav": {
+    "title": "Paramètres"
+  },
+  "title": "Paramètres",
+  "general": "Général",
+  "name": "Nom du CRM",
+  "currency": "Devise par défaut",
+  "backend": "Stockage des données",
+  "saved": "Paramètres enregistrés"
+}

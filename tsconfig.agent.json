@@ -1,0 +1,26 @@
+{
+  // The agentcrm CLI runs on Node. It reuses src/ modules (connectors,
+  // git, data stores, ops) written for the browser, so DOM + Vite types
+  // stay available for them (same as cms-ia). Checked by `npm run typecheck`.
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": ["node", "vite/client", "vitest/globals"]
+  },
+  "include": ["agent"]
+}
