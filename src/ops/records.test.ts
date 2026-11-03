@@ -70,6 +70,10 @@ describe("records ops", () => {
     const pipelineView = listRecords(admin, "deals", { viewId: "deals-pipeline" });
     expect(pipelineView.total).toBe(40);
     expect(() => listRecords(admin, "deals", { viewId: "people-all" })).toThrow(OpsError);
+    // A typo in an explicit filter / sort is an error, not "every record".
+    expect(() => listRecords(admin, "deals", { filters: [{ field: "stg", op: "eq", value: "won" }] })).toThrow(/Unknown field "stg" on Deals/);
+    expect(() => listRecords(admin, "deals", { sorts: [{ field: "amout", dir: "desc" }] })).toThrow(/Unknown field "amout"/);
+    expect(listRecords(admin, "deals", { filters: [{ field: "createdAt", op: "notEmpty" }] }).total).toBe(40);
   });
 
   it("soft delete, restore, hard delete with reference cleanup", async () => {

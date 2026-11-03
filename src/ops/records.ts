@@ -6,7 +6,7 @@
 
 import { defaultFieldValues, FieldValidationError, isEmptyFieldValue, normalizeDomain, normalizeEmail, recordLabel, validateRecordFields, type FieldError } from "../core/fields";
 import { newId } from "../core/ids";
-import { applyFilters, applySorts, paginate, type Page } from "../core/query";
+import { applyFilters, applySorts, paginate, resolveField, type Page } from "../core/query";
 import { normalizeStandardFields } from "../core/schema/standardObjects";
 import { buildSearchIndex } from "../core/search";
 import type { CrmRecord, Filter, ObjectDef, Sort } from "../core/types";
@@ -63,6 +63,14 @@ export function queryContext(ctx: OpsContext, object: ObjectDef) {
 export function listRecords(ctx: OpsContext, objectId: string, opts: ListRecordsOptions = {}): Page<CrmRecord> {
   assertCan(ctx, "records.read");
   const object = requireObject(ctx.store, objectId);
+  // Explicit filters / sorts (CLI, AI tools) must name real fields: an unknown
+  // field never excludes anything (that keeps saved views with a deleted field
+  // working), so a typo would silently return — and let bulk actions touch —
+  // every record. Saved view filters keep the lenient behaviour.
+  const unknown = [...(opts.filters ?? []), ...(opts.sorts ?? [])].map((f) => f.field).filter((f) => !resolveField(object, f));
+  if (unknown.length) {
+    throw new OpsError("validation", `Unknown field${unknown.length > 1 ? "s" : ""} ${[...new Set(unknown)].map((f) => `"${f}"`).join(", ")} on ${object.labelPlural}. Fields: ${object.fields.map((f) => f.id).join(", ")}, id, ownerId, createdAt, updatedAt.`);
+  }
   let filters = opts.filters ?? [];
   let sorts = opts.sorts ?? [];
   if (opts.viewId) {
