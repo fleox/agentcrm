@@ -171,10 +171,11 @@ export function missingRequired(fields: FieldDef[], settings: Record<string, unk
 }
 
 // Short human description of a location ("r2 · my-bucket", "github · me/crm").
-export function describeLocation(connectorId: string, s: Record<string, unknown>): string {
+// `localFolder` is the (translated) name shown for a local folder.
+export function describeLocation(connectorId: string, s: Record<string, unknown>, localFolder = "local folder"): string {
   if (connectorId === "s3") return [s.endpoint ? String(s.endpoint).replace(/^https?:\/\//, "") : `s3.${s.region}`, s.bucket].filter(Boolean).join(" · ");
   if (connectorId === "git-pages") return s.provider === "gitlab" ? `gitlab · ${s.project}` : `github · ${s.owner}/${s.repo}`;
-  if (connectorId === "local-folder") return "local folder";
+  if (connectorId === "local-folder") return localFolder;
   if (connectorId === "browser-mirror") return "ZIP";
   return connectorId;
 }

@@ -209,7 +209,7 @@ function InstallStep({ state, onBack }: Parameters<typeof LocationStep>[0]) {
     const rows: [string, string][] = [[t("install.summary.model"), t(`data.models.${state.model}.title`)]];
     if (state.model === "journal") {
       const loc = dataLocation(state.journal.locationId);
-      rows.push([t("install.summary.location"), `${describeLocation(loc.connectorId, { ...loc.preset, ...state.journal.settings })} / ${state.journal.root || "—"}`]);
+      rows.push([t("install.summary.location"), `${describeLocation(loc.connectorId, { ...loc.preset, ...state.journal.settings }, t("access.journal.localFolder"))} / ${state.journal.root || "—"}`]);
       rows.push([t("install.summary.encryption"), state.journal.encrypted ? t("install.summary.encrypted") : t("install.summary.notEncrypted")]);
     }
     if (state.model === "git-json") {
@@ -305,7 +305,7 @@ function InstallStep({ state, onBack }: Parameters<typeof LocationStep>[0]) {
         if (!busy) void run();
       }}
     >
-      <SectionTitle hint={t("install.hint")}>{t("install.title")}</SectionTitle>
+      <SectionTitle hint={t(state.model === "firebase" ? "install.hintFirebase" : "install.hint")}>{t("install.title")}</SectionTitle>
       <dl className="divide-y divide-surface-100 rounded-lg border border-surface-200 text-sm dark:divide-surface-800 dark:border-surface-800">
         {summary.map(([k, v]) => (
           <div key={k} className="flex gap-4 px-3 py-2">
