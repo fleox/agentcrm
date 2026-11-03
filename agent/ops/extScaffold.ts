@@ -267,7 +267,7 @@ Or upload the ZIP in the admin: Settings → Modules → Installed extensions.
 - \`types/agentcrm-runtime.d.ts\` — the runtime API typings (copied from the CLI; refresh with \`${cli} ext new ${kind} ${id} --dir /tmp/x\` and copy the file).
 - \`vite.config.ts\` — keeps react, react-i18next, lucide-react and @agent-crm/runtime external (the admin provides them).
 
-Docs: https://github.com/fleox/agentcrm/blob/main/docs/${kind === "module" ? "creating-a-module.md" : "creating-a-theme.md"}
+Docs: https://github.com/fleox/agentcrm/blob/master/docs/${kind === "module" ? "creating-a-module.md" : "creating-a-theme.md"}
 `;
 }
 

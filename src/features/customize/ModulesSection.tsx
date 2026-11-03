@@ -19,7 +19,7 @@ import { ExtensionsPanel } from "./ExtensionsPanel";
 import { ReadOnlyNotice, SectionHeader } from "./common";
 import { moduleIcon } from "./icons";
 
-export const EXTENSIONS_DOCS_URL = "https://github.com/fleox/agentcrm/blob/main/docs/extensions.md";
+export const EXTENSIONS_DOCS_URL = "https://github.com/fleox/agentcrm/blob/master/docs/extensions.md";
 
 export function useModuleName(): (m: Pick<ModuleInfo, "name" | "nameKey">) => string {
   const { t } = useTranslation();
