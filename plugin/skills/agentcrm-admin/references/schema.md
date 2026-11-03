@@ -16,7 +16,7 @@ Deleting an object deletes all its records (plan first).
 
 ## Fields
 
-Types: text, longText, number, currency, percent, date, datetime, boolean, select, multiSelect, email, phone, url, relation, user, rating, address, tags.
+Types: text, longText, number, currency, percent, date, datetime, boolean, select, multiSelect, email, phone, url, relation, user, rating, address, tags, image (one picture; the first one becomes the record avatar), files (attachments).
 
 ```bash
 npx -y @fleox-agent-crm/agentcrm@0.3.0 fields add --site acme --object deals --label "Contract type" --type select --options "New,Renewal,Upsell" --json
