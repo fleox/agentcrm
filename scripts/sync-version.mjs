@@ -31,11 +31,12 @@ for (const name of readdirSync(skillsDir)) {
   }
 }
 // Docs pin the same version in their copy-paste snippets.
-for (const doc of ["README.md", "docs/mcp.md", "docs/cli.md", "docs/automations.md", "docs/templates/agentcrm-cron.yml", "docs/extensions.md", "docs/creating-a-module.md", "docs/creating-a-theme.md", "docs/modules.md", "docs/appearance.md"]) {
+const docs = ["README.md", "docs/templates/agentcrm-cron.yml", ...readdirSync(join(root, "docs")).filter((f) => f.endsWith(".md")).map((f) => `docs/${f}`)];
+for (const doc of docs) {
   const file = join(root, doc);
   if (!existsSync(file)) continue;
   const before = readFileSync(file, "utf8");
-  const after = before.replace(/@agent-crm\/agentcrm@\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?/g, `@fleox-agent-crm/agentcrm@${version}`);
+  const after = before.replace(/@(?:fleox-)?agent-crm\/agentcrm@\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?/g, `@fleox-agent-crm/agentcrm@${version}`);
   if (after !== before) {
     writeFileSync(file, after);
     files++;
