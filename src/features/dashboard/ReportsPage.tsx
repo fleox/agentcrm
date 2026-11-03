@@ -227,8 +227,8 @@ export function ReportsPage() {
             <ReportTable
               head={[t("col.stage"), t("col.count"), t("col.amount"), t("col.weighted")]}
               align={["left", "right", "right", "right"]}
-              rows={byStage.stages.map((s) => [s.label, formatNumber(s.count), fullMoney(s.amount), fullMoney(s.weighted)])}
-              foot={[t("col.total"), formatNumber(byStage.stages.reduce((a, s) => a + s.count, 0)), fullMoney(byStage.stages.reduce((a, s) => a + s.amount, 0)), fullMoney(byStage.stages.reduce((a, s) => a + s.weighted, 0))]}
+              rows={byStage.stages.map((s) => [s.label, formatNumber(s.count), fullMoney(s.amount), fullMoney(Math.round(s.weighted))])}
+              foot={[t("col.total"), formatNumber(byStage.stages.reduce((a, s) => a + s.count, 0)), fullMoney(byStage.stages.reduce((a, s) => a + s.amount, 0)), fullMoney(Math.round(byStage.stages.reduce((a, s) => a + s.weighted, 0)))]}
             />
           </ReportCard>
         )}
@@ -244,8 +244,8 @@ export function ReportsPage() {
             <ReportTable
               head={[t("col.month"), t("col.count"), t("col.amount"), t("col.weighted")]}
               align={["left", "right", "right", "right"]}
-              rows={fc.byMonth.map((m) => [forecastMonth(m.month), formatNumber(m.count), fullMoney(m.amount), fullMoney(m.weighted)])}
-              foot={[t("col.total"), formatNumber(fc.byMonth.reduce((a, m) => a + m.count, 0)), fullMoney(fc.byMonth.reduce((a, m) => a + m.amount, 0)), fullMoney(fc.byMonth.reduce((a, m) => a + m.weighted, 0))]}
+              rows={fc.byMonth.map((m) => [forecastMonth(m.month), formatNumber(m.count), fullMoney(m.amount), fullMoney(Math.round(m.weighted))])}
+              foot={[t("col.total"), formatNumber(fc.byMonth.reduce((a, m) => a + m.count, 0)), fullMoney(fc.byMonth.reduce((a, m) => a + m.amount, 0)), fullMoney(Math.round(fc.byMonth.reduce((a, m) => a + m.weighted, 0)))]}
             />
           </ReportCard>
         )}
