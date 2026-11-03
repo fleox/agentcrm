@@ -157,6 +157,11 @@ npm run build      # dist/admin + dist/agent/agentcrm.mjs + dist/version.json
 node dist/agent/agentcrm.mjs help
 ```
 
+Contributor skills (Claude Code, this repo only — not distributed): `.claude/skills/agent-cli-internals` (CLI, MCP, AI tools, skills,
+Hermes, releases, multi-agent QA), `extension-internals` (modules, extension runtime, new runtime exports), `firebase-internals`
+(Firebase backend, generated rules + emulator harness), `repo-presentation` (README, docs), `create-mr` (review + GitHub PR).
+`.claude/settings.json` allow-lists the read / check commands. The distributed agent skills are `plugin/skills/`.
+
 ## Contracts for parallel agents
 
 The foundation is in place (`npm run typecheck`, `npm test`, `npm run build` pass). Build on these contracts; **don't change their

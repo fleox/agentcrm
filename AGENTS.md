@@ -41,3 +41,7 @@ Read `CLAUDE.md` first (architecture, hard rules, contracts). This file lists wh
 - `npx vitest run agent` — CLI contract, e2e on a fake S3 (`agent/testing/fakeS3.ts`) and a local folder, MCP protocol, bundle (when `dist/agent` exists).
 - `npx tsc --noEmit -p tsconfig.agent.json` — the CLI typechecks with the DOM lib (it reuses browser-written modules through `agent/browserEnv.ts`).
 - Tests never touch the network: stub `fetch` with the fakes; point `AGENTCRM_HOME` and `AGENTCRM_DIST` at temp folders; `AGENTCRM_KDF_ITERATIONS=1000` keeps new test datasets fast.
+
+## Contributor skills
+
+`.claude/skills/` holds Claude Code skills for working **on** this repository (not shipped in the npm package nor checked by `check:skills`): `agent-cli-internals`, `extension-internals`, `firebase-internals` (with an emulator harness for the generated Firestore / Storage rules in `rules-test/`), `repo-presentation`, `create-mr`. Keep them true when the code they describe changes.

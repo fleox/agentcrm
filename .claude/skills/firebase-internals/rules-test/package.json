@@ -1,0 +1,13 @@
+{
+  "name": "agentcrm-rules-test",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "firebase emulators:exec --only firestore,storage --project agentcrm-rules-test \"node test.mjs && node storage.mjs\""
+  },
+  "dependencies": {
+    "@firebase/rules-unit-testing": "^6.0.0",
+    "firebase": "^13.0.0",
+    "firebase-tools": "^15.34.2"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "storage": { "rules": "placeholder.storage.rules" },
+  "emulators": {
+    "firestore": { "port": 8180, "host": "127.0.0.1" },
+    "storage": { "port": 9299, "host": "127.0.0.1" },
+    "ui": { "enabled": false }
+  }
+}

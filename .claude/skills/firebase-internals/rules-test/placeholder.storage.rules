@@ -1,0 +1,10 @@
+rules_version = '2';
+// Only lets the Storage emulator start: the tests load the generated rules
+// (src/ops/firebaseRules.ts buildStorageRules) in initializeTestEnvironment.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run typecheck)",
+      "Bash(npm run build)",
+      "Bash(npm test)",
+      "Bash(npm run check:skills)",
+      "Bash(npm run check:hermes)",
+      "Bash(npm run hermes:build)",
+      "Bash(npm run build:examples)",
+      "Bash(npx vitest run *)",
+      "Bash(npx tsc --noEmit *)",
+      "Bash(node dist/agent/agentcrm.mjs help)",
+      "Bash(node dist/agent/agentcrm.mjs version)",
+      "Bash(node dist/agent/agentcrm.mjs help *)",
+      "Bash(node dist/agent/agentcrm.mjs version *)",
+      "Bash(node dist/agent/agentcrm.mjs ext check *)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git check-ignore *)",
+      "Bash(unzip -l dist/extensions/*)",
+      "Bash(unzip -p dist/extensions/*)"
+    ]
+  }
+}
