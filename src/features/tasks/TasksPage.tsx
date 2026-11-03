@@ -1,54 +1,136 @@
-import { useMemo } from "react";
-import { useTranslation } from "react-i18next";
-import { CheckSquare } from "lucide-react";
-import { Checkbox, EmptyState, PageHeader } from "../../components/ui";
-import { useActivities, useCurrentUser, useOps, useRecordLabel } from "../../app/CrmDataContext";
-import { completeTask } from "../../ops/activities";
-import { formatDate, cn } from "../../shared/lib/utils";
-import { intlLocale } from "../../i18n";
-import { recordHref } from "../../app/paths";
+// /tasks — My tasks / All / Overdue / Upcoming / Done, grouped by due date,
+// with a text filter and an assignee filter.
 
+import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { CheckSquare, Plus, Search } from "lucide-react";
+import { Button, Input, PageHeader, Select, Tabs } from "../../components/ui";
+import { useActivities, useCan, useCurrentUser, useRecordLabel, useUsers } from "../../app/CrmDataContext";
+import type { Activity } from "../../core/types";
+import { TaskList } from "./TaskList";
+import { TaskEditorModal } from "./TaskEditorModal";
+
+export type TaskView = "mine" | "all" | "overdue" | "upcoming" | "done";
+const VIEWS: TaskView[] = ["mine", "all", "overdue", "upcoming", "done"];
+const VIEW_KEY = "agentcrm.tasks.view";
+
+function isMine(task: Activity, userId: string): boolean {
+  return !task.assigneeId || task.assigneeId === userId;
+}
+
+// Open tasks assigned to me (or unassigned) — nav badge.
 export function useOpenTaskCount(): number | null {
   const user = useCurrentUser();
   const activities = useActivities();
-  const n = activities.filter((a) => a.type === "task" && !a.doneAt && (!a.assigneeId || a.assigneeId === user.id)).length;
+  const n = activities.filter((a) => a.type === "task" && !a.doneAt && isMine(a, user.id)).length;
   return n || null;
+}
+
+export function filterTasksByView(tasks: Activity[], view: TaskView, userId: string, now: number): Activity[] {
+  switch (view) {
+    case "mine":
+      return tasks.filter((a) => !a.doneAt && isMine(a, userId));
+    case "all":
+      return tasks.filter((a) => !a.doneAt);
+    case "overdue":
+      return tasks.filter((a) => !a.doneAt && a.dueAt !== undefined && a.dueAt < now);
+    case "upcoming":
+      return tasks.filter((a) => !a.doneAt && a.dueAt !== undefined && a.dueAt >= now);
+    case "done":
+      return tasks.filter((a) => !!a.doneAt);
+  }
+}
+
+function readView(): TaskView {
+  try {
+    const v = localStorage.getItem(VIEW_KEY);
+    if (v && (VIEWS as string[]).includes(v)) return v as TaskView;
+  } catch {
+    // Storage blocked.
+  }
+  return "mine";
 }
 
 export function TasksPage() {
   const { t } = useTranslation("tasks");
-  const ops = useOps();
   const user = useCurrentUser();
+  const canWrite = useCan("activities.write");
   const activities = useActivities();
+  const users = useUsers();
   const labelOf = useRecordLabel();
-  const tasks = useMemo(
-    () => activities.filter((a) => a.type === "task" && !a.doneAt && (!a.assigneeId || a.assigneeId === user.id)).sort((a, b) => (a.dueAt ?? Infinity) - (b.dueAt ?? Infinity)),
-    [activities, user.id],
-  );
+  const [view, setViewState] = useState<TaskView>(readView);
+  const [q, setQ] = useState("");
+  const [assignee, setAssignee] = useState("");
+  const [creating, setCreating] = useState(false);
   const now = Date.now();
+
+  const setView = (v: TaskView) => {
+    setViewState(v);
+    try {
+      localStorage.setItem(VIEW_KEY, v);
+    } catch {
+      // Not persisted.
+    }
+  };
+
+  const tasks = useMemo(() => activities.filter((a) => a.type === "task"), [activities]);
+  const showAssigneeFilter = view !== "mine";
+  // Assignee filter applies to every view except "My tasks" (and their counts).
+  const scoped = useMemo(
+    () => (assignee ? tasks.filter((a) => (assignee === "none" ? !a.assigneeId : a.assigneeId === assignee)) : tasks),
+    [tasks, assignee],
+  );
+  const counts = useMemo(() => {
+    const out = {} as Record<TaskView, number>;
+    for (const v of VIEWS) out[v] = filterTasksByView(v === "mine" ? tasks : scoped, v, user.id, now).length;
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks, scoped, user.id]);
+
+  const visible = useMemo(() => {
+    const base = filterTasksByView(showAssigneeFilter ? scoped : tasks, view, user.id, now);
+    const needle = q.trim().toLowerCase();
+    if (!needle) return base;
+    return base.filter((a) => {
+      const hay = [a.title, a.body ?? "", ...a.targets.map((tg) => labelOf(tg.id) ?? "")].join(" ").toLowerCase();
+      return hay.includes(needle);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks, scoped, view, user.id, q, labelOf, showAssigneeFilter]);
+
   return (
-    <div>
-      <PageHeader title={t("title")} icon={<CheckSquare />} />
-      {tasks.length === 0 ? (
-        <EmptyState className="py-24" icon={<CheckSquare />} title={t("empty")} description={t("emptyHint")} />
-      ) : (
-        <ul className="divide-y divide-surface-100 dark:divide-surface-800">
-          {tasks.map((task) => (
-            <li key={task.id} className="flex items-center gap-3 px-6 py-2.5">
-              <Checkbox checked={false} onChange={() => void completeTask(ops, task.id)} aria-label={task.title} />
-              <span className="min-w-0 flex-1 truncate text-sm">{task.title}</span>
-              <span className="flex shrink-0 gap-1">
-                {task.targets.map((tg) => (
-                  <a key={tg.id} href={recordHref(tg.object, tg.id)} className="rounded border border-surface-200 px-1.5 text-xs text-surface-600 hover:bg-surface-50 dark:border-surface-700 dark:text-surface-300">
-                    {labelOf(tg.id) ?? tg.id}
-                  </a>
-                ))}
-              </span>
-              {task.dueAt && <span className={cn("w-28 shrink-0 text-right text-xs", task.dueAt < now ? "text-red-600" : "text-surface-500")}>{t("due", { date: formatDate(task.dueAt, intlLocale()) })}</span>}
-            </li>
-          ))}
-        </ul>
-      )}
+    <div className="flex h-full min-h-0 flex-col">
+      <PageHeader
+        title={t("title")}
+        icon={<CheckSquare />}
+        actions={
+          canWrite && (
+            <Button variant="primary" size="sm" icon={<Plus />} onClick={() => setCreating(true)}>
+              {t("newTask")}
+            </Button>
+          )
+        }
+      >
+        <div className="-mb-3 mt-2 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+          <Tabs className="-mb-px border-b-0" value={view} onChange={(v) => setView(v as TaskView)} tabs={VIEWS.map((v) => ({ id: v, label: t(`views.${v}`), count: counts[v] }))} />
+          <div className="mb-2 flex items-center gap-2">
+            <Input icon={<Search />} value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("filter.search")} aria-label={t("filter.search")} className="w-48 sm:w-56" />
+            {showAssigneeFilter && (
+              <Select
+                aria-label={t("filter.assignee")}
+                className="w-40"
+                value={assignee}
+                onChange={(e) => setAssignee(e.target.value)}
+                options={[{ value: "", label: t("filter.anyone") }, { value: "none", label: t("unassigned") }, ...users.map((u) => ({ value: u.id, label: u.id === user.id ? t("filter.me", { name: u.name }) : u.name }))]}
+              />
+            )}
+          </div>
+        </div>
+      </PageHeader>
+      <div className="min-h-0 flex-1 overflow-y-auto bg-white dark:bg-surface-950">
+        <TaskList tasks={visible} showTargets groupByDue emptyText={q.trim() ? t("filter.noMatch") : t(`emptyViews.${view}`)} />
+      </div>
+      <TaskEditorModal open={creating} onClose={() => setCreating(false)} defaultAssigneeId={user.id} />
     </div>
   );
 }

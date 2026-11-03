@@ -1,0 +1,61 @@
+# AgentCRM — scheduled automations and lead form ingestion, without a server.
+#
+# Copy to .github/workflows/agentcrm-cron.yml in a PRIVATE repository you own.
+# Repository secrets (Settings → Secrets and variables → Actions):
+#   AGENTCRM_RUNTIME      the object of your admin's config.js (JSON), e.g.
+#                         {"backend":"journal","journal":{"connectorId":"s3","settings":{…},"root":"agentcrm","encrypted":true}}
+#   AGENTCRM_S3_KEY_ID    access key id with access to the data bucket (and the hosting / inbox bucket)
+#   AGENTCRM_S3_SECRET    its secret
+#   AGENTCRM_PASSPHRASE   the dataset passphrase
+# Optional repository variable: AGENTCRM_USER (email of the CRM user the job acts as).
+#
+# git-json / GitHub data: replace the s3 credential with
+#   credentials set github:data --from-env AGENTCRM_GITHUB_TOKEN
+# Firebase: credentials set firebase:data --from-env AGENTCRM_FB_EMAIL,AGENTCRM_FB_PASSWORD
+
+name: AgentCRM cron
+
+on:
+  schedule:
+    - cron: "17 * * * *" # every hour (UTC); automations decide what is due
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: agentcrm-cron
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      AGENTCRM_HOME: ${{ runner.temp }}/agentcrm
+      AGENTCRM_RUNTIME: ${{ secrets.AGENTCRM_RUNTIME }}
+      AGENTCRM_S3_KEY_ID: ${{ secrets.AGENTCRM_S3_KEY_ID }}
+      AGENTCRM_S3_SECRET: ${{ secrets.AGENTCRM_S3_SECRET }}
+      AGENTCRM_PASSPHRASE: ${{ secrets.AGENTCRM_PASSPHRASE }}
+      CLI: npx -y @agent-crm/agentcrm@0.1.0
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Credentials (from repository secrets, never printed)
+        run: |
+          $CLI credentials set s3:data --from-env AGENTCRM_S3_KEY_ID,AGENTCRM_S3_SECRET --json > /dev/null
+          $CLI credentials set passphrase:crm --from-env AGENTCRM_PASSPHRASE --json > /dev/null
+
+      - name: Register the CRM
+        run: |
+          $CLI site add crm --runtime "$AGENTCRM_RUNTIME" \
+            --data-credential s3:data --hosting-credential s3:data --passphrase-credential passphrase:crm \
+            ${{ vars.AGENTCRM_USER && format('--user {0}', vars.AGENTCRM_USER) || '' }} --json
+
+      - name: Scheduled & inactivity automations
+        run: $CLI automations run --site crm --yes --json
+
+      - name: Lead form submissions
+        run: $CLI forms ingest --site crm --yes --json

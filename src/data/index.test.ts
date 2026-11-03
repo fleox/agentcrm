@@ -25,9 +25,18 @@ describe("data store registry", () => {
     expect([...conn.files.keys()].some((k) => k.startsWith("crm/journal/"))).toBe(true);
   });
 
-  it("stubs throw a clear error", async () => {
-    await expect(createDataStore({ backend: "firebase", firebase: { apiKey: "k", projectId: "p" } })).rejects.toThrow(/not implemented/);
-    await expect(createDataStore({ backend: "git-json", git: { provider: "github", owner: "o", repo: "r", branch: "main", dir: "" } })).rejects.toThrow(/not implemented/);
+  it("lazy backends: git-json without a token has no identity; firebase needs its web config", async () => {
+    const git = await createDataStore({ backend: "git-json", git: { provider: "github", owner: "o", repo: "r", branch: "main", dir: "" } });
+    expect(git.kind).toBe("git-json");
+    expect(await git.identity()).toBeNull();
+    await expect(createDataStore({ backend: "firebase", firebase: { apiKey: "", projectId: "p" } } as RuntimeConfig)).rejects.toThrow(/web config/);
+  });
+
+  it("journal: missing connector secrets on this browser → no identity (access screen)", async () => {
+    const config: RuntimeConfig = { backend: "journal", journal: { connectorId: "s3", settings: { bucket: "b", region: "auto", endpoint: "https://x.r2.cloudflarestorage.com" }, root: "crm", encrypted: true } };
+    expect(await (await createDataStore(config, {})).identity()).toBeNull();
+    const withKeys = await createDataStore(config, { secrets: { accessKeyId: "a", secretAccessKey: "s" } });
+    expect((await withKeys.identity())?.role).toBe("admin");
   });
 
   it("getDataStore follows the runtime config; setDataStore overrides", async () => {

@@ -1,0 +1,17 @@
+{
+  "versions": [
+    {
+      "version": "0.1.0",
+      "date": "2026-11-03",
+      "breaking": false,
+      "changes": [
+        "First release: static CRM (companies, people, deals, pipelines, activities, tasks, custom objects and fields, views, automations, lead forms, reports) with an admin that runs entirely in the browser.",
+        "Data on storage you own: encrypted journal on S3-compatible buckets, private GitHub / GitLab repos or a local folder; git-json and Firebase backends.",
+        "agentcrm CLI: install from a plan, doctor, deploy-admin, records / schema / pipelines / views / users / settings, CSV import and export, reports, automations, forms, compaction (GDPR erasure).",
+        "MCP server (agentcrm mcp) exposing the AI tool catalog, schema / pipeline resources and sales prompts.",
+        "Claude Code plugin with four skills (install, manage, admin, sales) and generated Hermes Agent skills."
+      ],
+      "actions": []
+    }
+  ]
+}

@@ -1,3 +1,82 @@
 {
-  "title": "Assistant"
+  "title": "Assistant",
+  "toggle": "AI assistant (⌘J)",
+  "askAi": "Ask AI",
+  "close": "Close",
+  "newChat": "New chat",
+  "settingsLink": "Assistant settings",
+  "thinking": "Thinking…",
+  "noKey": {
+    "title": "Connect your Claude API key",
+    "description": "The assistant uses your own Anthropic API key. It is stored only in this browser and requests go directly to Anthropic.",
+    "action": "Open assistant settings"
+  },
+  "empty": {
+    "title": "How can I help?",
+    "description": "Ask about your pipeline, find records, log activities or update data. Every change is shown to you for approval first."
+  },
+  "suggestions": {
+    "record": "Summarize this record and suggest next steps",
+    "pipeline": "Summarize my open pipeline by stage",
+    "tasks": "What are my overdue tasks?",
+    "stale": "Which open deals have had no activity in the last 30 days?"
+  },
+  "composer": {
+    "placeholder": "Ask anything about your CRM…",
+    "hint": "Enter to send · Shift+Enter for a new line",
+    "send": "Send",
+    "stop": "Stop"
+  },
+  "context": {
+    "label": "Context",
+    "remove": "Remove context"
+  },
+  "tool": {
+    "pending": "Awaiting approval",
+    "running": "Running",
+    "done": "Done",
+    "error": "Error",
+    "rejected": "Rejected",
+    "input": "Input",
+    "result": "Result"
+  },
+  "approval": {
+    "title": "Approve this action?",
+    "description": "The assistant wants to run",
+    "approve": "Approve",
+    "always": "Always allow",
+    "alwaysHint": "Allow this tool without asking for the rest of this session",
+    "reject": "Reject"
+  },
+  "notice": {
+    "stopped": "Stopped.",
+    "maxIterations_one": "Stopped after {{count}} step. Ask me to continue if needed.",
+    "maxIterations_other": "Stopped after {{count}} steps. Ask me to continue if needed."
+  },
+  "settings": {
+    "title": "AI assistant",
+    "description": "Chat with Claude to search, summarize and update your CRM. The assistant uses the same tools as the CLI and MCP server, with your own permissions.",
+    "apiKey": "Anthropic API key",
+    "apiKeyHelp": "Create a key at console.anthropic.com. Usage is billed to your Anthropic account.",
+    "show": "Show key",
+    "hide": "Hide key",
+    "model": "Model",
+    "maxTokens": "Max output tokens",
+    "maxTokensHelp": "Per answer, between {{min}} and {{max}}.",
+    "save": "Save",
+    "saved": "Assistant settings saved.",
+    "test": "Test key",
+    "testOk": "The key works ({{model}}).",
+    "testFailed": "Key test failed: {{message}}",
+    "noKeyToTest": "Enter an API key first.",
+    "clear": "Remove key",
+    "cleared": "API key removed from this browser.",
+    "privacyTitle": "Your key stays in this browser",
+    "privacy": "The key is saved in this browser's local storage only — never in your CRM data, config.js or git, and other users don't see it. The assistant calls the Anthropic API directly from your browser; there is no AgentCRM server in between. Each change the assistant wants to make is shown to you for approval.",
+    "models": {
+      "claude-sonnet-5-5": "Claude Sonnet 5.5 (balanced, recommended)",
+      "claude-opus-5-5": "Claude Opus 5.5 (most capable)",
+      "claude-haiku-5-5": "Claude Haiku 5.5 (fastest)"
+    }
+  }
 }

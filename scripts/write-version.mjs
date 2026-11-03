@@ -6,7 +6,7 @@
 //                    could no longer read data written by this one
 // The last two live under "agentcrm" in package.json.
 
-import { chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -18,7 +18,9 @@ const info = {
   version: pkg.version,
   minSkillsVersion: pkg.agentcrm.minSkillsVersion,
   dataSchema: pkg.agentcrm.dataSchema,
+  repository: "github:fleox/agentcrm",
 };
+mkdirSync(join(root, "dist"), { recursive: true });
 writeFileSync(join(root, "dist", "version.json"), JSON.stringify(info, null, 2) + "\n");
 // The npm bin entry; executable so `./dist/agent/agentcrm.mjs` works in a clone.
 const bin = join(root, "dist", "agent", "agentcrm.mjs");

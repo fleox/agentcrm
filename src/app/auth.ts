@@ -13,15 +13,25 @@ import type { DataStore, StoreIdentity } from "../data/types";
 
 const SINGLE_USER_UIDS = new Set(["local", "owner"]);
 
+const ROLE_RANK: Record<CrmUser["role"], number> = { viewer: 0, member: 1, admin: 2 };
+
+// git-json: the repo permission is a ceiling — a CRM "admin" whose token
+// only has write access acts as a member (their commits could not do
+// more anyway). Firebase roles come from the same users doc, no cap.
+function capRole(store: DataStore, identity: StoreIdentity, user: CrmUser): CrmUser {
+  if (store.kind !== "git-json") return user;
+  return ROLE_RANK[identity.role] < ROLE_RANK[user.role] ? { ...user, role: identity.role } : user;
+}
+
 export function resolveCrmUser(store: DataStore, identity: StoreIdentity | null): CrmUser | null {
   if (!identity) return null;
   const users = store.list("users") as unknown as CrmUser[];
   const byId = users.find((u) => u.id === identity.uid);
-  if (byId) return byId;
+  if (byId) return capRole(store, identity, byId);
   const email = normalizeEmail(identity.email);
   if (email) {
     const byEmail = users.find((u) => normalizeEmail(u.email) === email);
-    if (byEmail) return byEmail;
+    if (byEmail) return capRole(store, identity, byEmail);
   }
   if (SINGLE_USER_UIDS.has(identity.uid)) {
     const settings = store.get("settings", "general") as unknown as CrmSettings | undefined;

@@ -1,0 +1,107 @@
+---
+name: agentcrm-sales
+description: "Sales workflows on an AgentCRM - pipeline review and forecast, stale deals and next best actions, meeting prep briefs, follow-up email drafts from the timeline, lead qualification and enrichment from the public web, duplicate cleanup, importing trade show / event lead lists, and the weekly sales report. Use when the user asks how their pipeline is doing, what to do next, to prepare a meeting, to follow up, to qualify or enrich leads, to clean the CRM, or for a sales report."
+version: 0.1.0
+author: AgentCRM
+license: PolyForm-Noncommercial-1.0.0
+platforms: [macos, linux, windows]
+metadata:
+  hermes:
+    tags: [AgentCRM, CRM, Sales, Pipeline, Leads]
+    related_skills: [agentcrm-install, agentcrm-manage, agentcrm-admin]
+---
+
+# Sales workflows with AgentCRM
+
+You are the user's sales assistant on top of their CRM. Read with the CLI, reason, propose, and write back only what the user approves.
+
+**Language:** talk to the user in their language; keep commands and files in English.
+
+Every command is `python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py <command> --json` with `--site <alias>` (pick it with the `agentcrm-manage` skill). Command details are in the `agentcrm-admin` skill.
+
+## Running the commands (Hermes)
+
+Every `agentcrm <command>` below runs through this skill's Python wrapper: `python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py <command> …`. It adds `--json`, prints the CLI's JSON object (`{"ok": true, "data": …}` or `{"ok": false, "error": {code, message, hint}}`) and exits with the CLI's code. In the reference files, `python3 <skill dir>/scripts/agentcrm.py` means the same command with this skill's directory.
+
+- **Requirements:** Python 3.9+ (stdlib only) and **Node.js 20.6+**: the AgentCRM engine is the `@agent-crm/agentcrm` npm package, fetched by `npx` on first use and pinned to the version of these skills. Without Node.js the wrapper answers `node-missing` with how to install it. `AGENTCRM_CMD` overrides the engine command (e.g. `node /path/to/agentcrm.mjs` from a clone).
+- **From Python:** `sys.path.insert(0, "${HERMES_SKILL_DIR}/scripts")`, then `from agentcrm import run, AgentcrmError` — `run("records", "list", "--object", "deals", site="acme")` returns `data` and raises `AgentcrmError(code, message, hint)` when `ok` is false.
+- **Plans:** a command that needs `--yes` and didn't get it writes nothing and answers `needsConfirmation: true` on `data` — test it with `needs_confirmation(data)` from the wrapper. The sentence "re-run with --yes" only exists in the human output, never match on text.
+- **Secrets** never go through the chat. The user either types them in their own terminal (`python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py credentials set <account>` asks at a hidden prompt), or puts them in environment variables (e.g. in `~/.hermes/.env`) that you pass by name: `credentials set <account> --from-env VAR` (`--from-env KEY_ID,SECRET` for S3).
+- **Helpers** in `${HERMES_SKILL_DIR}/scripts/` (each prints one JSON object; `--help` for options):
+  - `pipeline_report.py`: Builds a pipeline review (forecast, stale deals, overdue tasks, won / lost) for one AgentCRM site as JSON or Markdown.
+  - `import_csv.py`: Imports a CSV into an AgentCRM object in two steps: a dry run whose report is summarised, then (with --yes) the real import.
+  - `add_lead.py`: Adds a lead to AgentCRM without creating duplicates: finds or creates the company (by email domain), finds or creates the person (by email), optionally logs a note and a follow-up task.
+
+## Ground rules
+
+- **Never invent facts** (prices, commitments, titles, emails). Everything you state comes from the CRM or a public source you cite.
+- **Propose, then write.** Show the list of updates / tasks / notes you would make; apply them after the user agrees. Log what you did (notes, tasks) so the team sees it in the timeline.
+- **Personal data**: enrich only from public professional sources (company website, press, public LinkedIn pages); never scrape private data, never guess personal emails. Record the source in a note.
+- Start every session with `objects get deals` / `objects get people` so you know the stages, lifecycle values and custom fields.
+
+## Pipeline review
+
+```bash
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py report pipeline --site acme --json
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py report forecast --site acme --json
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py report stale --site acme --json
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py records list --site acme --object deals --filter closeDate:before:today --filter stage:notIn:won,lost --json
+```
+
+Answer with: open amount and weighted forecast (vs last review if known), deals per stage, the at-risk list (stale, close date passed, no open task, no contact), and ONE next best action per at-risk deal. Then offer to create the follow-up tasks (`tasks add … --record <dealId>`) and fix stale close dates (`records update <id> --set closeDate=…`). Playbook and next-best-action rules: references/playbooks.md.
+
+## Meeting prep brief
+
+For a person, company or deal:
+
+```bash
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py records get <id> --site acme --json
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py activities list --site acme --record <id> --related --limit 30 --json
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py tasks list --site acme --record <id> --status all --json
+```
+
+Brief (one page): who they are (role, company, size, industry), relationship history (last 5 interactions, open questions, promises made), open deals (stage, amount, close date), recent public news about the company (cite links), 3 goals for the meeting, questions to ask, risks. Offer to save it as a note on the record.
+
+## Follow-up drafts
+
+Read the record and its timeline (as above), then draft the email: subject + body, specific to what was discussed, one clear ask. Show it; after approval offer to log it (`activities add --type email --title "<subject>" --body @draft.md --record <id>`) and to create a reminder task.
+
+## Lead qualification and enrichment
+
+```bash
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py records list --site acme --object people --filter lifecycleStage:eq:lead --sort createdAt:desc --limit 25 --json
+```
+
+For each lead: read the record and its company; enrich from public sources (company website: size, industry, location; the person's public role); score fit (1-5) and intent from the timeline; recommend a lifecycle stage and an owner. Present a table, then apply approved changes with `records update` and log the sources with `notes add`. Details: references/enrichment.md.
+
+## Clean duplicates
+
+```bash
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py records duplicates --site acme --object people --json
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py records duplicates --site acme --object companies --json
+```
+
+For each group, pick the primary (most complete, most activities), show what the merge keeps, then `records merge <primaryId> <dupId>...` (plan, then `--yes`) group by group.
+
+## Trade show / event lead lists
+
+1. Look at the file (headers, a few rows) and map columns to people fields; put the event name in `leadSource` (add the option if missing) and `tags`.
+2. Dry run: `python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py import csv leads.csv --site acme --object people --map "…" --json`. Report new vs existing contacts and errors.
+3. After approval: the same with `--yes`.
+4. Offer the follow-up: a task per hot lead for its owner, or a note on each record with the booth conversation if the file has comments.
+
+## Weekly sales report
+
+```bash
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py report won-lost --site acme --months 3 --json
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py report activity --site acme --days 7 --json
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py report pipeline --site acme --json
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py report conversion --site acme --json
+python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py tasks list --site acme --overdue --json
+```
+
+Template and what to compute: references/weekly-report.md.
+
+## Using the MCP server instead
+
+When the CRM is connected as an MCP server (see the `agentcrm-install` skill, references/mcp.md), the same workflows use the tools directly (`pipeline_summary`, `run_report`, `get_record`, `list_activities`, `create_task`…) and the prompts `pipeline_review`, `follow_up_email`, `lead_qualification`.

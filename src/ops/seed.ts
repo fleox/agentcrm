@@ -5,6 +5,7 @@
 
 import { normalizeEmail } from "../core/fields";
 import { seededId } from "../core/ids";
+import { localizeObjects, localizePipeline, localizeView } from "../core/schema/localize";
 import { defaultPipeline, defaultViews, standardObjects } from "../core/schema/standardObjects";
 import type { Activity, ActivityType, CrmRecord, CrmSettings, CrmUser } from "../core/types";
 import type { DocMutation } from "../data/types";
@@ -37,7 +38,7 @@ export async function seedCrm(ctx: OpsContext, opts: SeedOptions = {}): Promise<
   const report: SeedReport = { objects: [], pipelines: [], views: [], adminUserId: null, demo: null };
   const currency = (opts.currency ?? DEFAULT_SETTINGS.defaultCurrency).toUpperCase();
 
-  for (const o of standardObjects(now)) {
+  for (const o of localizeObjects(standardObjects(now), opts.locale)) {
     if (objectOf(ctx.store, o.id)) continue;
     const obj = {
       ...o,
@@ -46,12 +47,12 @@ export async function seedCrm(ctx: OpsContext, opts: SeedOptions = {}): Promise<
     mutations.push({ op: "set", collection: "objects", doc: asDoc(obj) });
     report.objects.push(o.id);
   }
-  const pipeline = defaultPipeline();
+  const pipeline = localizePipeline(defaultPipeline(), opts.locale);
   if (!ctx.store.get("pipelines", pipeline.id)) {
     mutations.push({ op: "set", collection: "pipelines", doc: asDoc(pipeline) });
     report.pipelines.push(pipeline.id);
   }
-  for (const v of defaultViews()) {
+  for (const v of defaultViews().map((view) => localizeView(view, opts.locale))) {
     if (ctx.store.get("views", v.id)) continue;
     mutations.push({ op: "set", collection: "views", doc: asDoc(v) });
     report.views.push(v.id);

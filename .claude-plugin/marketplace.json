@@ -1,0 +1,14 @@
+{
+  "name": "agentcrm",
+  "owner": { "name": "fleox" },
+  "description": "AgentCRM — install and run a static, AI-drivable CRM (data on storage you own) from Claude Code.",
+  "plugins": [
+    {
+      "name": "agentcrm",
+      "source": "./plugin",
+      "description": "Skills to install AgentCRM, manage its sites, run the CRM and drive sales workflows.",
+      "category": "productivity",
+      "tags": ["crm", "sales", "pipeline", "static-site", "s3", "mcp"]
+    }
+  ]
+}

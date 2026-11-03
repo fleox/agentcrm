@@ -15,7 +15,9 @@
     "dist/admin",
     "dist/version.json",
     "plugin",
-    "README.md"
+    "changelog.json",
+    "README.md",
+    "LICENSE"
   ],
   "agentcrm": {
     "minSkillsVersion": "0.1.0",
@@ -26,10 +28,12 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.agent.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "build": "vite build && vite build --config vite.agent.config.ts && node scripts/write-version.mjs",
+    "build": "vite build && node scripts/write-admin-manifest.mjs && vite build --config vite.agent.config.ts && node scripts/write-version.mjs",
     "preview": "vite preview",
     "check:skills": "node scripts/check-skills.mjs",
-    "hermes:build": "node scripts/build-hermes.mjs"
+    "hermes:build": "node scripts/build-hermes.mjs",
+    "check:hermes": "node scripts/build-hermes.mjs --check && python3 -m unittest discover -s hermes/tests",
+    "version": "node scripts/sync-version.mjs && npm run build && node scripts/build-hermes.mjs && git add -A plugin hermes .claude-plugin"
   },
   "devDependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -58,11 +62,28 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-i18next": "^15.7.4",
+    "react-is": "^18.3.1",
     "react-router-dom": "^6.30.6",
     "recharts": "^3.10.1",
     "tailwindcss": "^3.4.19",
     "typescript": "^6.0.3",
     "vite": "^6.4.5",
     "vitest": "^4.1.12"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fleox/agentcrm.git"
+  },
+  "homepage": "https://github.com/fleox/agentcrm#readme",
+  "keywords": [
+    "crm",
+    "static",
+    "mcp",
+    "ai-agent",
+    "claude",
+    "sales",
+    "pipeline",
+    "s3",
+    "encrypted"
+  ]
 }

@@ -20,6 +20,7 @@ import { createRecord, deleteRecord, getRecordDetails, listRecords, queryContext
 import { REPORTS, runReport } from "../ops/reports";
 import { createField, describeSchema } from "../ops/schema";
 import { objectOf, userOf } from "../ops/store";
+import { AUTOMATION_FORM_TOOLS } from "./automationTools";
 
 export type JsonSchema = {
   type?: string | string[];
@@ -412,6 +413,8 @@ export const AI_TOOLS: AiTool[] = [
       return { ...report, rows: report.rows.slice(0, 50), rowsTruncated: report.rows.length > 50 };
     },
   },
+  // Automations, lead forms, email drafts (src/ai/automationTools.ts).
+  ...AUTOMATION_FORM_TOOLS,
 ];
 
 export function findTool(name: string): AiTool | undefined {

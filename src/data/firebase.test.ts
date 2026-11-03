@@ -1,0 +1,149 @@
+import { describe, expect, it } from "vitest";
+import { createFirebaseStoreWith, inviteOps, mutationOps } from "./firebase";
+import { DELETE_FIELD, type FirebaseAuthUser } from "./firebase/api";
+import { createMemoryFirebaseApi, crmRulesModel } from "./firebase/memoryApi";
+import { snapshotFromDocs } from "./core";
+
+const ADMIN: FirebaseAuthUser = { uid: "u-admin", email: "Boss@Acme.io", displayName: "Boss", emailVerified: true };
+const BOB: FirebaseAuthUser = { uid: "u-bob", email: "bob@acme.io", displayName: "Bob", emailVerified: true };
+const EVE: FirebaseAuthUser = { uid: "u-eve", email: "eve@evil.io", displayName: "Eve", emailVerified: true };
+
+const ada = { id: "r1", object: "people", fields: { name: "Ada", email: "ada@x.io" }, createdAt: 1, updatedAt: 1 };
+const flush = () => new Promise((r) => setTimeout(r, 0));
+
+function setup(opts: { signup?: "invite" | "open"; user?: FirebaseAuthUser | null } = {}) {
+  const api = createMemoryFirebaseApi({ rules: crmRulesModel("boss@acme.io", { signup: opts.signup }), user: opts.user === undefined ? ADMIN : opts.user });
+  const store = createFirebaseStoreWith({ api, now: () => 1000 });
+  return { api, store };
+}
+
+describe("firebase mutation mapping", () => {
+  it("set → set without id, patch → update with dot paths and deleteField, skip patch of missing docs", () => {
+    const before = snapshotFromDocs({ records: [ada] });
+    const ops = mutationOps(
+      [
+        { op: "set", collection: "records", doc: ada },
+        { op: "patch", collection: "records", id: "r1", fields: { "fields.city": "Paris", "fields.email": undefined, id: "nope" } },
+        { op: "patch", collection: "records", id: "missing", fields: { x: 1 } },
+        { op: "delete", collection: "activities", id: "a1" },
+      ],
+      before,
+    );
+    expect(ops).toEqual([
+      { type: "set", collection: "records", id: "r1", data: { object: "people", fields: { name: "Ada", email: "ada@x.io" }, createdAt: 1, updatedAt: 1 } },
+      { type: "update", collection: "records", id: "r1", data: { "fields.city": "Paris", "fields.email": DELETE_FIELD } },
+      { type: "delete", collection: "activities", id: "a1" },
+    ]);
+  });
+
+  it("mirrors admin-created users as invitations", () => {
+    const after = snapshotFromDocs({ users: [{ id: "p1", email: "Bob@Acme.io", name: "Bob", role: "viewer" }] });
+    expect(inviteOps([{ op: "set", collection: "users", doc: after.users.get("p1")! }], () => undefined, after)).toEqual([
+      { type: "set", collection: "invites", id: "bob@acme.io", data: { role: "viewer", userId: "p1", email: "bob@acme.io" } },
+    ]);
+    const empty = snapshotFromDocs({});
+    expect(inviteOps([{ op: "delete", collection: "users", id: "p1" }], () => after.users.get("p1"), empty)).toEqual([
+      { type: "delete", collection: "invites", id: "bob@acme.io" },
+    ]);
+  });
+});
+
+describe("firebase store", () => {
+  it("bootstrap admin: creates users/{uid} as admin on first sign-in", async () => {
+    const { api, store } = setup();
+    const id = await store.identity();
+    expect(id).toEqual({ uid: "u-admin", email: "boss@acme.io", displayName: "Boss", role: "admin" });
+    expect(api.db.get("users", "u-admin")).toMatchObject({ email: "boss@acme.io", role: "admin", authUid: "u-admin" });
+  });
+
+  it("no session → null identity", async () => {
+    const { store } = setup({ user: null });
+    expect(await store.identity()).toBeNull();
+    expect(store.accessError()).toBeNull();
+  });
+
+  it("unverified address → no access with reason", async () => {
+    const { store } = setup({ user: { ...BOB, emailVerified: false } });
+    expect(await store.identity()).toBeNull();
+    expect(store.accessError()?.reason).toBe("unverified");
+  });
+
+  it("uninvited account is refused in invite mode, joins as member in open mode", async () => {
+    const closed = setup({ user: EVE });
+    expect(await closed.store.identity()).toBeNull();
+    expect(closed.store.accessError()?.reason).toBe("notInvited");
+    const open = setup({ user: EVE, signup: "open" });
+    expect((await open.store.identity())?.role).toBe("member");
+  });
+
+  it("invited user joins with the invitation's role and the admin folds the placeholder in", async () => {
+    const { api, store } = setup();
+    await store.identity();
+    await store.ready();
+    await store.write([{ op: "set", collection: "objects", doc: { id: "people", fields: [{ id: "owner2", type: "user" }] } }]);
+    await store.write([{ op: "set", collection: "users", doc: { id: "p-bob", email: "bob@acme.io", name: "Bob", role: "viewer" } }]);
+    await store.write([{ op: "set", collection: "records", doc: { ...ada, ownerId: "p-bob", fields: { ...ada.fields, owner2: "p-bob" } } }]);
+    expect(api.db.get("invites", "bob@acme.io")).toEqual({ role: "viewer", userId: "p-bob", email: "bob@acme.io" });
+
+    // Bob signs in on his own browser.
+    api.signInAs(BOB);
+    const bobStore = createFirebaseStoreWith({ api, now: () => 2000 });
+    expect(await bobStore.identity()).toMatchObject({ uid: "u-bob", role: "viewer" });
+    expect(api.db.get("users", "u-bob")).toMatchObject({ role: "viewer", replaces: "p-bob" });
+    await bobStore.ready();
+    // Bob's store hides the placeholder.
+    expect(bobStore.list("users").map((u) => u.id).sort()).toEqual(["u-admin", "u-bob"]);
+    // Viewer: writes are refused by the rules and rolled back.
+    await expect(bobStore.write([{ op: "patch", collection: "records", id: "r1", fields: { "fields.name": "Hacked" } }])).rejects.toMatchObject({ code: "permission-denied" });
+    expect(bobStore.get("records", "r1")!.fields).toMatchObject({ name: "Ada" });
+
+    // The admin's next load reconciles.
+    api.signInAs(ADMIN);
+    const adminStore = createFirebaseStoreWith({ api, now: () => 3000 });
+    await adminStore.identity();
+    await adminStore.ready();
+    await flush();
+    await flush();
+    expect(api.db.get("users", "p-bob")).toBeUndefined();
+    expect(api.db.get("invites", "bob@acme.io")).toBeUndefined();
+    expect(api.db.get("records", "r1")).toMatchObject({ ownerId: "u-bob", fields: { owner2: "u-bob" } });
+    expect(api.db.get("users", "u-bob")!.replaces).toBeUndefined();
+  });
+
+  it("users can't escalate their own role", async () => {
+    const { api, store } = setup({ user: EVE, signup: "open" });
+    await store.identity();
+    await store.ready();
+    await expect(store.write([{ op: "patch", collection: "users", id: "u-eve", fields: { role: "admin" } }])).rejects.toMatchObject({ code: "permission-denied" });
+    await store.write([{ op: "patch", collection: "users", id: "u-eve", fields: { name: "Eve E." } }]);
+    expect(api.db.get("users", "u-eve")).toMatchObject({ role: "member", name: "Eve E." });
+  });
+
+  it("splits big writes into batches of 500 and rolls back on failure", async () => {
+    const { api, store } = setup();
+    await store.identity();
+    await store.ready();
+    const docs = Array.from({ length: 1201 }, (_, i) => ({ op: "set" as const, collection: "records" as const, doc: { ...ada, id: `r${i}` } }));
+    await store.write(docs);
+    expect(api.commits.slice(-3).map((c) => c.length)).toEqual([500, 500, 201]);
+    expect(api.db.collections.get("records")!.size).toBe(1201);
+
+    api.failNextCommit = Object.assign(new Error("offline"), { code: "unavailable" });
+    await expect(store.write([{ op: "patch", collection: "records", id: "r1", fields: { "fields.name": "X" } }])).rejects.toThrow("offline");
+    expect(store.get("records", "r1")!.fields).toMatchObject({ name: "Ada" });
+  });
+
+  it("live: a teammate's write shows up through the snapshot listener", async () => {
+    const { api, store } = setup();
+    await store.identity();
+    await store.ready();
+    const seen = new Set<string>();
+    const off = store.subscribe((c) => c.forEach((x) => seen.add(x)));
+    await flush();
+    await api.commit([{ type: "set", collection: "activities", id: "a1", data: { type: "note", title: "Hi", targets: [] } }]);
+    await flush();
+    expect(store.get("activities", "a1")).toMatchObject({ title: "Hi" });
+    expect(seen.has("activities")).toBe(true);
+    off();
+  });
+});

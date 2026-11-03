@@ -12,6 +12,7 @@ import {
 } from "../lib/runtimeConfig";
 import { instantiateStorageConnector } from "../shared/storage/registry";
 import { createJournalStore } from "./journal";
+import { missingJournalAccess } from "./journal/access";
 import { createLocalStore } from "./local";
 import { createMemoryStore } from "./memory";
 import { getBackendFactory, registerBackend, type BackendOptions } from "./registry";
@@ -26,8 +27,9 @@ registerBackend("local", () => createLocalStore());
 registerBackend("memory", () => createMemoryStore());
 registerBackend("journal", (config, opts) => {
   const cfg = (config as JournalRuntimeConfig).journal;
-  const connector = instantiateStorageConnector(cfg.connectorId, { ...cfg.settings, ...(opts.secrets ?? {}) });
-  return createJournalStore({
+  const settings = { ...cfg.settings, ...(opts.secrets ?? {}) };
+  const connector = instantiateStorageConnector(cfg.connectorId, settings);
+  const store = createJournalStore({
     connector,
     root: cfg.root,
     encrypted: cfg.encrypted,
@@ -35,6 +37,11 @@ registerBackend("journal", (config, opts) => {
     clientId: opts.clientId,
     pollIntervalMs: opts.pollIntervalMs,
   });
+  // No connector secrets / folder grant on this browser yet → identity
+  // null → access screen (setup feature's loginScreen slot).
+  const identity = store.identity.bind(store);
+  store.identity = async () => ((await missingJournalAccess(cfg.connectorId, settings)).length ? null : identity());
+  return store;
 });
 // Lazy: Firebase / git-json code only loads when used.
 registerBackend("firebase", async (config, opts) => (await import("./firebase")).createFirebaseStore(config, opts));

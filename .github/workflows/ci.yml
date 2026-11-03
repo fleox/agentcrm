@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: npm ci --legacy-peer-deps
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      # Bundle tests (they skip without dist/agent): the CLI runs with Node alone.
+      - run: npx vitest run agent/bundle.test.ts
+      - run: npm run check:skills
+      # Hermes Agent skills (generated from plugin/skills) + their Python tests.
+      - run: npm run check:hermes
+      - name: CLI smoke test
+        run: |
+          node dist/agent/agentcrm.mjs version --json
+          node dist/agent/agentcrm.mjs help --json > /dev/null
+      - run: npm pack --dry-run

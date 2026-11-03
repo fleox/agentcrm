@@ -3,6 +3,7 @@
 // needed → ready() → passphrase prompt if needed), then AuthProvider +
 // CrmDataProvider + HashRouter + Layout with every feature's routes.
 
+import { defaultCurrencyFor } from "../core/schema/localize";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { HashRouter, Navigate, Route, Routes } from "react-router-dom";
 import { I18nextProvider, useTranslation } from "react-i18next";
@@ -312,12 +313,12 @@ function SignInScreen({ onSignedIn }: { onSignedIn(): void }) {
 
 // A configured but empty dataset (fresh local store): offer to install.
 function EmptyDataset({ store, identity, onDone }: { store: DataStore; identity: StoreIdentity; onDone(): void }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [busy, setBusy] = useState<"plain" | "demo" | null>(null);
   const install = async (demo: boolean) => {
     setBusy(demo ? "demo" : "plain");
     try {
-      await seedCrm(createOpsContext(store, null), { admin: { name: identity.displayName || "Admin", email: identity.email || "admin@localhost" }, demo });
+      await seedCrm(createOpsContext(store, null), { admin: { name: identity.displayName || "Admin", email: identity.email || "admin@localhost" }, demo, locale: i18n.language, currency: defaultCurrencyFor(i18n.language) });
       onDone();
     } finally {
       setBusy(null);

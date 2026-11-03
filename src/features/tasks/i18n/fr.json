@@ -2,8 +2,99 @@
   "nav": {
     "title": "Tâches"
   },
-  "title": "Mes tâches",
+  "title": "Tâches",
+  "newTask": "Nouvelle tâche",
+  "unassigned": "Non assignée",
   "empty": "Aucune tâche ouverte",
   "emptyHint": "Les tâches créées sur les fiches apparaissent ici.",
-  "due": "Échéance {{date}}"
+  "due": "Échéance {{date}}",
+  "views": {
+    "mine": "Mes tâches",
+    "all": "Toutes les tâches",
+    "overdue": "En retard",
+    "upcoming": "À venir",
+    "done": "Terminées"
+  },
+  "emptyViews": {
+    "mine": "Vous êtes à jour — aucune tâche ouverte.",
+    "all": "Aucune tâche ouverte.",
+    "overdue": "Rien en retard.",
+    "upcoming": "Aucune tâche à venir.",
+    "done": "Aucune tâche terminée pour l'instant."
+  },
+  "filter": {
+    "search": "Filtrer les tâches…",
+    "assignee": "Assignée à",
+    "anyone": "Tout le monde",
+    "me": "{{name}} (moi)",
+    "noMatch": "Aucune tâche ne correspond à ce filtre."
+  },
+  "groups": {
+    "all": "Tâches",
+    "overdue": "En retard",
+    "today": "Aujourd'hui",
+    "tomorrow": "Demain",
+    "thisWeek": "Cette semaine",
+    "later": "Plus tard",
+    "noDate": "Sans date",
+    "doneToday": "Terminées aujourd'hui",
+    "doneYesterday": "Terminées hier",
+    "doneThisWeek": "Terminées cette semaine",
+    "doneEarlier": "Terminées plus tôt"
+  },
+  "quick": {
+    "today": "Aujourd'hui",
+    "tomorrow": "Demain",
+    "yesterday": "Hier",
+    "nextWeek": "Semaine prochaine",
+    "inTwoWeeks": "Dans 2 semaines"
+  },
+  "list": {
+    "empty": "Aucune tâche",
+    "complete": "Terminer « {{title}} »",
+    "reopen": "Rouvrir « {{title}} »",
+    "actions": "Actions de la tâche",
+    "edit": "Modifier",
+    "markDone": "Marquer comme terminée",
+    "markOpen": "Marquer comme non terminée",
+    "delete": "Supprimer",
+    "deleteConfirm": "Supprimer la tâche « {{title}} » ?",
+    "dueDate": "Échéance",
+    "dueOn": "Échéance {{date}}",
+    "setDue": "Définir une échéance",
+    "noDue": "Échéance",
+    "clearDue": "Retirer l'échéance",
+    "assignedTo": "Assignée à {{name}}",
+    "searchUsers": "Assigner à…",
+    "noUsers": "Aucun utilisateur correspondant",
+    "unassign": "Retirer l'assignation"
+  },
+  "editor": {
+    "newTitle": "Nouvelle tâche",
+    "editTitle": "Modifier la tâche",
+    "title": "Titre",
+    "titlePlaceholder": "Rappeler au sujet de la proposition",
+    "titleRequired": "Donnez un titre à la tâche.",
+    "description": "Description",
+    "markdownHint": "Markdown pris en charge",
+    "descriptionPlaceholder": "Détails, liens, checklist…",
+    "preview": "Aperçu",
+    "write": "Écrire",
+    "nothingToPreview": "Rien à afficher.",
+    "dueDate": "Échéance",
+    "dueTime": "Heure d'échéance",
+    "assignee": "Assignée à",
+    "related": "Fiches liées",
+    "object": "Objet",
+    "addRecord": "Lier : {{object}}…",
+    "removeTarget": "Retirer",
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "create": "Créer la tâche"
+  },
+  "toast": {
+    "created": "Tâche créée",
+    "updated": "Tâche mise à jour",
+    "deleted": "Tâche supprimée"
+  }
 }

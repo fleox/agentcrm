@@ -1,6 +1,49 @@
 {
-  "placeholder": "Rechercher une fiche ou une commande…",
+  "placeholder": "Rechercher une fiche, ou tapez > pour les commandes…",
   "records": "Fiches",
   "navigation": "Aller à",
-  "empty": "Aucun résultat"
+  "empty": "Aucun résultat",
+  "emptyHint": "Rien ne correspond à « {{query}} ». Tapez > pour ne chercher que les commandes.",
+  "emptyHintNoQuery": "Commencez à taper pour rechercher.",
+  "untitled": "Sans titre",
+  "commandsOnly": "Commandes",
+  "groups": {
+    "recent": "Récents",
+    "records": "Fiches",
+    "activities": "Activités",
+    "navigation": "Aller à",
+    "actions": "Actions"
+  },
+  "activityTypes": {
+    "note": "Note",
+    "task": "Tâche",
+    "call": "Appel",
+    "email": "E-mail",
+    "meeting": "Réunion"
+  },
+  "actions": {
+    "create": "Créer : {{object}}",
+    "logNote": "Ajouter une note",
+    "newTask": "Nouvelle tâche",
+    "on": "sur {{record}}",
+    "darkMode": "Passer en mode sombre",
+    "lightMode": "Passer en mode clair",
+    "language": "Passer la langue en {{language}}"
+  },
+  "keywords": {
+    "goTo": "aller ouvrir naviguer page go to open",
+    "create": "nouveau nouvelle ajouter créer fiche new add create",
+    "note": "note ajouter activité écrire log",
+    "task": "tâche todo rappel ajouter task",
+    "theme": "thème sombre clair mode apparence dark light",
+    "language": "langue traduction language"
+  },
+  "hints": {
+    "navigate": "pour naviguer",
+    "select": "pour choisir",
+    "close": "pour fermer",
+    "commands": "pour les commandes",
+    "open": "Ouvrir",
+    "run": "Lancer"
+  }
 }

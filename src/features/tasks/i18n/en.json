@@ -2,8 +2,99 @@
   "nav": {
     "title": "Tasks"
   },
-  "title": "My tasks",
+  "title": "Tasks",
+  "newTask": "New task",
+  "unassigned": "Unassigned",
   "empty": "No open tasks",
   "emptyHint": "Tasks created on records show up here.",
-  "due": "Due {{date}}"
+  "due": "Due {{date}}",
+  "views": {
+    "mine": "My tasks",
+    "all": "All tasks",
+    "overdue": "Overdue",
+    "upcoming": "Upcoming",
+    "done": "Done"
+  },
+  "emptyViews": {
+    "mine": "You're all caught up — no open tasks.",
+    "all": "No open tasks.",
+    "overdue": "Nothing overdue.",
+    "upcoming": "No upcoming tasks.",
+    "done": "No completed tasks yet."
+  },
+  "filter": {
+    "search": "Filter tasks…",
+    "assignee": "Assignee",
+    "anyone": "Anyone",
+    "me": "{{name}} (me)",
+    "noMatch": "No task matches this filter."
+  },
+  "groups": {
+    "all": "Tasks",
+    "overdue": "Overdue",
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "thisWeek": "This week",
+    "later": "Later",
+    "noDate": "No date",
+    "doneToday": "Completed today",
+    "doneYesterday": "Completed yesterday",
+    "doneThisWeek": "Completed this week",
+    "doneEarlier": "Completed earlier"
+  },
+  "quick": {
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "yesterday": "Yesterday",
+    "nextWeek": "Next week",
+    "inTwoWeeks": "In 2 weeks"
+  },
+  "list": {
+    "empty": "No tasks",
+    "complete": "Complete “{{title}}”",
+    "reopen": "Reopen “{{title}}”",
+    "actions": "Task actions",
+    "edit": "Edit",
+    "markDone": "Mark as done",
+    "markOpen": "Mark as not done",
+    "delete": "Delete",
+    "deleteConfirm": "Delete the task “{{title}}”?",
+    "dueDate": "Due date",
+    "dueOn": "Due {{date}}",
+    "setDue": "Set a due date",
+    "noDue": "Due date",
+    "clearDue": "Remove due date",
+    "assignedTo": "Assigned to {{name}}",
+    "searchUsers": "Assign to…",
+    "noUsers": "No matching user",
+    "unassign": "Unassign"
+  },
+  "editor": {
+    "newTitle": "New task",
+    "editTitle": "Edit task",
+    "title": "Title",
+    "titlePlaceholder": "Call back about the proposal",
+    "titleRequired": "Give the task a title.",
+    "description": "Description",
+    "markdownHint": "Markdown supported",
+    "descriptionPlaceholder": "Details, links, checklist…",
+    "preview": "Preview",
+    "write": "Write",
+    "nothingToPreview": "Nothing to preview.",
+    "dueDate": "Due date",
+    "dueTime": "Due time",
+    "assignee": "Assignee",
+    "related": "Related records",
+    "object": "Object",
+    "addRecord": "Link a {{object}}…",
+    "removeTarget": "Remove",
+    "cancel": "Cancel",
+    "save": "Save",
+    "create": "Create task"
+  },
+  "toast": {
+    "created": "Task created",
+    "updated": "Task updated",
+    "deleted": "Task deleted"
+  }
 }

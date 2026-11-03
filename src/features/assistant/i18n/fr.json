@@ -1,3 +1,82 @@
 {
-  "title": "Assistant"
+  "title": "Assistant",
+  "toggle": "Assistant IA (⌘J)",
+  "askAi": "Demander à l'IA",
+  "close": "Fermer",
+  "newChat": "Nouvelle conversation",
+  "settingsLink": "Réglages de l'assistant",
+  "thinking": "Réflexion…",
+  "noKey": {
+    "title": "Connectez votre clé d'API Claude",
+    "description": "L'assistant utilise votre propre clé d'API Anthropic. Elle est stockée uniquement dans ce navigateur et les requêtes partent directement vers Anthropic.",
+    "action": "Ouvrir les réglages de l'assistant"
+  },
+  "empty": {
+    "title": "Comment puis-je vous aider ?",
+    "description": "Posez des questions sur votre pipeline, trouvez des fiches, consignez des activités ou mettez à jour vos données. Chaque modification vous est d'abord soumise pour approbation."
+  },
+  "suggestions": {
+    "record": "Résume cette fiche et propose les prochaines étapes",
+    "pipeline": "Résume mon pipeline ouvert par étape",
+    "tasks": "Quelles sont mes tâches en retard ?",
+    "stale": "Quelles affaires ouvertes n'ont eu aucune activité depuis 30 jours ?"
+  },
+  "composer": {
+    "placeholder": "Posez une question sur votre CRM…",
+    "hint": "Entrée pour envoyer · Maj+Entrée pour aller à la ligne",
+    "send": "Envoyer",
+    "stop": "Arrêter"
+  },
+  "context": {
+    "label": "Contexte",
+    "remove": "Retirer le contexte"
+  },
+  "tool": {
+    "pending": "En attente d'approbation",
+    "running": "En cours",
+    "done": "Terminé",
+    "error": "Erreur",
+    "rejected": "Refusé",
+    "input": "Entrée",
+    "result": "Résultat"
+  },
+  "approval": {
+    "title": "Approuver cette action ?",
+    "description": "L'assistant veut exécuter",
+    "approve": "Approuver",
+    "always": "Toujours autoriser",
+    "alwaysHint": "Autoriser cet outil sans confirmation jusqu'à la fin de la session",
+    "reject": "Refuser"
+  },
+  "notice": {
+    "stopped": "Arrêté.",
+    "maxIterations_one": "Arrêté après {{count}} étape. Demandez-moi de continuer si besoin.",
+    "maxIterations_other": "Arrêté après {{count}} étapes. Demandez-moi de continuer si besoin."
+  },
+  "settings": {
+    "title": "Assistant IA",
+    "description": "Discutez avec Claude pour rechercher, résumer et mettre à jour votre CRM. L'assistant utilise les mêmes outils que la CLI et le serveur MCP, avec vos propres droits.",
+    "apiKey": "Clé d'API Anthropic",
+    "apiKeyHelp": "Créez une clé sur console.anthropic.com. L'utilisation est facturée sur votre compte Anthropic.",
+    "show": "Afficher la clé",
+    "hide": "Masquer la clé",
+    "model": "Modèle",
+    "maxTokens": "Tokens de sortie max.",
+    "maxTokensHelp": "Par réponse, entre {{min}} et {{max}}.",
+    "save": "Enregistrer",
+    "saved": "Réglages de l'assistant enregistrés.",
+    "test": "Tester la clé",
+    "testOk": "La clé fonctionne ({{model}}).",
+    "testFailed": "Échec du test de la clé : {{message}}",
+    "noKeyToTest": "Saisissez d'abord une clé d'API.",
+    "clear": "Supprimer la clé",
+    "cleared": "Clé d'API supprimée de ce navigateur.",
+    "privacyTitle": "Votre clé reste dans ce navigateur",
+    "privacy": "La clé est enregistrée uniquement dans le stockage local de ce navigateur — jamais dans les données du CRM, dans config.js ni dans git, et les autres utilisateurs ne la voient pas. L'assistant appelle l'API Anthropic directement depuis votre navigateur, sans serveur AgentCRM intermédiaire. Chaque modification proposée par l'assistant vous est soumise pour approbation.",
+    "models": {
+      "claude-sonnet-5-5": "Claude Sonnet 5.5 (équilibré, recommandé)",
+      "claude-opus-5-5": "Claude Opus 5.5 (le plus performant)",
+      "claude-haiku-5-5": "Claude Haiku 5.5 (le plus rapide)"
+    }
+  }
 }

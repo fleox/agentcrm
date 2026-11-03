@@ -1,0 +1,17 @@
+{
+  "name": "agentcrm",
+  "version": "0.1.0",
+  "description": "Skills to install AgentCRM (the static CRM your AI agent can run), manage its sites, run the CRM and drive sales workflows.",
+  "author": {
+    "name": "fleox"
+  },
+  "homepage": "https://github.com/fleox/agentcrm",
+  "repository": "https://github.com/fleox/agentcrm",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "keywords": [
+    "crm",
+    "sales",
+    "static",
+    "mcp"
+  ]
+}

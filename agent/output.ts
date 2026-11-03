@@ -2,7 +2,9 @@
 // Agents parse --json output, so it is one JSON object per invocation:
 //   success → { "ok": true, "data": … }
 //   failure → { "ok": false, "error": { "code", "message", "hint"? } }
-// Human mode prints plain text. Logs and progress always go to stderr.
+// Human mode prints plain text. Logs and progress always go to stderr so
+// they never corrupt the JSON on stdout. Exit codes: 0 ok, 1 failure,
+// 2 usage error (bad arguments, invalid plan, validation).
 
 export class CliError extends Error {
   constructor(
@@ -34,27 +36,66 @@ export function printResult(io: Io, data: unknown, human: () => string): void {
   else io.out(human());
 }
 
-// Known errors thrown by the engine, translated into codes and hints.
-function knownError(error: unknown): CliError | null {
+const OPS_HINTS: Record<string, string> = {
+  forbidden: "The CRM user the CLI acts as lacks this permission (see `site show` → user, `users list`). Ask an admin, or re-register the site with an admin user (`site add … --user <email>`).",
+  notFound: "Check the id (list commands print them: `records list --object …`, `objects list`, `views list`…).",
+  validation: "Fix the input: `objects get <object>` lists field ids, types and select options.",
+  conflict: "Something with the same key already exists — list it first, then update instead of creating.",
+  invalid: "Check the arguments with `agentcrm help <command>`.",
+};
+
+// Known errors thrown by the engine, translated into codes and hints an
+// agent can act on.
+export function knownError(error: unknown): CliError | null {
   if (!(error instanceof Error)) return null;
   if (error.name === "PassphraseError") {
     const reason = (error as Error & { reason?: string }).reason;
     return reason === "missing"
-      ? new CliError("passphrase-required", "This dataset is encrypted and the site has no passphrase credential.", "Store it with `agentcrm credentials set passphrase:<alias>`.")
-      : new CliError("passphrase-wrong", "Wrong passphrase: the data could not be decrypted.");
+      ? new CliError(
+          "passphrase-required",
+          "This dataset is encrypted and the site has no passphrase credential.",
+          "Store it (`agentcrm credentials set passphrase:<alias>` in the user's own terminal), then attach it: `agentcrm site credentials <alias> --passphrase-credential passphrase:<alias>`.",
+        )
+      : new CliError("passphrase-wrong", "Wrong passphrase: the data could not be decrypted.", "Store the right one with `agentcrm credentials set <the site's passphrase account>` (see `site show`).");
   }
   if (error.name === "OpsError") {
     const code = (error as Error & { code?: string }).code ?? "invalid";
-    return new CliError(code, error.message, undefined, code === "validation" || code === "invalid" ? 2 : 1);
+    return new CliError(code, error.message, OPS_HINTS[code], code === "validation" || code === "invalid" ? 2 : 1);
+  }
+  if (error.name === "FieldValidationError") {
+    return new CliError("validation", error.message, OPS_HINTS.validation, 2);
+  }
+  if (error.name === "DocConflictError") {
+    return new CliError("conflict", `The data changed elsewhere while this command ran: ${error.message}`, "Run the same command again (it reloads the latest data).");
+  }
+  if (error.name === "StorageError") {
+    const status = (error as Error & { status?: number }).status ?? 0;
+    const hint =
+      status === 401 || status === 403
+        ? "The storage refused the credentials: check the key pair / token and its permissions (`agentcrm doctor`)."
+        : status === 404
+          ? "Bucket, repository or path not found: check the names in the plan / site."
+          : status === 0
+            ? "Network error or CORS: check the endpoint URL and the connection."
+            : "Retry once; run `agentcrm doctor` if it persists.";
+    return new CliError("storage", `${error.message}${status ? ` (HTTP ${status})` : ""}`, hint);
   }
   return null;
 }
 
+export function toCliError(error: unknown): CliError {
+  return error instanceof CliError
+    ? error
+    : knownError(error) ??
+        new CliError(
+          "internal",
+          error instanceof Error ? error.message : String(error),
+          "Unexpected error. Retry once; if it persists, report it with the command and this output.",
+        );
+}
+
 export function printError(io: Io, error: unknown): number {
-  const e =
-    error instanceof CliError
-      ? error
-      : knownError(error) ?? new CliError("internal", error instanceof Error ? error.message : String(error), "Unexpected error. Retry once; if it persists, report it with the command and this output.");
+  const e = toCliError(error);
   if (io.json) io.out(JSON.stringify({ ok: false, error: { code: e.code, message: e.message, ...(e.hint ? { hint: e.hint } : {}) } }));
   else io.err(`Error: ${e.message}${e.hint ? `\nHint: ${e.hint}` : ""}`);
   return e.exitCode;

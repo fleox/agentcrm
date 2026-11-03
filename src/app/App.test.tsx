@@ -52,7 +52,7 @@ afterEach(() => {
 });
 
 describe("App shell", () => {
-  it("shows the setup placeholder when not configured", async () => {
+  it("shows the setup wizard (with the This browser quick start) when not configured", async () => {
     setRuntimeConfigOverride(null);
     const { root } = mount();
     await waitFor(() => !!document.body.textContent?.includes("Set up AgentCRM"));

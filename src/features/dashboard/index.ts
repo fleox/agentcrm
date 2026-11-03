@@ -1,10 +1,11 @@
-// Dashboard + reports (owned by the admin UI agent). PLACEHOLDER pages.
+// Dashboard + reports (owned by the admin UI agent).
 import { createElement } from "react";
 import { BarChart3, LayoutDashboard } from "lucide-react";
 import type { Feature } from "../types";
 import en from "./i18n/en.json";
 import fr from "./i18n/fr.json";
-import { DashboardPage, ReportsPage } from "./DashboardPage";
+import { DashboardPage } from "./DashboardPage";
+import { ReportsPage } from "./ReportsPage";
 
 const feature: Feature = {
   id: "dashboard",

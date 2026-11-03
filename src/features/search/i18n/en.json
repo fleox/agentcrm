@@ -1,6 +1,49 @@
 {
-  "placeholder": "Search records, or type a command…",
+  "placeholder": "Search records, or type > for commands…",
   "records": "Records",
   "navigation": "Go to",
-  "empty": "No results"
+  "empty": "No results",
+  "emptyHint": "Nothing matches “{{query}}”. Type > to search commands only.",
+  "emptyHintNoQuery": "Start typing to search.",
+  "untitled": "Untitled",
+  "commandsOnly": "Commands",
+  "groups": {
+    "recent": "Recent",
+    "records": "Records",
+    "activities": "Activities",
+    "navigation": "Go to",
+    "actions": "Actions"
+  },
+  "activityTypes": {
+    "note": "Note",
+    "task": "Task",
+    "call": "Call",
+    "email": "Email",
+    "meeting": "Meeting"
+  },
+  "actions": {
+    "create": "Create {{object}}",
+    "logNote": "Log a note",
+    "newTask": "New task",
+    "on": "on {{record}}",
+    "darkMode": "Switch to dark mode",
+    "lightMode": "Switch to light mode",
+    "language": "Switch language to {{language}}"
+  },
+  "keywords": {
+    "goTo": "go to open navigate page",
+    "create": "new add create record",
+    "note": "note log activity write",
+    "task": "task todo reminder add",
+    "theme": "theme dark light mode appearance",
+    "language": "language locale translate"
+  },
+  "hints": {
+    "navigate": "to navigate",
+    "select": "to select",
+    "close": "to close",
+    "commands": "for commands",
+    "open": "Open",
+    "run": "Run"
+  }
 }

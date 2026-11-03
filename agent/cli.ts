@@ -37,7 +37,7 @@ async function run(name: string, args: string[], io: Io): Promise<number | void>
   if (parsed.values.help && command.name !== "help") return run("help", [command.name], io);
   return command.run({
     io,
-    options: Object.fromEntries(Object.entries(parsed.values).map(([k, v]) => [k, Array.isArray(v) ? v.join(" ") : v])) as Record<string, string | boolean | undefined>,
+    options: parsed.values as Record<string, string | boolean | string[] | undefined>,
     positionals: parsed.positionals,
   });
 }
