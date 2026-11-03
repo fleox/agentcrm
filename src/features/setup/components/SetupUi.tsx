@@ -91,7 +91,7 @@ export function Stepper({ steps, current }: { steps: { id: string; label: string
           <li key={s.id} className="flex shrink-0 items-center gap-1">
             <span
               className={cn(
-                "inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-semibold [&>svg]:h-3 [&>svg]:w-3",
+                "inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-semibold [&_svg]:h-3 [&_svg]:w-3",
                 done && "bg-accent-600 text-white",
                 active && "bg-surface-900 text-white dark:bg-white dark:text-surface-900",
                 !done && !active && "bg-surface-200 text-surface-500 dark:bg-surface-800",
@@ -103,7 +103,7 @@ export function Stepper({ steps, current }: { steps: { id: string; label: string
               <span className={cn(done && "hidden")}>{i + 1}</span>
             </span>
             <span className={cn("font-medium", active ? "text-surface-900 dark:text-white" : "text-surface-500")}>{s.label}</span>
-            {i < steps.length - 1 && <span className="mx-1 h-px w-4 bg-surface-300 dark:bg-surface-700 sm:w-8" />}
+            {i < steps.length - 1 && <span className="mx-1 h-px w-3 bg-surface-300 dark:bg-surface-700 sm:w-5" />}
           </li>
         );
       })}

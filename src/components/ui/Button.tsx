@@ -51,7 +51,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       {...rest}
     >
       {hasIcon && (
-        <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center [&>svg]:h-4 [&>svg]:w-4">
+        <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center [&_svg]:h-4 [&_svg]:w-4">
           <span className={cn("inline-flex", loading && "hidden")}>{icon}</span>
           <span className={cn("inline-flex", !loading && "hidden")}>
             <Loader2 className="h-4 w-4 animate-spin" />
