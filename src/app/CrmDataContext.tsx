@@ -9,6 +9,7 @@ import { recordLabel } from "../core/fields";
 import { buildSearchIndex, type CrmSearchIndex } from "../core/search";
 import type { Activity, Automation, AutomationRun, CrmRecord, CrmSettings, CrmUser, LeadForm, ObjectDef, Pipeline, ViewDef } from "../core/types";
 import type { CollectionName, DataStore, StoredDoc } from "../data/types";
+import { useTranslation } from "react-i18next";
 import { intlLocale } from "../i18n";
 import { can as canDo, createOpsContext, type OpsAction, type OpsContext } from "../ops/context";
 import { DEFAULT_SETTINGS } from "../ops/settings";
@@ -269,6 +270,9 @@ function FieldContextBridge({ children }: { children: ReactNode }) {
   const settings = useSettings();
   const records = useCollection<CrmRecord>("records");
   const objects = useCollection<ObjectDef>("objects");
+  // Re-render on language switch: numbers, currencies and dates follow the UI locale.
+  const { i18n } = useTranslation();
+  const language = i18n.language;
   const value = useMemo<FieldContextValue>(() => {
     const byObject = new Map(objects.map((o) => [o.id, o]));
     const byId = new Map(records.map((r) => [r.id, r]));
@@ -299,7 +303,8 @@ function FieldContextBridge({ children }: { children: ReactNode }) {
         return out.sort((a, b) => a.label.localeCompare(b.label));
       },
     };
-  }, [labelOf, users, settings.defaultCurrency, records, objects]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `language` drives intlLocale()
+  }, [labelOf, users, settings.defaultCurrency, records, objects, language]);
   return <FieldContext.Provider value={value}>{children}</FieldContext.Provider>;
 }
 

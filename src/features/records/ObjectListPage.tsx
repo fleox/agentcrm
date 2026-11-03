@@ -248,7 +248,7 @@ export function ObjectListPage() {
             <Kbd>⌘↵</Kbd> {t("table.hintOpen")}
           </span>
           <span>
-            <Kbd>Space</Kbd> {t("table.hintSelect")}
+            <Kbd>{t("table.keySpace")}</Kbd> {t("table.hintSelect")}
           </span>
         </div>
       )}

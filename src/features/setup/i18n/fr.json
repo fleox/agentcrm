@@ -203,7 +203,8 @@
   },
   "install": {
     "title": "Prêt à installer",
-    "hint": "Rien n'a encore été écrit (sauf la fiche admin Firebase). Vérifiez puis installez.",
+    "hint": "Rien n'a encore été écrit. Vérifiez puis installez.",
+    "hintFirebase": "Rien n'a encore été écrit (sauf la fiche admin Firebase). Vérifiez puis installez.",
     "summary": {
       "model": "Données",
       "location": "Emplacement",
@@ -346,6 +347,8 @@
     "journal": {
       "title": "Déverrouiller ce CRM sur ce navigateur",
       "hint": "Données sur {{location}}. Saisissez les clés d'accès et la phrase secrète que votre admin vous a communiquées (une fois par navigateur).",
+      "hintFolder": "Données dans un {{location}}. Choisissez le dossier et saisissez la phrase secrète que votre admin vous a communiquée (une fois par navigateur).",
+      "localFolder": "dossier local",
       "passphraseHelp": "La phrase secrète de l'espace.",
       "unlock": "Déverrouiller",
       "folderHint": "Les navigateurs oublient les permissions de dossier au rechargement : ré-autorisez l'accès en un clic.",

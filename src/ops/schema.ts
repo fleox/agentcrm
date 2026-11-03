@@ -220,9 +220,19 @@ export async function createField(ctx: OpsContext, objectId: string, input: Fiel
   const field = buildField(ctx, object, input);
   // The first image field of an object becomes its record avatar.
   const imageField = object.imageField ?? (field.type === "image" ? field.id : undefined);
-  await ctx.store.write([saveObject(ctx, { ...object, ...(imageField ? { imageField } : {}), fields: [...object.fields, field] })], { message: `Add field ${field.label}` });
+  const mutations: DocMutation[] = [saveObject(ctx, { ...object, ...(imageField ? { imageField } : {}), fields: [...object.fields, field] })];
+  // A new visible field becomes a column of the object's default table view
+  // while it has room (same 7-column rule as defaultViewFor): a custom object
+  // created with only its Name field shows the fields added next.
+  const defaultView = viewsOf(ctx.store, objectId).find((v) => v.id === defaultViewFor(object).id);
+  if (defaultView && defaultView.type === "table" && !field.hidden && field.type !== "image" && !defaultView.columns.includes(field.id) && defaultView.columns.length < DEFAULT_VIEW_MAX_COLUMNS) {
+    mutations.push({ op: "patch", collection: "views", id: defaultView.id, fields: { columns: [...defaultView.columns, field.id] } });
+  }
+  await ctx.store.write(mutations, { message: `Add field ${field.label}` });
   return field;
 }
+
+const DEFAULT_VIEW_MAX_COLUMNS = 7;
 
 function requireField(object: ObjectDef, fieldId: string): FieldDef {
   const f = object.fields.find((x) => x.id === fieldId);

@@ -376,7 +376,7 @@ function JournalAccess({ config, onSignedIn }: { config: JournalRuntimeConfig; o
   return (
     <AccessShell
       title={t("access.journal.title")}
-      hint={t("access.journal.hint", { location: `${describeLocation(j.connectorId, j.settings)} / ${j.root}` })}
+      hint={t(j.connectorId === "local-folder" ? "access.journal.hintFolder" : "access.journal.hint", { location: `${describeLocation(j.connectorId, j.settings, t("access.journal.localFolder"))} / ${j.root}` })}
       icon={<Shield />}
       footer={<OtherCrmLink />}
     >

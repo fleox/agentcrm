@@ -31,7 +31,7 @@ import type { DataModel } from "../services/installers";
 function locationLabel(config: RuntimeConfig, t: (k: string) => string): string {
   switch (config.backend) {
     case "journal":
-      return `${describeLocation(config.journal.connectorId, config.journal.settings)} / ${config.journal.root || "—"}`;
+      return `${describeLocation(config.journal.connectorId, config.journal.settings, t("access.journal.localFolder"))} / ${config.journal.root || "—"}`;
     case "git-json": {
       const g = config.git;
       const repo = g.provider === "github" ? `${g.owner}/${g.repo}` : g.provider === "gitlab" ? g.project : t("location.gitLocal");

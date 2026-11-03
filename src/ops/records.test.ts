@@ -57,6 +57,18 @@ describe("records ops", () => {
     expect(recordOf(store, c.id)!.fields).not.toHaveProperty("tags");
   });
 
+  it("seeds demo companies whose country and phone match their city", async () => {
+    const { admin } = await setupTestCrm({ demo: true });
+    for (const c of listRecords(admin, "companies", { limit: 100 }).items) {
+      const address = c.fields.address as { city: string; country: string };
+      if (address.city === "San Francisco") {
+        expect(address.country).toBe("United States");
+        expect(String(c.fields.phone)).toMatch(/^\+1 415 /);
+      }
+      if (address.city === "London") expect(address.country).toBe("United Kingdom");
+    }
+  });
+
   it("lists with filters, sorts, search, views and pagination", async () => {
     const { admin } = await setupTestCrm({ demo: true });
     const all = listRecords(admin, "companies", { limit: 5 });

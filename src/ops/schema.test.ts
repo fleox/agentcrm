@@ -18,6 +18,19 @@ describe("schema ops", () => {
     expect(renamed).toMatchObject({ labelPlural: "Initiatives", icon: "Rocket" });
   });
 
+  it("adds new visible fields to the default view while it has room", async () => {
+    const { admin, store } = await setupTestCrm();
+    await createObject(admin, { labelSingular: "Ticket", labelPlural: "Tickets" });
+    const columns = () => (store.get("views", "tickets-all") as unknown as { columns: string[] }).columns;
+    expect(columns()).toEqual(["name"]);
+    await createField(admin, "tickets", { label: "Priority", type: "select", options: ["Low", "High"] });
+    await createField(admin, "tickets", { label: "Secret", type: "text", hidden: true });
+    await createField(admin, "tickets", { label: "Screenshot", type: "image" });
+    expect(columns()).toEqual(["name", "priority"]);
+    for (const label of ["A", "B", "C", "D", "E", "F"]) await createField(admin, "tickets", { label, type: "text" });
+    expect(columns()).toEqual(["name", "priority", "a", "b", "c", "d", "e"]);
+  });
+
   it("adds fields with generated ids; relation targets must exist", async () => {
     const { admin } = await setupTestCrm();
     const f = await createField(admin, "companies", { label: "Customer since", type: "date" });

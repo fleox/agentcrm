@@ -203,7 +203,8 @@
   },
   "install": {
     "title": "Ready to install",
-    "hint": "Nothing has been written yet (except the Firebase admin record). Review and install.",
+    "hint": "Nothing has been written yet. Review and install.",
+    "hintFirebase": "Nothing has been written yet (except the Firebase admin record). Review and install.",
     "summary": {
       "model": "Data",
       "location": "Location",
@@ -346,6 +347,8 @@
     "journal": {
       "title": "Unlock this CRM on this browser",
       "hint": "Data at {{location}}. Enter the access keys and passphrase your admin shared with you (once per browser).",
+      "hintFolder": "Data in a {{location}}. Pick the folder and enter the passphrase your admin shared with you (once per browser).",
+      "localFolder": "local folder",
       "passphraseHelp": "The workspace passphrase.",
       "unlock": "Unlock",
       "folderHint": "Browsers forget folder permissions on reload: re-grant access with one click.",
