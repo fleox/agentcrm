@@ -113,7 +113,8 @@
     "hintNavigate": "naviguer",
     "hintEdit": "modifier",
     "hintOpen": "ouvrir",
-    "hintSelect": "sélectionner"
+    "hintSelect": "sélectionner",
+    "keySpace": "Espace"
   },
   "bulk": {
     "title": "Actions groupées",

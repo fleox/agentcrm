@@ -110,7 +110,8 @@
     "hintNavigate": "move",
     "hintEdit": "edit",
     "hintOpen": "open",
-    "hintSelect": "select"
+    "hintSelect": "select",
+    "keySpace": "Space"
   },
   "bulk": {
     "title": "Bulk actions",
