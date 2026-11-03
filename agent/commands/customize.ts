@@ -2,6 +2,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { extname, resolve } from "node:path";
 import type { Appearance, AppearancePatch } from "../../src/appearance/types";
 import type { OpsContext } from "../../src/ops/context";
+import { CliError } from "../output";
 import { dryRun } from "../ops/dryRun";
 import { withSession } from "../ops/session";
 import type { Command, OptionValue } from "./types";
@@ -23,6 +24,22 @@ function parseJsonValue(raw: string, name: string): unknown {
     return JSON.parse(text);
   } catch (err) {
     usage(`--${name} is not valid JSON: ${(err as Error).message}`, `Example: --${name} '{"targets":{"owner":50000}}' or --${name} @config.json`);
+  }
+}
+
+const MODULE_CONFIG_HINT = "Module configuration is JSON (≤ 256 KB) readable by every CRM user: no secrets (apiKey, token, secret, password…). Module ids: `agentcrm modules list`.";
+
+// Validation errors of these commands get their own hint (the generic one
+// talks about record fields).
+async function withHint<T>(hint: string, p: Promise<T>): Promise<T> {
+  try {
+    return await p;
+  } catch (err) {
+    const e = err as Error & { code?: string };
+    if (e?.name === "OpsError" && (e.code === "validation" || e.code === "notFound" || e.code === "invalid")) {
+      throw new CliError(e.code, e.message, hint, e.code === "notFound" ? 1 : 2);
+    }
+    throw err;
   }
 }
 
@@ -79,14 +96,14 @@ export const modulesCommand: Command = {
         const raw = strOpt(options, "value");
         if (!clear && raw === undefined) usage("modules config set needs --value <json|@file|-> (or --clear).");
         const value = clear ? null : parseJsonValue(raw!, "value");
-        return withSession(io, options, { lock: apply }, async ({ ctx }) => {
+        return withHint(MODULE_CONFIG_HINT, withSession(io, options, { lock: apply }, async ({ ctx }) => {
           const mod = await import("../../src/ops/modules");
           mod.getModule(ctx, id);
           const before = mod.getModuleConfig(ctx, id) ?? null;
           if (apply) return { id, config: (await mod.setModuleConfig(ctx, id, value)) ?? null, before };
           const { result } = await dryRun(ctx, (copy) => mod.setModuleConfig(copy, id, value));
           return { needsConfirmation: true as const, plan: { id, before, after: result ?? null } };
-        });
+        }));
       }
       default:
         usage(`Unknown modules action "${action}".`, "Use list, get, enable, disable or config.");
@@ -118,14 +135,33 @@ export function imageDataUrl(file: string): string {
 function view(a: Appearance, full: boolean): Record<string, unknown> {
   if (full) return { ...a };
   const { logo, favicon, customCss, ...rest } = a;
-  const kb = (s: string) => Math.round(((s.length - s.indexOf(",") - 1) * 3) / 4 / 1024);
+  // Size + short fingerprint: two different images of the same size must
+  // still show up as a change in the plan.
+  const image = (s: string) => `${s.slice(5, s.indexOf(";"))}, ${formatSize(Math.floor(((s.length - s.indexOf(",") - 1) * 3) / 4))}, #${shortHash(s)}`;
   return {
     ...rest,
-    logo: logo ? `${logo.slice(5, logo.indexOf(";"))}, ${kb(logo)} KB` : null,
-    favicon: favicon ? `${favicon.slice(5, favicon.indexOf(";"))}, ${kb(favicon)} KB` : null,
-    customCss: customCss ? `${new TextEncoder().encode(customCss).length} bytes` : null,
+    logo: logo ? image(logo) : null,
+    favicon: favicon ? image(favicon) : null,
+    customCss: customCss ? `${new TextEncoder().encode(customCss).length} bytes, #${shortHash(customCss)}` : null,
   };
 }
+
+function formatSize(n: number): string {
+  return n < 1024 ? `${n} B` : `${(n / 1024).toFixed(1)} KB`;
+}
+
+// FNV-1a 32 bits, hex — only to tell values apart in plans.
+export function shortHash(s: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(16).padStart(8, "0");
+}
+
+const APPEARANCE_HINT = "Allowed values: `agentcrm help appearance`; presets and installed themes: `agentcrm appearance presets`.";
+const withAppearanceHint = <T>(p: Promise<T>) => withHint(APPEARANCE_HINT, p);
 
 function diff(before: Record<string, unknown>, after: Record<string, unknown>): Record<string, { from: unknown; to: unknown }> {
   const out: Record<string, { from: unknown; to: unknown }> = {};
@@ -200,7 +236,7 @@ export const appearanceCommand: Command = {
 
     // Every write: dry run → plan, or apply with --yes.
     const change = (describe: string, op: (ctx: OpsContext) => Promise<Appearance>) =>
-      withSession(io, options, { lock: apply }, async ({ ctx }) => {
+      withAppearanceHint(withSession(io, options, { lock: apply }, async ({ ctx }) => {
         const before = view((await appearance()).getAppearance(ctx), full);
         if (apply) {
           const after = view(await op(ctx), full);
@@ -212,7 +248,7 @@ export const appearanceCommand: Command = {
         const changes = r.plan ? r.plan.changes : r.changes ?? {};
         const lines = Object.entries(changes).map(([k, c]) => `  ${k}: ${JSON.stringify(c.from)} → ${JSON.stringify(c.to)}`);
         return [`${r.plan ? "Would apply" : "Applied"}: ${describe}`, ...(lines.length ? lines : ["  (no visible change)"]), ...(r.plan ? ["Nothing changed — re-run with --yes once the user agrees."] : [])].join("\n");
-      });
+      }));
 
     switch (action) {
       case "get":

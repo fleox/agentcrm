@@ -256,4 +256,55 @@ export default {
     const m = (await cli(["ext", "check", mismatch])).body.data;
     expect(m.errors.map((e: { code: string }) => e.code)).toEqual(["load"]);
   }, 60_000);
+
+  it("ext install refuses a bundle that doesn't load (the installed version keeps running)", async () => {
+    const crm = siteCli("c");
+    const manifest = { id: "fragile-ext", kind: "module", name: "Fragile", version: "1.0.0", apiVersion: "1.0.0", description: "x", entry: "bundle.js" };
+    const good = await packOf(root, "fragile-1", manifest, 'export default { id: "fragile-ext", apiVersion: "1.0.0" };\n');
+    expect((await crm.ok(["ext", "install", good, "--yes"])).load.status).toBe("loaded");
+    // Same version again: allowed, with a warning in the plan.
+    expect((await crm.ok(["ext", "install", good])).plan.warnings).toEqual([expect.stringMatching(/already installed/)]);
+    const broken = await packOf(root, "fragile-2", { ...manifest, version: "1.1.0" }, "export default {;\n");
+    for (const args of [["ext", "install", broken], ["ext", "install", broken, "--yes"]]) {
+      const r = await crm.run(args);
+      expect(r.body.error).toMatchObject({ code: "invalid-package", message: expect.stringMatching(/doesn't pass the check/) });
+    }
+    const mismatch = await packOf(root, "fragile-3", { ...manifest, version: "1.2.0" }, 'export default { id: "other-ext", apiVersion: "1.0.0" };\n');
+    expect((await crm.run(["ext", "install", mismatch, "--yes"])).body.error?.code).toBe("invalid-package");
+    expect((await crm.ok(["ext", "list"])).find((e: { id: string }) => e.id === "fragile-ext")).toMatchObject({ version: "1.0.0", load: "loaded" });
+    // --force skips the trial load.
+    expect((await crm.ok(["ext", "install", mismatch, "--force", "--yes"])).load.status).toBe("error");
+    // A downgrade is flagged.
+    expect((await crm.ok(["ext", "install", good])).plan.warnings).toEqual(["Downgrade: 1.2.0 → 1.0.0."]);
+    await crm.ok(["ext", "uninstall", "fragile-ext", "--yes"]);
+  }, 120_000);
+
+  it("CLI hints and flags: leading --safe, dependency conflicts, appearance errors, image changes", async () => {
+    const crm = siteCli("c");
+    // Global flags before the command.
+    const safe = await cli(["--safe", "ext", "list", "--site", "c"]);
+    expect(safe.code).toBe(0);
+    // A dependency conflict hints at --cascade (not "already exists").
+    const zip = await packOf(root, "dep-hint", { id: "dep-hint", kind: "module", name: "Dep hint", version: "1.0.0", apiVersion: "1.0.0", description: "x", entry: "bundle.js", dependsOn: ["deals"] }, 'export default { id: "dep-hint", apiVersion: "1.0.0" };\n');
+    await crm.ok(["ext", "install", zip, "--yes"]);
+    const conflict = (await crm.run(["modules", "disable", "deals", "--yes"])).body.error;
+    expect(conflict).toMatchObject({ code: "conflict", hint: expect.stringMatching(/--cascade/) });
+    await crm.ok(["ext", "uninstall", "dep-hint", "--yes"]);
+    // Appearance validation errors hint at appearance, not at records.
+    const bad = (await crm.run(["appearance", "set", "--accent", "#12345", "--yes"])).body.error;
+    expect(bad).toMatchObject({ code: "validation", hint: expect.stringMatching(/appearance/) });
+    expect(bad?.hint).not.toMatch(/objects get/);
+    expect((await crm.run(["modules", "config", "set", "dashboard", "--value", '{"apiKey":"sk-1"}', "--yes"])).body.error).toMatchObject({ code: "validation", hint: expect.stringMatching(/no secrets/) });
+    // Two logos of the same size are still a change; scripted SVGs are refused.
+    const a = join(root, "a.svg");
+    const b = join(root, "b.svg");
+    writeFileSync(a, '<svg xmlns="http://www.w3.org/2000/svg"><rect fill="#111111"/></svg>');
+    writeFileSync(b, '<svg xmlns="http://www.w3.org/2000/svg"><rect fill="#222222"/></svg>');
+    await crm.ok(["appearance", "logo", a, "--yes"]);
+    expect((await crm.ok(["appearance", "logo", b])).plan.changes).toHaveProperty("logo");
+    const evil = join(root, "evil.svg");
+    writeFileSync(evil, '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>');
+    expect((await crm.run(["appearance", "logo", evil, "--yes"])).body.error?.code).toBe("validation");
+    await crm.ok(["appearance", "reset", "--branding", "--yes"]);
+  }, 120_000);
 });

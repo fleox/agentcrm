@@ -674,7 +674,7 @@ agentcrm ext <new|check|pack|install|list|enable|disable|uninstall|export> …
 | `new` | `agentcrm ext new <module\|theme> <id> [--dir <path>] [--name <name>] [--description <text>] [--author <name>] [--force]` | Scaffold a standalone extension project (package.json, vite.config.ts, tsconfig + runtime typings, src/index.tsx, README). |
 | `check` | `agentcrm ext check [<dir\|zip>] [--kind module\|theme] [--no-call]` | Validate manifest, ids, apiVersion, sizes, imports; load the bundle in a throw-away CRM and report routes, nav, slots, AI tools, automation actions, theme values. |
 | `pack` | `agentcrm ext pack [<dir>] [--out <file.zip>]` | ZIP manifest.json + bundle.js (+ style.css) for Settings → Modules → Install or `ext install`. |
-| `install` | `agentcrm ext install <zip\|dir> [--site <alias>] [--disabled] [--yes]` | Install or upgrade an extension on a CRM. Prints the plan (id, version, author, upgrade, size) unless --yes. Plan unless `--yes`. |
+| `install` | `agentcrm ext install <zip\|dir> [--site <alias>] [--disabled] [--force] [--yes]` | Install or upgrade an extension on a CRM. The bundle is first loaded in a throw-away CRM (like `ext check`): a package that fails is refused and nothing changes (`--force` skips it). Prints the plan (id, version, author, upgrade, size, warnings) unless `--yes`. |
 | `list` | `agentcrm ext list [--kind module\|theme]` | Installed extensions with version, enabled state and load status in this process. |
 | `enable` | `agentcrm ext enable <id> [--cascade] [--yes]` | Enable an installed extension (plan unless --yes). |
 | `disable` | `agentcrm ext disable <id> [--cascade] [--yes]` | Disable it without uninstalling (plan unless --yes). |
@@ -687,7 +687,7 @@ agentcrm ext <new|check|pack|install|list|enable|disable|uninstall|export> …
 | `--name <value>` | new: display name. |
 | `--description <value>` | new: one-sentence description. |
 | `--author <value>` | new: author shown in the install plan and Settings → Modules. |
-| `--force` | new: write into a non-empty folder. uninstall: even if enabled modules depend on it. |
+| `--force` | new: write into a non-empty folder. install: skip the trial load (ext check). uninstall: even if enabled modules depend on it. |
 | `--kind <value>` | check: expected kind. list: only modules or themes. |
 | `--no-call` | check: don't smoke-call the AI tools on the demo data. |
 | `--out <value>` | pack / export: ZIP path (default: <dir>/<id>-<version>.zip, ./<id>-<version>.zip). |

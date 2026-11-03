@@ -67,7 +67,7 @@ function dependencyHint(details: Record<string, unknown> | undefined): string | 
   const blockers = ids("blockers");
   if (blockers.length) return `Blocked by: ${blockers.join(", ")}. Re-run with --cascade (AI tools: "cascade": true) to change ${blockers.length > 1 ? "them" : "it"} too — show the user the plan's \`changed\` list first.`;
   const dependents = ids("dependents");
-  if (dependents.length) return `Disable or uninstall ${dependents.join(", ")} first (\`ext disable <id>\` / \`ext uninstall <id>\`).`;
+  if (dependents.length) return `Disable or uninstall ${dependents.join(", ")} first (\`ext disable <id>\` / \`ext uninstall <id>\`), or pass --force to \`ext uninstall\`.`;
   const missing = ids("missing");
   if (missing.length) return `Install the missing module(s) first: ${missing.join(", ")} (\`ext install <zip>\`).`;
   return null;

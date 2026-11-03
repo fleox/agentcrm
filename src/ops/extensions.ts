@@ -6,7 +6,7 @@
 // confirmation. Loading happens in src/extensions/loader.ts.
 
 import type { ExtensionDoc, ExtensionKind, ExtensionPackage } from "../extensions/types";
-import { EXTENSION_LIMITS, isCompatibleApiVersion } from "../extensions/api";
+import { compareVersions, EXTENSION_LIMITS, isCompatibleApiVersion } from "../extensions/api";
 import { ExtensionPackageError, validatePackage } from "../extensions/package";
 import type { DocMutation } from "../data/types";
 import { assertCan, OpsError, type OpsContext } from "./context";
@@ -131,6 +131,11 @@ export async function installExtension(ctx: OpsContext, pkg: ExtensionPackage, o
       warnings.push(`Installed disabled: it needs ${missing.join(", ")} (${missing.map((d) => (states.has(d) ? "disabled" : "not installed")).join(", ")}).`);
     }
   }
+  if (existing) {
+    const cmp = compareVersions(manifest.version, existing.manifest.version);
+    if (cmp < 0) warnings.push(`Downgrade: ${existing.manifest.version} → ${manifest.version}.`);
+    else if (cmp === 0) warnings.push(`Version ${manifest.version} is already installed: its files are replaced (bump "version" for a new release).`);
+  }
   const now = ctx.now();
   const doc: ExtensionDoc = {
     id: manifest.id,
@@ -167,10 +172,22 @@ export async function setExtensionEnabled(ctx: OpsContext, id: string, enabled: 
   } else if (doc.enabled !== enabled) {
     const mutations: DocMutation[] = [{ op: "patch", collection: "extensions", id, fields: { enabled, updatedAt: ctx.now() } }];
     // Disabling the selected theme falls back to the workspace values.
-    if (!enabled && ctx.store.get("config", "appearance")?.themeId === id) mutations.push({ op: "patch", collection: "config", id: "appearance", fields: { themeId: undefined } });
+    if (!enabled) mutations.push(...clearThemeSelection(ctx, id));
     await ctx.store.write(mutations, { message: `${enabled ? "Enable" : "Disable"} theme ${id}` });
   }
   return summarizeExtension(requireExtension(ctx, id));
+}
+
+// When theme `id` is the workspace's selected theme / preset, falls back to
+// the workspace values: themeId cleared, and a preset pointing at the theme
+// reset to the default preset instead of dangling.
+function clearThemeSelection(ctx: OpsContext, id: string): DocMutation[] {
+  const appearance = ctx.store.get("config", "appearance");
+  if (!appearance) return [];
+  const fields: Record<string, unknown> = {};
+  if (appearance.themeId === id) fields.themeId = undefined;
+  if (appearance.preset === id) fields.preset = undefined;
+  return Object.keys(fields).length ? [{ op: "patch", collection: "config", id: "appearance", fields }] : [];
 }
 
 // Removes an extension (its module configuration is kept). Refused while
@@ -183,7 +200,7 @@ export async function uninstallExtension(ctx: OpsContext, id: string, opts: { fo
     if (dependents.length) throw new OpsError("conflict", `${dependents.map((d) => `"${d.name}"`).join(", ")} depend${dependents.length > 1 ? "" : "s"} on "${doc.manifest.name}". Disable or uninstall ${dependents.length > 1 ? "them" : "it"} first.`, { dependents: dependents.map((d) => d.id) });
   }
   const mutations: DocMutation[] = [{ op: "delete", collection: "extensions", id }];
-  if (ctx.store.get("config", "appearance")?.themeId === id) mutations.push({ op: "patch", collection: "config", id: "appearance", fields: { themeId: undefined } });
+  mutations.push(...clearThemeSelection(ctx, id));
   await ctx.store.write(mutations, { message: `Uninstall extension ${id}` });
   ctx.log?.(`extension ${id} uninstalled`);
   return { id, removed: true };

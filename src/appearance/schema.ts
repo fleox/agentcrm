@@ -48,6 +48,16 @@ const IMAGE_RE = /^data:image\/(png|jpeg|gif|webp|svg\+xml|x-icon|vnd\.microsoft
 const ID_RE = /^[a-z0-9][a-z0-9-]{0,63}$/;
 
 // Decoded byte size of a base64 data URL.
+function svgHasActiveContent(dataUrl: string): boolean {
+  let text: string;
+  try {
+    text = atob(dataUrl.slice(dataUrl.indexOf(",") + 1));
+  } catch {
+    return true;
+  }
+  return /<script[\s>/]|<foreignObject[\s>/]|\son[a-z]+\s*=|javascript:/i.test(text);
+}
+
 export function dataUrlBytes(url: string): number {
   const b64 = url.slice(url.indexOf(",") + 1);
   const pad = b64.endsWith("==") ? 2 : b64.endsWith("=") ? 1 : 0;
@@ -58,6 +68,10 @@ export function validateImageDataUrl(value: unknown, label = "image"): string | 
   if (typeof value !== "string" || !IMAGE_RE.test(value)) return `The ${label} must be a base64 image data URL (PNG, JPEG, GIF, WebP, SVG or ICO).`;
   const bytes = dataUrlBytes(value);
   if (bytes > MAX_IMAGE_BYTES) return `The ${label} is ${Math.round(bytes / 1024)} KB — the limit is ${MAX_IMAGE_BYTES / 1024} KB.`;
+  // SVG is a document: refuse active content (scripts, event handlers,
+  // javascript: URLs) even though <img> / favicons don't run it — the data
+  // URL can be opened on its own.
+  if (/^data:image\/svg\+xml/i.test(value) && svgHasActiveContent(value)) return `The ${label} SVG contains scripts or event handlers — export it as a plain SVG (or a PNG).`;
   return null;
 }
 

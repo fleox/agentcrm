@@ -1,5 +1,5 @@
 import { fakePackage } from "../extensions/testing";
-import { applyPreset } from "./appearance";
+import { applyPreset, getAppearance } from "./appearance";
 import { getExtension, getExtensionPackage, installExtension, listExtensions, setExtensionEnabled, uninstallExtension } from "./extensions";
 import { setModuleEnabled } from "./modules";
 import { setupTestCrm } from "./testing";
@@ -71,5 +71,28 @@ describe("ops/extensions", () => {
     expect(crm.store.get("config", "appearance")?.themeId).toBeUndefined();
     await uninstallExtension(crm.admin, "midnight");
     await expect(uninstallExtension(crm.admin, "midnight")).rejects.toMatchObject({ code: "notFound" });
+  });
+
+  it("resets a preset pointing at a disabled / uninstalled theme to the default", async () => {
+    const crm = await setupTestCrm();
+    await installExtension(crm.admin, fakePackage("midnight", { kind: "theme" }));
+    await applyPreset(crm.admin, "midnight");
+    expect(crm.store.get("config", "appearance")).toMatchObject({ preset: "midnight", themeId: "midnight" });
+    await setExtensionEnabled(crm.admin, "midnight", false);
+    expect(crm.store.get("config", "appearance")?.preset).toBeUndefined();
+    expect(getAppearance(crm.admin).preset).toBe("default");
+    await setExtensionEnabled(crm.admin, "midnight", true);
+    await applyPreset(crm.admin, "midnight");
+    await uninstallExtension(crm.admin, "midnight");
+    expect(crm.store.get("config", "appearance")).not.toHaveProperty("preset");
+    expect(crm.store.get("config", "appearance")).not.toHaveProperty("themeId");
+  });
+
+  it("warns about a downgrade or a re-install of the same version", async () => {
+    const crm = await setupTestCrm();
+    await installExtension(crm.admin, fakePackage("hello-module", { version: "1.2.0" }));
+    expect((await installExtension(crm.admin, fakePackage("hello-module", { version: "1.2.0" }))).warnings).toEqual([expect.stringMatching(/already installed/)]);
+    expect((await installExtension(crm.admin, fakePackage("hello-module", { version: "1.1.0" }))).warnings).toEqual(["Downgrade: 1.2.0 → 1.1.0."]);
+    expect((await installExtension(crm.admin, fakePackage("hello-module", { version: "1.3.0" }))).warnings).toEqual([]);
   });
 });

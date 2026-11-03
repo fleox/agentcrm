@@ -44,7 +44,7 @@ npx -y @fleox-agent-crm/agentcrm@0.3.0 ext export sales-goals --site acme --out 
 npx -y @fleox-agent-crm/agentcrm@0.3.0 ext uninstall sales-goals --site acme --yes
 ```
 
-`ext install` accepts a ZIP, an unpacked folder or a built project folder. A module whose dependencies are disabled is installed disabled (the plan says so); `ext enable <id> --cascade` turns the dependencies on.
+`ext install` accepts a ZIP, an unpacked folder or a built project folder. It first loads the bundle in a throw-away CRM, like `ext check`: a package that doesn't load is refused and the installed version stays as it was (`--force` skips this check). Re-installing the same version or a lower one is allowed, with a warning in the plan. A module whose dependencies are disabled is installed disabled (the plan says so); `ext enable <id> --cascade` turns the dependencies on.
 
 ### With an AI agent
 

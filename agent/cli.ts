@@ -9,7 +9,13 @@ export async function main(argv: string[], io?: Io): Promise<number> {
   const json = argv.includes("--json");
   const out = io ?? createIo(json);
   try {
-    const [name = "help", ...rest] = argv.filter((a) => a !== "--json");
+    const args = argv.filter((a) => a !== "--json");
+    // Global flags may come before the command (`agentcrm --safe tools list`):
+    // move them after it so the command's parser sees them.
+    const leading: string[] = [];
+    while (args[0] && LEADING_GLOBAL_FLAGS.has(args[0])) leading.push(args.shift()!);
+    const [name = "help", ...rest] = args;
+    rest.push(...leading);
     if (name === "--help" || name === "-h") return (await run("help", rest, out)) ?? 0;
     if (name === "--version" || name === "-v") return (await run("version", rest, out)) ?? 0;
     return (await run(name, rest, out)) ?? 0;
@@ -17,6 +23,10 @@ export async function main(argv: string[], io?: Io): Promise<number> {
     return printError(out, error);
   }
 }
+
+// Boolean global options accepted before the command name (--help / --json
+// are handled separately above).
+const LEADING_GLOBAL_FLAGS: ReadonlySet<string> = new Set(GLOBAL_OPTIONS.filter((o) => o.type === "boolean" && o.name !== "help").map((o) => `--${o.name}`));
 
 async function run(name: string, args: string[], io: Io): Promise<number | void> {
   const command = findCommand(name);
