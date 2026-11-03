@@ -1,6 +1,25 @@
 {
   "versions": [
     {
+      "version": "0.3.1",
+      "date": "2026-11-03",
+      "breaking": false,
+      "changes": [
+        "Package published on npm as @fleox-agent-crm/agentcrm; releases are published from GitHub Actions with provenance (trusted publishing).",
+        "Security: SVG logos / favicons containing scripts or event handlers are refused; module config refuses common secret keys (apiKey, token, secret…); ext install trial-loads the bundle first and refuses one that does not load (--force to skip), warns on downgrades and same-version re-installs.",
+        "AI tools / MCP: inputs are validated against each tool JSON schema (clear errors instead of crashes); extension console output no longer pollutes --json or the MCP stream; MCP re-syncs extensions after a mutating tool so disabled modules drop their tools.",
+        "Records: an unknown field in an explicit filter or sort is now an error listing the valid fields (it used to return every record).",
+        "CLI: admin hosted in a local folder without a public URL is detected (install, doctor, status, deploy-admin); --out creates missing folders; import zip validates the archive in the plan and warns before overwriting another CRM; settings refuse unknown keys and invalid locale / time zone; objects get returns the object; global flags accepted before the command (agentcrm --safe …); clearer hints for usage, validation and module dependency conflicts.",
+        "Admin: button icons back to 16 px; settings pages no longer scroll the whole shell; bulk Update field works for select fields; numbers follow the UI language without reload; fields added to a custom object appear in its table; report amounts rounded; legend on the lead sources chart; translation fixes in setup and tables.",
+        "Demo data: company country and phone prefix match their city.",
+        "Docs and skills: image / files field types, full MCP tool and resource list, links to github.com/fleox/agentcrm/blob/master."
+      ],
+      "actions": [
+        "Redeploy the admin (agentcrm deploy-admin) to get the UI fixes.",
+        "Update the agent skills (Claude Code: /plugin marketplace update agentcrm)."
+      ]
+    },
+    {
       "version": "0.3.0",
       "date": "2026-11-03",
       "breaking": false,
