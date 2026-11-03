@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { builtinModules } from "node:module";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -46,6 +46,20 @@ describe.skipIf(!has)("dist/agent bundle", () => {
     expect(install.body).toMatchObject({ ok: true, data: { installed: true } });
     expect(run(["records", "create", "--object", "companies", "--set", "name=Bundled Inc"], env).body.data.label).toBe("Bundled Inc");
 
+    // An extension that logs with console.log must not corrupt stdout (--json
+    // = one JSON object, mcp = JSON-RPC frames only): its output goes to stderr.
+    const ext = join(root, "noisy");
+    mkdirSync(ext);
+    writeFileSync(join(ext, "manifest.json"), JSON.stringify({ id: "noisy-logger", kind: "module", name: "Noisy", version: "1.0.0", apiVersion: "1.0.0", description: "Logs.", entry: "bundle.js" }));
+    writeFileSync(
+      join(ext, "bundle.js"),
+      'console.log("noisy: loaded");\nexport default { id: "noisy-logger", apiVersion: "1.0.0", aiTools: [{ name: "noisy_ping", description: "Logs.", inputSchema: { type: "object", properties: {} }, mutating: false, handler() { console.log("noisy: called"); console.info("noisy: info"); return { pong: true }; } }] };\n',
+    );
+    const installed = spawnSync(process.execPath, [BUNDLE, "ext", "install", ext, "--site", "b", "--yes", "--json"], { encoding: "utf8", env: { ...process.env, ...env } });
+    expect(installed.stdout.trim().split("\n")).toHaveLength(1);
+    expect(JSON.parse(installed.stdout)).toMatchObject({ ok: true, data: { id: "noisy-logger" } });
+    expect(installed.stderr, installed.stdout).toContain("noisy: loaded");
+
     // MCP over the real stdio of a spawned process.
     const child = spawn(process.execPath, [BUNDLE, "mcp", "--site", "b"], { env: { ...process.env, ...env }, stdio: ["pipe", "pipe", "pipe"] });
     const lines: string[] = [];
@@ -76,8 +90,15 @@ describe.skipIf(!has)("dist/agent bundle", () => {
     const call = await waitFor(3);
     expect(call.result.isError).toBe(false);
     expect(call.result.content[0].text).toContain("Bundled Inc");
+    send({ jsonrpc: "2.0", id: 4, method: "tools/call", params: { name: "noisy_ping", arguments: {} } });
+    expect((await waitFor(4)).result.structuredContent).toEqual({ pong: true });
+    // Schema-checked inputs: a wrong type is a validation result, not an internal error.
+    send({ jsonrpc: "2.0", id: 5, method: "tools/call", params: { name: "list_records", arguments: { object: "companies", filters: "x" } } });
+    expect((await waitFor(5)).result).toMatchObject({ isError: true, structuredContent: { error: { code: "validation" } } });
     child.stdin.end();
     const code = await new Promise((r) => child.on("exit", r));
     expect(code).toBe(0);
+    // Every stdout line is a JSON-RPC frame (the extension's logs went to stderr).
+    expect(lines.every((l) => JSON.parse(l).jsonrpc === "2.0")).toBe(true);
   }, 60_000);
 });

@@ -1,3 +1,5 @@
+import { format } from "node:util";
+
 // Output protocol shared by every command (mirror of cms-ia agent/output.ts).
 // Agents parse --json output, so it is one JSON object per invocation:
 //   success → { "ok": true, "data": … }
@@ -15,6 +17,19 @@ export class CliError extends Error {
   ) {
     super(message);
   }
+}
+
+// stdout belongs to the command's result (one JSON object with --json, the
+// JSON-RPC frames of `mcp`). Extension bundles and third-party code loaded in
+// the session may call console.log / info / debug: send those to stderr so
+// they never corrupt it. Called once by the binary entry (agent/bin.ts).
+export function routeConsoleToStderr(target: Pick<Console, "log" | "info" | "debug"> = console, write: (text: string) => void = (t) => void process.stderr.write(t)): void {
+  // Bound to stderr itself, not to console.error (which the extension loader
+  // silences while it syncs).
+  const toStderr = (...args: unknown[]) => write(`${format(...args)}\n`);
+  target.log = toStderr;
+  target.info = toStderr;
+  target.debug = toStderr;
 }
 
 export interface Io {
@@ -44,6 +59,20 @@ const OPS_HINTS: Record<string, string> = {
   invalid: "Check the arguments with `agentcrm help <command>`.",
 };
 
+// Module / extension dependency conflicts (setModuleEnabled, setExtensionEnabled,
+// uninstallExtension) carry the ids involved: tell the agent how to resolve
+// them instead of the generic "already exists" hint.
+function dependencyHint(details: Record<string, unknown> | undefined): string | null {
+  const ids = (key: string) => (Array.isArray(details?.[key]) ? (details[key] as unknown[]).map(String) : []);
+  const blockers = ids("blockers");
+  if (blockers.length) return `Blocked by: ${blockers.join(", ")}. Re-run with --cascade (AI tools: "cascade": true) to change ${blockers.length > 1 ? "them" : "it"} too — show the user the plan's \`changed\` list first.`;
+  const dependents = ids("dependents");
+  if (dependents.length) return `Disable or uninstall ${dependents.join(", ")} first (\`ext disable <id>\` / \`ext uninstall <id>\`).`;
+  const missing = ids("missing");
+  if (missing.length) return `Install the missing module(s) first: ${missing.join(", ")} (\`ext install <zip>\`).`;
+  return null;
+}
+
 // Known errors thrown by the engine, translated into codes and hints an
 // agent can act on.
 export function knownError(error: unknown): CliError | null {
@@ -60,7 +89,8 @@ export function knownError(error: unknown): CliError | null {
   }
   if (error.name === "OpsError") {
     const code = (error as Error & { code?: string }).code ?? "invalid";
-    return new CliError(code, error.message, OPS_HINTS[code], code === "validation" || code === "invalid" ? 2 : 1);
+    const details = (error as Error & { details?: Record<string, unknown> }).details;
+    return new CliError(code, error.message, (code === "conflict" && dependencyHint(details)) || OPS_HINTS[code], code === "validation" || code === "invalid" ? 2 : 1);
   }
   if (error.name === "FieldValidationError") {
     return new CliError("validation", error.message, OPS_HINTS.validation, 2);

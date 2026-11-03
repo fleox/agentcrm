@@ -72,6 +72,8 @@ describe("customisation from the CLI", () => {
     expect((await crm.ok(["ext", "install", zip, "--yes"])).load.status).toBe("loaded");
     const conflict = await crm.run(["modules", "disable", "deals"]);
     expect(conflict.body.error?.code).toBe("conflict");
+    // The hint names the blocker and the way out (not the generic "already exists").
+    expect(conflict.body.error?.hint).toMatch(/Blocked by: deal-notes\. Re-run with --cascade/);
     const cascade = await crm.ok(["modules", "disable", "deals", "--cascade"]);
     expect(cascade.plan.changed).toEqual(expect.arrayContaining([{ id: "deals", enabled: false }, { id: "deal-notes", enabled: false }]));
     await crm.ok(["modules", "disable", "deals", "--cascade", "--yes"]);
