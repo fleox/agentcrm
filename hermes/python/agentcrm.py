@@ -2,7 +2,7 @@
 """AgentCRM from Python — a thin, dependency-free wrapper of the `agentcrm` CLI.
 
 The AgentCRM engine (data backends, business rules, MCP server) is the
-`@agent-crm/agentcrm` npm package and runs on Node.js 20+. This module runs
+`@fleox-agent-crm/agentcrm` npm package and runs on Node.js 20+. This module runs
 it for Python agents and scripts, always in JSON mode, and turns its output
 into Python values:
 
@@ -20,7 +20,7 @@ Output: the CLI's JSON object, pretty-printed: {"ok": true, "data": …} or
 stderr. The exit code is the CLI's (0 ok, 1 failure, 2 usage error).
 
 Engine selection: $AGENTCRM_CMD when set (e.g. "node /path/to/agentcrm.mjs"),
-else `npx -y @agent-crm/agentcrm@<pinned version>`. Python 3.9+, stdlib only.
+else `npx -y @fleox-agent-crm/agentcrm@<pinned version>`. Python 3.9+, stdlib only.
 """
 
 from __future__ import annotations
@@ -37,7 +37,7 @@ from typing import Any, Dict, List, Optional, Sequence
 # Pinned to the release these skills were written for (kept in step by the
 # repository's release script).
 VERSION = "__AGENTCRM_VERSION__"
-PACKAGE = "@agent-crm/agentcrm"
+PACKAGE = "@fleox-agent-crm/agentcrm"
 MIN_NODE = (20, 6)
 
 __all__ = ["run", "run_raw", "result", "needs_confirmation", "AgentcrmError", "engine_command", "VERSION"]

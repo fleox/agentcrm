@@ -17,13 +17,13 @@ You are the user's sales assistant on top of their CRM. Read with the CLI, reaso
 
 **Language:** talk to the user in their language; keep commands and files in English.
 
-Every command is `python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py <command> --json` with `--site <alias>` (pick it with the `agentcrm-manage` skill). Command details are in the `agentcrm-admin` skill.
+Every command is `npx -y @fleox-agent-crm/agentcrm@0.3.0 <command> --json` with `--site <alias>` (pick it with the `agentcrm-manage` skill). Command details are in the `agentcrm-admin` skill.
 
 ## Running the commands (Hermes)
 
 Every `agentcrm <command>` below runs through this skill's Python wrapper: `python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py <command> …`. It adds `--json`, prints the CLI's JSON object (`{"ok": true, "data": …}` or `{"ok": false, "error": {code, message, hint}}`) and exits with the CLI's code. In the reference files, `python3 <skill dir>/scripts/agentcrm.py` means the same command with this skill's directory.
 
-- **Requirements:** Python 3.9+ (stdlib only) and **Node.js 20.6+**: the AgentCRM engine is the `@agent-crm/agentcrm` npm package, fetched by `npx` on first use and pinned to the version of these skills. Without Node.js the wrapper answers `node-missing` with how to install it. `AGENTCRM_CMD` overrides the engine command (e.g. `node /path/to/agentcrm.mjs` from a clone).
+- **Requirements:** Python 3.9+ (stdlib only) and **Node.js 20.6+**: the AgentCRM engine is the `@fleox-agent-crm/agentcrm` npm package, fetched by `npx` on first use and pinned to the version of these skills. Without Node.js the wrapper answers `node-missing` with how to install it. `AGENTCRM_CMD` overrides the engine command (e.g. `node /path/to/agentcrm.mjs` from a clone).
 - **From Python:** `sys.path.insert(0, "${HERMES_SKILL_DIR}/scripts")`, then `from agentcrm import run, AgentcrmError` — `run("records", "list", "--object", "deals", site="acme")` returns `data` and raises `AgentcrmError(code, message, hint)` when `ok` is false.
 - **Plans:** a command that needs `--yes` and didn't get it writes nothing and answers `needsConfirmation: true` on `data` — test it with `needs_confirmation(data)` from the wrapper. The sentence "re-run with --yes" only exists in the human output, never match on text.
 - **Secrets** never go through the chat. The user either types them in their own terminal (`python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py credentials set <account>` asks at a hidden prompt), or puts them in environment variables (e.g. in `~/.hermes/.env`) that you pass by name: `credentials set <account> --from-env VAR` (`--from-env KEY_ID,SECRET` for S3).
@@ -42,10 +42,10 @@ Every `agentcrm <command>` below runs through this skill's Python wrapper: `pyth
 ## Pipeline review
 
 ```bash
-python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py report pipeline --site acme --json
-python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py report forecast --site acme --json
-python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py report stale --site acme --json
-python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py records list --site acme --object deals --filter closeDate:before:today --filter stage:notIn:won,lost --json
+npx -y @fleox-agent-crm/agentcrm@0.3.0 report pipeline --site acme --json
+npx -y @fleox-agent-crm/agentcrm@0.3.0 report forecast --site acme --json
+npx -y @fleox-agent-crm/agentcrm@0.3.0 report stale --site acme --json
+npx -y @fleox-agent-crm/agentcrm@0.3.0 records list --site acme --object deals --filter closeDate:before:today --filter stage:notIn:won,lost --json
 ```
 
 Answer with: open amount and weighted forecast (vs last review if known), deals per stage, the at-risk list (stale, close date passed, no open task, no contact), and ONE next best action per at-risk deal. Then offer to create the follow-up tasks (`tasks add … --record <dealId>`) and fix stale close dates (`records update <id> --set closeDate=…`). Playbook and next-best-action rules: references/playbooks.md.
@@ -55,9 +55,9 @@ Answer with: open amount and weighted forecast (vs last review if known), deals 
 For a person, company or deal:
 
 ```bash
-python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py records get <id> --site acme --json
-python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py activities list --site acme --record <id> --related --limit 30 --json
-python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py tasks list --site acme --record <id> --status all --json
+npx -y @fleox-agent-crm/agentcrm@0.3.0 records get <id> --site acme --json
+npx -y @fleox-agent-crm/agentcrm@0.3.0 activities list --site acme --record <id> --related --limit 30 --json
+npx -y @fleox-agent-crm/agentcrm@0.3.0 tasks list --site acme --record <id> --status all --json
 ```
 
 Brief (one page): who they are (role, company, size, industry), relationship history (last 5 interactions, open questions, promises made), open deals (stage, amount, close date), recent public news about the company (cite links), 3 goals for the meeting, questions to ask, risks. Offer to save it as a note on the record.
@@ -69,7 +69,7 @@ Read the record and its timeline (as above), then draft the email: subject + bod
 ## Lead qualification and enrichment
 
 ```bash
-python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py records list --site acme --object people --filter lifecycleStage:eq:lead --sort createdAt:desc --limit 25 --json
+npx -y @fleox-agent-crm/agentcrm@0.3.0 records list --site acme --object people --filter lifecycleStage:eq:lead --sort createdAt:desc --limit 25 --json
 ```
 
 For each lead: read the record and its company; enrich from public sources (company website: size, industry, location; the person's public role); score fit (1-5) and intent from the timeline; recommend a lifecycle stage and an owner. Present a table, then apply approved changes with `records update` and log the sources with `notes add`. Details: references/enrichment.md.
@@ -77,8 +77,8 @@ For each lead: read the record and its company; enrich from public sources (comp
 ## Clean duplicates
 
 ```bash
-python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py records duplicates --site acme --object people --json
-python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py records duplicates --site acme --object companies --json
+npx -y @fleox-agent-crm/agentcrm@0.3.0 records duplicates --site acme --object people --json
+npx -y @fleox-agent-crm/agentcrm@0.3.0 records duplicates --site acme --object companies --json
 ```
 
 For each group, pick the primary (most complete, most activities), show what the merge keeps, then `records merge <primaryId> <dupId>...` (plan, then `--yes`) group by group.
@@ -86,18 +86,18 @@ For each group, pick the primary (most complete, most activities), show what the
 ## Trade show / event lead lists
 
 1. Look at the file (headers, a few rows) and map columns to people fields; put the event name in `leadSource` (add the option if missing) and `tags`.
-2. Dry run: `python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py import csv leads.csv --site acme --object people --map "…" --json`. Report new vs existing contacts and errors.
+2. Dry run: `npx -y @fleox-agent-crm/agentcrm@0.3.0 import csv leads.csv --site acme --object people --map "…" --json`. Report new vs existing contacts and errors.
 3. After approval: the same with `--yes`.
 4. Offer the follow-up: a task per hot lead for its owner, or a note on each record with the booth conversation if the file has comments.
 
 ## Weekly sales report
 
 ```bash
-python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py report won-lost --site acme --months 3 --json
-python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py report activity --site acme --days 7 --json
-python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py report pipeline --site acme --json
-python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py report conversion --site acme --json
-python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py tasks list --site acme --overdue --json
+npx -y @fleox-agent-crm/agentcrm@0.3.0 report won-lost --site acme --months 3 --json
+npx -y @fleox-agent-crm/agentcrm@0.3.0 report activity --site acme --days 7 --json
+npx -y @fleox-agent-crm/agentcrm@0.3.0 report pipeline --site acme --json
+npx -y @fleox-agent-crm/agentcrm@0.3.0 report conversion --site acme --json
+npx -y @fleox-agent-crm/agentcrm@0.3.0 tasks list --site acme --overdue --json
 ```
 
 Template and what to compute: references/weekly-report.md.

@@ -5,7 +5,7 @@
 ```bash
 npm run typecheck                                            # tsc against types/agentcrm-runtime.d.ts
 npm run build                                                # vite build → dist/bundle.js
-python3 <skill dir>/scripts/agentcrm.py ext check . --json           # what the admin will see
+npx -y @fleox-agent-crm/agentcrm@0.3.0 ext check . --json           # what the admin will see
 ```
 
 `ext check` reads `manifest.json` + `dist/bundle.js` (+ `src/style.css` for themes declaring it) from a project, `manifest.json` + `bundle.js` from an unpacked folder, or a ZIP. Then:
@@ -24,10 +24,10 @@ The check runs the bundle in Node with the real loader and runtime, in a throw-a
 ## Pack and install
 
 ```bash
-python3 <skill dir>/scripts/agentcrm.py ext pack . --json                         # → <id>-<version>.zip
-python3 <skill dir>/scripts/agentcrm.py ext install acme-quotes-0.1.0.zip --site acme --json
-python3 <skill dir>/scripts/agentcrm.py ext install acme-quotes-0.1.0.zip --site acme --yes --json
-python3 <skill dir>/scripts/agentcrm.py ext list --site acme --json
+npx -y @fleox-agent-crm/agentcrm@0.3.0 ext pack . --json                         # → <id>-<version>.zip
+npx -y @fleox-agent-crm/agentcrm@0.3.0 ext install acme-quotes-0.1.0.zip --site acme --json
+npx -y @fleox-agent-crm/agentcrm@0.3.0 ext install acme-quotes-0.1.0.zip --site acme --yes --json
+npx -y @fleox-agent-crm/agentcrm@0.3.0 ext list --site acme --json
 ```
 
 - The plan (`needsConfirmation: true`) shows `id`, `kind`, `name`, `version`, `author`, `mode` (`install` / `upgrade` with `from`), `dependsOn`, `size`, `warnings` and the trust warning. **Show it to the user and ask before `--yes`.**
@@ -43,21 +43,21 @@ Bump `version` in `manifest.json`, build, check, install again: `mode: "upgrade"
 ## Use it
 
 ```bash
-python3 <skill dir>/scripts/agentcrm.py tools list --site acme --json             # its AI tools (source: "extension")
-python3 <skill dir>/scripts/agentcrm.py tools call acme_quotes_list --site acme --input '{}' --json
-python3 <skill dir>/scripts/agentcrm.py modules list --site acme --json           # appears as a module (source: "extension")
-python3 <skill dir>/scripts/agentcrm.py automations run --site acme --json        # its automation actions run here too
+npx -y @fleox-agent-crm/agentcrm@0.3.0 tools list --site acme --json             # its AI tools (source: "extension")
+npx -y @fleox-agent-crm/agentcrm@0.3.0 tools call acme_quotes_list --site acme --input '{}' --json
+npx -y @fleox-agent-crm/agentcrm@0.3.0 modules list --site acme --json           # appears as a module (source: "extension")
+npx -y @fleox-agent-crm/agentcrm@0.3.0 automations run --site acme --json        # its automation actions run here too
 ```
 
-To see the UI, open the CRM's admin (its hosted URL, see `site show`, or `python3 <skill dir>/scripts/agentcrm.py serve` for a local copy), and check the page, the tabs and widgets in light and dark mode and in French (language switcher in the user menu or the Cmd+K palette).
+To see the UI, open the CRM's admin (its hosted URL, see `site show`, or `npx -y @fleox-agent-crm/agentcrm@0.3.0 serve` for a local copy), and check the page, the tabs and widgets in light and dark mode and in French (language switcher in the user menu or the Cmd+K palette).
 
 ## Disable, uninstall, export
 
 ```bash
-python3 <skill dir>/scripts/agentcrm.py ext disable acme-quotes --site acme --yes --json
-python3 <skill dir>/scripts/agentcrm.py ext enable acme-quotes --site acme --yes --json
-python3 <skill dir>/scripts/agentcrm.py ext uninstall acme-quotes --site acme --yes --json
-python3 <skill dir>/scripts/agentcrm.py ext export acme-quotes --site acme --out backup.zip --json
+npx -y @fleox-agent-crm/agentcrm@0.3.0 ext disable acme-quotes --site acme --yes --json
+npx -y @fleox-agent-crm/agentcrm@0.3.0 ext enable acme-quotes --site acme --yes --json
+npx -y @fleox-agent-crm/agentcrm@0.3.0 ext uninstall acme-quotes --site acme --yes --json
+npx -y @fleox-agent-crm/agentcrm@0.3.0 ext export acme-quotes --site acme --out backup.zip --json
 ```
 
 Disabling keeps the package and its config; uninstalling keeps the config (a re-install restores it). Data the module created (records, objects, notes) is never deleted by either.

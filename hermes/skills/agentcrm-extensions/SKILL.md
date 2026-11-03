@@ -19,7 +19,7 @@ metadata:
 
 Every `agentcrm <command>` below runs through this skill's Python wrapper: `python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py <command> …`. It adds `--json`, prints the CLI's JSON object (`{"ok": true, "data": …}` or `{"ok": false, "error": {code, message, hint}}`) and exits with the CLI's code. In the reference files, `python3 <skill dir>/scripts/agentcrm.py` means the same command with this skill's directory.
 
-- **Requirements:** Python 3.9+ (stdlib only) and **Node.js 20.6+**: the AgentCRM engine is the `@agent-crm/agentcrm` npm package, fetched by `npx` on first use and pinned to the version of these skills. Without Node.js the wrapper answers `node-missing` with how to install it. `AGENTCRM_CMD` overrides the engine command (e.g. `node /path/to/agentcrm.mjs` from a clone).
+- **Requirements:** Python 3.9+ (stdlib only) and **Node.js 20.6+**: the AgentCRM engine is the `@fleox-agent-crm/agentcrm` npm package, fetched by `npx` on first use and pinned to the version of these skills. Without Node.js the wrapper answers `node-missing` with how to install it. `AGENTCRM_CMD` overrides the engine command (e.g. `node /path/to/agentcrm.mjs` from a clone).
 - **From Python:** `sys.path.insert(0, "${HERMES_SKILL_DIR}/scripts")`, then `from agentcrm import run, AgentcrmError` — `run("records", "list", "--object", "deals", site="acme")` returns `data` and raises `AgentcrmError(code, message, hint)` when `ok` is false.
 - **Plans:** a command that needs `--yes` and didn't get it writes nothing and answers `needsConfirmation: true` on `data` — test it with `needs_confirmation(data)` from the wrapper. The sentence "re-run with --yes" only exists in the human output, never match on text.
 - **Secrets** never go through the chat. The user either types them in their own terminal (`python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py credentials set <account>` asks at a hidden prompt), or puts them in environment variables (e.g. in `~/.hermes/.env`) that you pass by name: `credentials set <account> --from-env VAR` (`--from-env KEY_ID,SECRET` for S3).
@@ -44,7 +44,7 @@ AgentCRM is a static CRM: the admin is a single-page app that runs in the browse
 
 ## The toolchain: `agentcrm ext`
 
-Every command is `python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py <command> … --json`. Read `error.hint` when `ok` is false.
+Every command is `npx -y @fleox-agent-crm/agentcrm@0.3.0 <command> … --json`. Read `error.hint` when `ok` is false.
 
 | Action | What it does |
 |---|---|
@@ -62,7 +62,7 @@ Every command is `python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py <command> … 
 1. **Understand the request.** A new look = a **theme**. New pages, widgets, record tabs, AI tools, automation steps or reactions to CRM events = a **module**. Pick an id: lowercase letters, digits and dashes, 3 to 50 characters, not a built-in module id (records, deals, dashboard, reports, forms, tasks, automations, integrations, assistant, search, settings, setup, customize) nor agentcrm, core, runtime, admin, app, custom, default. Prefix it with the company or product (`acme-quotes`).
 2. **Scaffold and install the toolchain:**
    ```bash
-   python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py ext new module acme-quotes --author "Acme" --json
+   npx -y @fleox-agent-crm/agentcrm@0.3.0 ext new module acme-quotes --author "Acme" --json
    cd acme-quotes && npm install
    ```
 3. **Read the scaffold**, then the reference for what you are building:
@@ -75,15 +75,15 @@ Every command is `python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py <command> … 
    ```bash
    npm run typecheck
    npm run build
-   python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py ext check . --json
+   npx -y @fleox-agent-crm/agentcrm@0.3.0 ext check . --json
    ```
    Fix every error; read the warnings (missing French strings, tool names without the module prefix, nav entries without a route).
 6. **Pack and install** (plan first, then `--yes` once the user agreed):
    ```bash
-   python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py ext pack . --json
-   python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py ext install . --site acme --json
-   python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py ext install . --site acme --yes --json
-   python3 ${HERMES_SKILL_DIR}/scripts/agentcrm.py tools list --site acme --json
+   npx -y @fleox-agent-crm/agentcrm@0.3.0 ext pack . --json
+   npx -y @fleox-agent-crm/agentcrm@0.3.0 ext install . --site acme --json
+   npx -y @fleox-agent-crm/agentcrm@0.3.0 ext install . --site acme --yes --json
+   npx -y @fleox-agent-crm/agentcrm@0.3.0 tools list --site acme --json
    ```
    For a new release, bump `version` in `manifest.json` (semver) and install again: it upgrades in place.
 

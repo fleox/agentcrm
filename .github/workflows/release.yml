@@ -43,7 +43,7 @@ jobs:
           npm pack
           mkdir -p /tmp/smoke && cd /tmp/smoke
           npm init -y >/dev/null
-          npm install "$GITHUB_WORKSPACE"/agent-crm-agentcrm-*.tgz
+          npm install "$GITHUB_WORKSPACE"/fleox-agent-crm-agentcrm-*.tgz
           npx agentcrm version --json
           npx agentcrm help --json > /dev/null
       # Trusted publishing needs npm >= 11.5.1.
@@ -53,8 +53,8 @@ jobs:
       - name: Publish to npm
         run: |
           version="$(node -p "require('./package.json').version")"
-          if curl -fsS "https://registry.npmjs.org/@agent-crm%2fagentcrm/$version" >/dev/null 2>&1; then
-            echo "@agent-crm/agentcrm@$version is already on npm — skipping publish."
+          if curl -fsS "https://registry.npmjs.org/@fleox-agent-crm%2fagentcrm/$version" >/dev/null 2>&1; then
+            echo "@fleox-agent-crm/agentcrm@$version is already on npm — skipping publish."
           else
             npm publish --provenance --access public --ignore-scripts
           fi
@@ -69,7 +69,7 @@ jobs:
             if (e?.breaking) lines.push("**Breaking changes — read before updating.**", "");
             lines.push(...(e?.changes ?? []).map((c) => "- " + c));
             if (e?.actions?.length) lines.push("", "After updating a hosted admin: " + e.actions.map((a) => "`" + a + "`").join(", "));
-            lines.push("", "Install / update: `npx -y @agent-crm/agentcrm@" + v + " help` — Claude Code: `/plugin marketplace update agentcrm`.");
+            lines.push("", "Install / update: `npx -y @fleox-agent-crm/agentcrm@" + v + " help` — Claude Code: `/plugin marketplace update agentcrm`.");
             require("fs").writeFileSync("release-notes.md", lines.join("\n") + "\n");
           '
           gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file release-notes.md

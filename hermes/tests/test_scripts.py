@@ -85,7 +85,7 @@ class WrapperTest(FakeEngine):
             os.environ["PATH"] = path
 
     def test_pinned_package(self):
-        self.assertEqual(agentcrm.PACKAGE, "@agent-crm/agentcrm")
+        self.assertEqual(agentcrm.PACKAGE, "@fleox-agent-crm/agentcrm")
 
     def test_needs_confirmation_and_result(self):
         self.assertTrue(agentcrm.needs_confirmation({"needsConfirmation": True, "plan": {}}))

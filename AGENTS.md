@@ -12,7 +12,7 @@ Read `CLAUDE.md` first (architecture, hard rules, contracts). This file lists wh
 - `plugin/skills/` is the single source of the agent skills. When a CLI command, option, output field or error code changes, update every skill / reference that mentions it **in the same change**.
 - `npm run check:skills` (CI, after the build) fails when a skill calls a command or action missing from `help --json`, pins another version than `package.json`, uses non-portable frontmatter, or contains non-English prose.
 - Skills are 100% English; agents translate for the user at runtime.
-- Commands in skills are always pinned: `npx -y @agent-crm/agentcrm@<version> <command> --json`. `npm version` runs `scripts/sync-version.mjs`, which bumps every pin.
+- Commands in skills are always pinned: `npx -y @fleox-agent-crm/agentcrm@<version> <command> --json`. `npm version` runs `scripts/sync-version.mjs`, which bumps every pin.
 - Never write a skill step that asks the user to paste a secret in the chat. Secrets go through `credentials set` (hidden prompt in the user's terminal) or `--from-env` / `--from-gh` / `--from-aws-profile`.
 
 ## Hermes is generated

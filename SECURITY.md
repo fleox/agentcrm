@@ -23,4 +23,4 @@ AgentCRM has no server: the admin runs in the user's browser and the CLI on the 
 
 ## Supported versions
 
-Security fixes go to the latest release; update with `npx -y @agent-crm/agentcrm@latest status` and `deploy-admin`.
+Security fixes go to the latest release; update with `npx -y @fleox-agent-crm/agentcrm@latest status` and `deploy-admin`.

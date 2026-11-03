@@ -35,7 +35,7 @@ for (const doc of ["README.md", "docs/mcp.md", "docs/cli.md", "docs/automations.
   const file = join(root, doc);
   if (!existsSync(file)) continue;
   const before = readFileSync(file, "utf8");
-  const after = before.replace(/@agent-crm\/agentcrm@\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?/g, `@agent-crm/agentcrm@${version}`);
+  const after = before.replace(/@agent-crm\/agentcrm@\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?/g, `@fleox-agent-crm/agentcrm@${version}`);
   if (after !== before) {
     writeFileSync(file, after);
     files++;

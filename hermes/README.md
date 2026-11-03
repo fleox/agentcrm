@@ -27,7 +27,7 @@ skills:
 ## Requirements
 
 - **Python 3.9+** — standard library only.
-- **Node.js 20.6+** — the engine is the [`@agent-crm/agentcrm`](https://www.npmjs.com/package/@agent-crm/agentcrm) npm package, run with `npx` and pinned to the skills' version. `AGENTCRM_CMD` overrides it (e.g. `AGENTCRM_CMD="node /path/to/agentcrm/dist/agent/agentcrm.mjs"`).
+- **Node.js 20.6+** — the engine is the [`@fleox-agent-crm/agentcrm`](https://www.npmjs.com/package/@fleox-agent-crm/agentcrm) npm package, run with `npx` and pinned to the skills' version. `AGENTCRM_CMD` overrides it (e.g. `AGENTCRM_CMD="node /path/to/agentcrm/dist/agent/agentcrm.mjs"`).
 
 ## The scripts
 

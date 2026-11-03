@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/@agent-crm/agentcrm"><img src="https://img.shields.io/npm/v/@agent-crm/agentcrm?color=4f46e5&label=npm" alt="npm version"></a>
+  <a href="https://www.npmjs.com/package/@fleox-agent-crm/agentcrm"><img src="https://img.shields.io/npm/v/@fleox-agent-crm/agentcrm?color=4f46e5&label=npm" alt="npm version"></a>
   <a href="https://github.com/fleox/agentcrm/actions/workflows/ci.yml"><img src="https://github.com/fleox/agentcrm/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="#claude-code"><img src="https://img.shields.io/badge/Claude%20Code-plugin-d97757" alt="Claude Code plugin"></a>
   <a href="#mcp-server"><img src="https://img.shields.io/badge/MCP-server-0ea5e9" alt="MCP server"></a>
@@ -52,14 +52,14 @@ The `agentcrm-install` skill asks where the data lives, then where the admin is 
 ### By hand
 
 ```bash
-npx -y @agent-crm/agentcrm@0.3.0 options                         # backends, locations, hostings, plan format
-npx -y @agent-crm/agentcrm@0.3.0 credentials set s3:main          # hidden prompt
-npx -y @agent-crm/agentcrm@0.3.0 install --plan plan.json --dry-run
-npx -y @agent-crm/agentcrm@0.3.0 install --plan plan.json
-npx -y @agent-crm/agentcrm@0.3.0 doctor --site acme
+npx -y @fleox-agent-crm/agentcrm@0.3.0 options                         # backends, locations, hostings, plan format
+npx -y @fleox-agent-crm/agentcrm@0.3.0 credentials set s3:main          # hidden prompt
+npx -y @fleox-agent-crm/agentcrm@0.3.0 install --plan plan.json --dry-run
+npx -y @fleox-agent-crm/agentcrm@0.3.0 install --plan plan.json
+npx -y @fleox-agent-crm/agentcrm@0.3.0 doctor --site acme
 ```
 
-Or try it without any account: `npx -y @agent-crm/agentcrm@0.3.0 serve` opens the setup wizard; pick **This browser** (optionally with demo data).
+Or try it without any account: `npx -y @fleox-agent-crm/agentcrm@0.3.0 serve` opens the setup wizard; pick **This browser** (optionally with demo data).
 
 ## Features
 
@@ -85,8 +85,8 @@ Everything you can customise in the admin, an AI agent can do too (CLI, MCP tool
 Settings → **Modules** switches built-in features off for the whole workspace: dashboard, deals & pipelines, reports, lead forms, tasks, automations, email & calendar, AI assistant. Disabling hides pages, navigation, widgets and owned objects; it never deletes data. Dependencies are checked (cascade on request). [docs/modules.md](docs/modules.md)
 
 ```bash
-npx -y @agent-crm/agentcrm@0.3.0 modules list --site acme
-npx -y @agent-crm/agentcrm@0.3.0 modules disable forms --site acme --yes
+npx -y @fleox-agent-crm/agentcrm@0.3.0 modules list --site acme
+npx -y @fleox-agent-crm/agentcrm@0.3.0 modules disable forms --site acme --yes
 ```
 
 ### Appearance — make it yours
@@ -94,9 +94,9 @@ npx -y @agent-crm/agentcrm@0.3.0 modules disable forms --site acme --yes
 Settings → **Appearance**: one accent color generates the whole palette; neutral grays, radius, density, font (system or Google fonts), sidebar style, accent or neutral buttons, high contrast, default light / dark mode, logo, favicon, custom CSS, seven presets (default, ocean, forest, sunset, graphite, rose, high-contrast) and theme extensions. [docs/appearance.md](docs/appearance.md)
 
 ```bash
-npx -y @agent-crm/agentcrm@0.3.0 appearance set --accent "#0f766e" --neutral stone --buttons accent --site acme --yes
-npx -y @agent-crm/agentcrm@0.3.0 appearance logo ./logo.svg --site acme --yes
-npx -y @agent-crm/agentcrm@0.3.0 appearance preset ocean --site acme --yes
+npx -y @fleox-agent-crm/agentcrm@0.3.0 appearance set --accent "#0f766e" --neutral stone --buttons accent --site acme --yes
+npx -y @fleox-agent-crm/agentcrm@0.3.0 appearance logo ./logo.svg --site acme --yes
+npx -y @fleox-agent-crm/agentcrm@0.3.0 appearance preset ocean --site acme --yes
 ```
 
 ### Extensions — add features without rebuilding
@@ -104,10 +104,10 @@ npx -y @agent-crm/agentcrm@0.3.0 appearance preset ocean --site acme --yes
 Modules (pages, record tabs, dashboard widgets, settings pages, AI tools, automation actions, hooks) and themes are ZIPs installed from Settings → Modules → **Installed extensions** or the CLI, stored in the CRM's own data and loaded at runtime by every admin — and by the CLI / MCP server, so their AI tools and automation actions work there too. Installing runs code with admin rights: the admin and the CLI always show who made it and what it adds first; safe mode (`?safe=1`, or `--safe`) starts without extensions. [docs/extensions.md](docs/extensions.md)
 
 ```bash
-npx -y @agent-crm/agentcrm@0.3.0 ext new module acme-projects     # scaffold (Vite + typings + en/fr)
+npx -y @fleox-agent-crm/agentcrm@0.3.0 ext new module acme-projects     # scaffold (Vite + typings + en/fr)
 cd acme-projects && npm install && npm run build
-npx -y @agent-crm/agentcrm@0.3.0 ext check .                      # validate + load it like the admin
-npx -y @agent-crm/agentcrm@0.3.0 ext install . --site acme --yes  # install (plan without --yes)
+npx -y @fleox-agent-crm/agentcrm@0.3.0 ext check .                      # validate + load it like the admin
+npx -y @fleox-agent-crm/agentcrm@0.3.0 ext install . --site acme --yes  # install (plan without --yes)
 ```
 
 Guides: [creating a module](docs/creating-a-module.md), [creating a theme](docs/creating-a-theme.md), [runtime API reference](docs/runtime-api-reference.md). Examples: [`external/`](external).
@@ -157,7 +157,7 @@ S3 / R2 / OVH / Scaleway buckets (HTTPS), GitHub Pages, GitLab Pages, Cloudflare
 
 ## CLI
 
-`agentcrm` runs on Node.js 20+ (`npx -y @agent-crm/agentcrm@0.3.0 <command>`). Every command accepts `--json` and prints exactly one `{ ok, data }` / `{ ok: false, error: { code, message, hint } }` object; destructive commands print a plan unless `--yes`.
+`agentcrm` runs on Node.js 20+ (`npx -y @fleox-agent-crm/agentcrm@0.3.0 <command>`). Every command accepts `--json` and prints exactly one `{ ok, data }` / `{ ok: false, error: { code, message, hint } }` object; destructive commands print a plan unless `--yes`.
 
 | Area | Commands |
 |---|---|
@@ -176,7 +176,7 @@ Full reference: [docs/cli.md](docs/cli.md).
 ## MCP server
 
 ```bash
-claude mcp add agentcrm -- npx -y @agent-crm/agentcrm@0.3.0 mcp --site acme
+claude mcp add agentcrm -- npx -y @fleox-agent-crm/agentcrm@0.3.0 mcp --site acme
 ```
 
 Tools = the shared AI catalog (search, list, get, create, update, delete, merge records, notes, activities, tasks, deal stages, reports, CSV import, automations…), resources = schema, pipelines, modules and appearance, plus the tools of the site's enabled extension modules; prompts = pipeline review, follow-up email, lead qualification. `--read-only` hides every tool that writes. Claude Desktop / Cursor config: [docs/mcp.md](docs/mcp.md).

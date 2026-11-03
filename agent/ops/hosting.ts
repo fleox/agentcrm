@@ -35,7 +35,7 @@ export function adminDir(): string {
 export function adminFiles(): string[] {
   const root = adminDir();
   if (!existsSync(join(root, "index.html"))) {
-    throw new CliError("admin-missing", `No admin build at ${root}.`, "Use the npm package (`npx -y @agent-crm/agentcrm …`), or run `npm run build` in a clone.");
+    throw new CliError("admin-missing", `No admin build at ${root}.`, "Use the npm package (`npx -y @fleox-agent-crm/agentcrm …`), or run `npm run build` in a clone.");
   }
   // Agent-written manifest (scripts/write-admin-manifest.mjs) when present.
   const manifest = join(root, "admin-files.json");

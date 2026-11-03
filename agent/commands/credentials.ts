@@ -62,7 +62,7 @@ export const credentialsCommand: Command = {
         return;
       }
       if (!process.stdin.isTTY) {
-        throw new CliError("needs-terminal", "verify reads the value the USER pastes in their own terminal.", `Ask the user to run it themselves (in Claude Code: \`! npx -y @agent-crm/agentcrm credentials verify ${account}\`).`);
+        throw new CliError("needs-terminal", "verify reads the value the USER pastes in their own terminal.", `Ask the user to run it themselves (in Claude Code: \`! npx -y @fleox-agent-crm/agentcrm credentials verify ${account}\`).`);
       }
       try {
         copyToClipboard("");

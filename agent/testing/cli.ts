@@ -47,6 +47,6 @@ export function fakeDist(dir: string, version = "0.1.0"): string {
   writeFileSync(join(dist, "admin", "index.html"), '<!doctype html><script src="./config.js"></script><script type="module" src="./assets/index-abc.js"></script>');
   writeFileSync(join(dist, "admin", "assets", "index-abc.js"), "console.log('admin')");
   writeFileSync(join(dist, "admin", "config.js"), "window.__AGENTCRM_CONFIG__ = null;\n");
-  writeFileSync(join(dist, "version.json"), JSON.stringify({ name: "@agent-crm/agentcrm", version, minSkillsVersion: "0.1.0", dataSchema: 1 }));
+  writeFileSync(join(dist, "version.json"), JSON.stringify({ name: "@fleox-agent-crm/agentcrm", version, minSkillsVersion: "0.1.0", dataSchema: 1 }));
   return dist;
 }
