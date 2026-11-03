@@ -1,15 +1,9 @@
-import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { FILTER_OPS } from "../../src/core/types";
 import type { CollectionName } from "../../src/data/types";
-import { printResult, type Io } from "../output";
 import { withSession } from "../ops/session";
-
-function printPlan(io: Io, plan: { needsConfirmation: true; plan: Record<string, unknown> }): void {
-  printResult(io, plan, () => `Would restore ${String(plan.plan.restore)} (${String(plan.plan.mode)}). Re-run with --yes once the user agrees.`);
-}
 import type { Command } from "./types";
-import { AS_OPTION, boolOpt, jsonObjectOpt, listOpt, multiOpt, numOpt, parseFilters, parseSorts, positional, readTextValue, requireStr, SITE_OPTION, strOpt, table, usage, YES_OPTION } from "./util";
+import { AS_OPTION, boolOpt, jsonObjectOpt, listOpt, multiOpt, numOpt, parseFilters, parseSorts, positional, readTextValue, requireStr, SITE_OPTION, strOpt, table, usage, writeOutFile, YES_OPTION } from "./util";
 
 // --map '{"Header":"field"}' or --map "Header=field,Other=field2" (or @file).
 function mappingOpt(options: Record<string, unknown>): Record<string, string> | undefined {
@@ -61,8 +55,17 @@ export const importCommand: Command = {
       if (!existsSync(path)) usage(`${path} does not exist.`);
       const bytes = new Uint8Array(readFileSync(path));
       if (options.yes !== true) {
-        printPlan(io, { needsConfirmation: true, plan: { restore: resolve(path), bytes: bytes.length, mode: options.replace === true ? "replace" : "merge" } });
-        return;
+        // Validates the archive and counts what would change (read-only session).
+        return withSession(io, options, {}, async ({ ctx }) => {
+          const plan = await (await import("../../src/ops/backup")).planBackupZip(ctx, bytes, { mode: options.replace === true ? "replace" : "merge" });
+          return { needsConfirmation: true as const, plan: { restore: resolve(path), bytes: bytes.length, ...plan } };
+        }, (r) =>
+          [
+            `Would restore ${r.plan.restore} (${r.plan.mode}): ${r.plan.added} new, ${r.plan.overwritten} overwritten, ${r.plan.deleted} deleted document(s), ${r.plan.files} file(s).`,
+            ...r.plan.warnings.map((w) => `Warning: ${w}`),
+            "Re-run with --yes once the user agrees.",
+          ].join("\n"),
+        );
       }
       return withSession(io, options, { lock: true }, async ({ ctx }) => (await import("../../src/ops/backup")).importBackupZip(ctx, bytes, { mode: options.replace === true ? "replace" : "merge" }), (r) => `Restored ${r.written} document(s) and ${r.files} file(s)`);
     }
@@ -129,14 +132,14 @@ export const exportCommand: Command = {
       return withSession(io, options, {}, async ({ ctx }) => {
         const { exportBackupZip } = await import("../../src/ops/backup");
         const { zip, report } = await exportBackupZip(ctx, { includeFiles: options["no-files"] !== true });
-        writeFileSync(resolve(file), zip);
+        writeOutFile(file, zip);
         return { file: resolve(file), zipBytes: zip.length, files: report.files, missing: report.missing, fileBytes: report.bytes };
       }, (r) => `Wrote ${r.zipBytes} bytes (${r.files} file(s)${r.missing.length ? `, ${r.missing.length} missing` : ""}) to ${r.file}`);
     }
     const out = strOpt(options, "out");
     const deliver = (text: string, extra: Record<string, unknown>): Record<string, unknown> => {
       if (out) {
-        writeFileSync(resolve(out), text);
+        writeOutFile(out, text);
         return { file: resolve(out), bytes: Buffer.byteLength(text), ...extra };
       }
       return { ...extra, content: text };
@@ -155,7 +158,10 @@ export const exportCommand: Command = {
           values: boolOpt(options, "raw") ? "raw" : "labels",
           includeDeleted: boolOpt(options, "deleted"),
         });
-        return deliver(csv, { object: objectId, rows: Math.max(0, csv.split(/\r?\n/).filter(Boolean).length - 1) });
+        // Records, not lines: quoted values may hold line breaks.
+        const { default: Papa } = await import("papaparse");
+        const rows = Math.max(0, Papa.parse(csv, { skipEmptyLines: true }).data.length - 1);
+        return deliver(csv, { object: objectId, rows });
       }, (r) => ("content" in r ? String(r.content) : `Wrote ${String(r.rows)} row(s) to ${String(r.file)}`));
     }
     if (kind === "json") {
@@ -198,6 +204,7 @@ export const reportCommand: Command = {
   async run({ io, options, positionals }) {
     const name = positional(positionals, 0, "report name", "report <name>");
     const internal = REPORT_ALIASES[name] ?? name;
+    if (!Object.values(REPORT_ALIASES).includes(internal)) usage(`Unknown report "${name}".`, `Reports: ${Object.keys(REPORT_ALIASES).join(", ")}.`);
     const params: Record<string, unknown> = {
       ...(jsonObjectOpt(options, "params") ?? {}),
       ...(numOpt(options, "months") !== undefined ? { months: numOpt(options, "months") } : {}),

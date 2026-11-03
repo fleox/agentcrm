@@ -1,9 +1,18 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import type { Filter, Sort } from "../../src/core/types";
 import { CliError, printResult, type Io } from "../output";
 import type { OptionValue } from "./types";
 
 // Option parsing shared by the data commands.
+
+// Writes an --out file (parent folders created) and returns its absolute path.
+export function writeOutFile(path: string, data: string | Uint8Array): string {
+  const abs = resolve(path);
+  mkdirSync(dirname(abs), { recursive: true });
+  writeFileSync(abs, data);
+  return abs;
+}
 
 export function usage(message: string, hint?: string): never {
   throw new CliError("usage", message, hint, 2);

@@ -39,7 +39,7 @@ export function printResult(io: Io, data: unknown, human: () => string): void {
 const OPS_HINTS: Record<string, string> = {
   forbidden: "The CRM user the CLI acts as lacks this permission (see `site show` → user, `users list`). Ask an admin, or re-register the site with an admin user (`site add … --user <email>`).",
   notFound: "Check the id (list commands print them: `records list --object …`, `objects list`, `views list`…).",
-  validation: "Fix the input: `objects get <object>` lists field ids, types and select options.",
+  validation: "Fix the input and retry (`agentcrm help <command>` lists the options; for record fields, `objects get <object>` lists field ids, types and select options).",
   conflict: "Something with the same key already exists — list it first, then update instead of creating.",
   invalid: "Check the arguments with `agentcrm help <command>`.",
 };

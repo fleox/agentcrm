@@ -35,9 +35,18 @@ async function run(name: string, args: string[], io: Io): Promise<number | void>
     throw new CliError("usage", (e as Error).message, `Usage: agentcrm ${command.usage}`, 2);
   }
   if (parsed.values.help && command.name !== "help") return run("help", [command.name], io);
-  return command.run({
-    io,
-    options: parsed.values as Record<string, string | boolean | string[] | undefined>,
-    positionals: parsed.positionals,
-  });
+  try {
+    return await command.run({
+      io,
+      options: parsed.values as Record<string, string | boolean | string[] | undefined>,
+      positionals: parsed.positionals,
+    });
+  } catch (e) {
+    // Every error carries a hint an agent can act on: usage errors without
+    // their own get the command's usage.
+    if (e instanceof CliError && !e.hint && e.exitCode === 2) {
+      throw new CliError(e.code, e.message, `Usage: agentcrm ${command.usage} (details: \`agentcrm help ${command.name}\`).`, e.exitCode);
+    }
+    throw e;
+  }
 }
