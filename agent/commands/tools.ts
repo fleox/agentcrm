@@ -88,7 +88,13 @@ export const mcpCommand: Command = {
         async withWrite(fn) {
           const unlock = lockSite(session.site.alias);
           try {
-            return await fn();
+            const result = await fn();
+            // A write may have enabled / disabled a module or extension
+            // (set_module_enabled, set_extension_enabled): reload the
+            // extensions so the next tools/list matches.
+            const report = await session.extensions.sync();
+            for (const f of report?.failed ?? []) log(`[agentcrm mcp] extension ${f.id} failed to load: ${f.error}`);
+            return result;
           } finally {
             unlock();
           }

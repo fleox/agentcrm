@@ -44,6 +44,9 @@ const OPS_HINTS: Record<string, string> = {
   invalid: "Check the arguments with `agentcrm help <command>`.",
 };
 
+export const MODULE_DEPENDENCY_HINT =
+  "Re-run with --cascade to also switch the listed modules (the plan shows every change), or enable / disable them first (`agentcrm modules list`).";
+
 // Known errors thrown by the engine, translated into codes and hints an
 // agent can act on.
 export function knownError(error: unknown): CliError | null {
@@ -60,7 +63,15 @@ export function knownError(error: unknown): CliError | null {
   }
   if (error.name === "OpsError") {
     const code = (error as Error & { code?: string }).code ?? "invalid";
-    return new CliError(code, error.message, OPS_HINTS[code], code === "validation" || code === "invalid" ? 2 : 1);
+    const details = (error as Error & { details?: { blockers?: unknown; dependents?: unknown } }).details;
+    // Module dependency conflicts (modules / ext enable & disable, ext uninstall).
+    const hint =
+      code === "conflict" && Array.isArray(details?.blockers)
+        ? MODULE_DEPENDENCY_HINT
+        : code === "conflict" && Array.isArray(details?.dependents)
+          ? `Disable the modules that depend on it first (${(details.dependents as string[]).join(", ")}: \`agentcrm modules disable <id> --yes\`), or pass --force.`
+          : OPS_HINTS[code];
+    return new CliError(code, error.message, hint, code === "validation" || code === "invalid" ? 2 : 1);
   }
   if (error.name === "FieldValidationError") {
     return new CliError("validation", error.message, OPS_HINTS.validation, 2);
