@@ -1,6 +1,6 @@
 # Use the CRM from an MCP client
 
-`agentcrm mcp` is a stdio MCP server: tools = the AI tool catalog (search, list, get, create, update, delete, merge records, notes, activities, tasks, pipeline moves, reports, CSV import), resources = schema and pipelines, prompts = pipeline review, follow-up email, lead qualification. `--read-only` hides every tool that writes.
+`agentcrm mcp` is a stdio MCP server: tools = the AI tool catalog (search, list, get, create, update, delete, merge records, notes, activities, tasks, pipeline moves, reports, CSV import, automations and forms, files metadata, modules, appearance, extensions — plus the tools of the site's enabled extension modules), resources = schema, pipelines, modules and appearance, prompts = pipeline review, follow-up email, lead qualification. `--read-only` hides every tool that writes.
 
 Claude Code:
 
