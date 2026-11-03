@@ -7,7 +7,10 @@ export default defineConfig({
   // folder (/admin/ by convention) of a static host.
   base: "./",
   server: {
-    port: 5173,
+    // Dedicated port so it never collides with sibling projects on 5173
+    // (a stale tab of another app would request its own cached deps).
+    port: 5180,
+    strictPort: true,
     open: true,
   },
   build: {

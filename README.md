@@ -211,7 +211,7 @@ Event automations run wherever a write happens (browser, CLI, MCP). Time-based o
 
 ```bash
 npm install --legacy-peer-deps
-npm run dev          # admin at http://localhost:5173
+npm run dev          # admin at http://localhost:5180
 npm run typecheck && npm test && npm run build
 node dist/agent/agentcrm.mjs help
 ```

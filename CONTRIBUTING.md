@@ -6,7 +6,7 @@ Thanks for helping! AgentCRM is source-available under the PolyForm Noncommercia
 
 ```bash
 npm install --legacy-peer-deps
-npm run dev              # admin at http://localhost:5173 — pick "This browser" + demo data
+npm run dev              # admin at http://localhost:5180 — pick "This browser" + demo data
 npm run typecheck
 npm test
 npm run build            # dist/admin + dist/agent/agentcrm.mjs + dist/version.json

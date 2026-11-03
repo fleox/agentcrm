@@ -10,7 +10,7 @@ What you get:
 
 The values to register are shown (with copy buttons) at the top of *Settings → Integrations*:
 
-- **Authorized JavaScript origin** = the admin's origin, e.g. `https://crm.example.com` (or `http://localhost:5173` in dev).
+- **Authorized JavaScript origin** = the admin's origin, e.g. `https://crm.example.com` (or `http://localhost:5180` in dev).
 - **Redirect URI** = the full admin URL without `#…`, e.g. `https://crm.example.com/admin/`.
 
 ## Google (Gmail + Calendar)
@@ -24,7 +24,7 @@ The values to register are shown (with copy buttons) at the top of *Settings →
    - While the app is in **Testing**, add every user as a **test user** (up to 100). Gmail scopes are *restricted*: publishing the app to everyone requires Google's verification — for an internal CRM, keep it in Testing or use an *Internal* Workspace app.
 4. *APIs & Services → Credentials → Create credentials → OAuth client ID*:
    - Application type **Web application**.
-   - **Authorized JavaScript origins**: the admin origin (`https://crm.example.com`, plus `http://localhost:5173` for dev). No redirect URI is needed (the Google Identity Services token client uses a popup).
+   - **Authorized JavaScript origins**: the admin origin (`https://crm.example.com`, plus `http://localhost:5180` for dev). No redirect URI is needed (the Google Identity Services token client uses a popup).
 5. Copy the **Client ID** (`…apps.googleusercontent.com`) into *Settings → Integrations → Google OAuth client id*, then **Connect Google**.
 
 Google access tokens last about one hour and there is no refresh token in the browser flow: when it expires, the next action you trigger re-opens the Google popup (no consent screen the second time).
@@ -33,7 +33,7 @@ Google access tokens last about one hour and there is no refresh token in the br
 
 1. Open <https://entra.microsoft.com/> (or the Azure portal) → *Identity → Applications → App registrations* → **New registration**.
    - Supported account types: your organisation only (single tenant), or *any organisation + personal Microsoft accounts* for `common`.
-   - Redirect URI: platform **Single-page application (SPA)**, value = the **admin URL** shown in AgentCRM (e.g. `https://crm.example.com/admin/`; add `http://localhost:5173/` for dev). It must be the *SPA* platform — the *Web* platform would require a client secret and refuse the browser token exchange.
+   - Redirect URI: platform **Single-page application (SPA)**, value = the **admin URL** shown in AgentCRM (e.g. `https://crm.example.com/admin/`; add `http://localhost:5180/` for dev). It must be the *SPA* platform — the *Web* platform would require a client secret and refuse the browser token exchange.
 2. *API permissions → Add a permission → Microsoft Graph → Delegated*: `User.Read`, `Mail.Read`, `Mail.Send`, `Calendars.Read`, plus `openid`, `profile`, `email` and (optional, recommended) `offline_access` so the session refreshes silently. Grant admin consent if your tenant requires it.
 3. No client secret, no certificate: AgentCRM is a *public client* using the authorization code flow with **PKCE**.
 4. Copy the **Application (client) ID** into *Settings → Integrations*. Optionally set the **tenant** (directory id or domain, e.g. `contoso.onmicrosoft.com`; empty = `common`). Click **Connect Microsoft**.

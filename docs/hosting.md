@@ -59,14 +59,14 @@ journal/<hlc>.bin     one encrypted file per change, never rewritten
    segments).
 3. Add a **CORS** rule. The admin calls the bucket from the browser, so the
    bucket must allow the admin's origin. List every origin you open the admin
-   from (`http://localhost:5173` for `npm run dev`).
+   from (`http://localhost:5180` for `npm run dev`).
 
 **AWS S3**: Bucket → Permissions → CORS:
 
 ```json
 [
   {
-    "AllowedOrigins": ["https://crm.example.com", "http://localhost:5173"],
+    "AllowedOrigins": ["https://crm.example.com", "http://localhost:5180"],
     "AllowedMethods": ["GET", "PUT", "DELETE", "HEAD"],
     "AllowedHeaders": ["authorization", "content-type", "cache-control", "x-amz-*"],
     "ExposeHeaders": ["ETag"],
@@ -82,7 +82,7 @@ same JSON format. R2 does not support wildcard header patterns like
 ```json
 [
   {
-    "AllowedOrigins": ["https://crm.example.com", "http://localhost:5173"],
+    "AllowedOrigins": ["https://crm.example.com", "http://localhost:5180"],
     "AllowedMethods": ["GET", "PUT", "DELETE", "HEAD"],
     "AllowedHeaders": ["*"],
     "ExposeHeaders": ["ETag"],
@@ -102,7 +102,7 @@ API, for example with the AWS CLI. Note the `CORSRules` wrapper:
 {
   "CORSRules": [
     {
-      "AllowedOrigins": ["https://crm.example.com", "http://localhost:5173"],
+      "AllowedOrigins": ["https://crm.example.com", "http://localhost:5180"],
       "AllowedMethods": ["GET", "PUT", "DELETE", "HEAD"],
       "AllowedHeaders": ["*"],
       "ExposeHeaders": ["ETag"],
