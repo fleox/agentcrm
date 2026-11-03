@@ -23,8 +23,27 @@ export function getSettings(ctx: OpsContext): CrmSettings {
   return { ...DEFAULT_SETTINGS, ...(settingsDoc(ctx.store) ?? {}) };
 }
 
+// Keys updateSettings accepts (createdAt / updatedAt are managed here).
+export const SETTINGS_KEYS = ["name", "defaultCurrency", "locale", "timezone", "weekStartsOn", "staleDealDays", "ownerUserId", "maxUploadMb"] as const;
+
 export async function updateSettings(ctx: OpsContext, patch: Partial<Omit<CrmSettings, "id">>): Promise<CrmSettings> {
   assertCan(ctx, "settings.write");
+  const unknown = Object.keys(patch).filter((k) => !(SETTINGS_KEYS as readonly string[]).includes(k) && k !== "createdAt" && k !== "updatedAt" && k !== "id");
+  if (unknown.length) {
+    throw new OpsError("validation", `Unknown setting${unknown.length > 1 ? "s" : ""} ${unknown.map((k) => `"${k}"`).join(", ")}. Settings: ${SETTINGS_KEYS.join(", ")}.`);
+  }
+  if (patch.name !== undefined && (typeof patch.name !== "string" || !patch.name.trim())) {
+    throw new OpsError("validation", "The CRM name can't be empty.");
+  }
+  if (patch.weekStartsOn !== undefined && patch.weekStartsOn !== 0 && patch.weekStartsOn !== 1) {
+    throw new OpsError("validation", "Week start must be 0 (Sunday) or 1 (Monday).");
+  }
+  if (patch.locale !== undefined && !validLocale(patch.locale)) {
+    throw new OpsError("validation", `"${String(patch.locale)}" is not a valid locale (BCP-47, e.g. en-US, fr-FR).`);
+  }
+  if (patch.timezone !== undefined && patch.timezone !== null && !validTimeZone(patch.timezone)) {
+    throw new OpsError("validation", `"${String(patch.timezone)}" is not a valid time zone (IANA, e.g. Europe/Paris).`);
+  }
   if (patch.defaultCurrency !== undefined && !/^[A-Z]{3}$/.test(patch.defaultCurrency.toUpperCase())) {
     throw new OpsError("validation", `"${patch.defaultCurrency}" is not an ISO 4217 currency code.`);
   }
@@ -45,6 +64,25 @@ export async function updateSettings(ctx: OpsContext, patch: Partial<Omit<CrmSet
   };
   await ctx.store.write([{ op: "set", collection: "settings", doc: asDoc(next) }], { message: "Update settings" });
   return getSettings(ctx);
+}
+
+function validLocale(value: unknown): boolean {
+  if (typeof value !== "string" || !value) return false;
+  try {
+    return Intl.getCanonicalLocales(value).length === 1;
+  } catch {
+    return false;
+  }
+}
+
+function validTimeZone(value: unknown): boolean {
+  if (typeof value !== "string" || !value) return false;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function assertNoSecrets(value: unknown, path = ""): void {
