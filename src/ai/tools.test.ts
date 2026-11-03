@@ -89,6 +89,22 @@ describe("AI tool catalog", () => {
     await expect(callTool(crm.as("member"), "create_field", { object: "people", label: "X", type: "text" })).rejects.toMatchObject({ code: "forbidden" });
   });
 
+  it("checks input types and enums against the schema (no internal errors)", async () => {
+    const crm = await setupTestCrm({ demo: true });
+    // Wrong types are validation errors naming the path, not crashes in the ops.
+    await expect(callTool(crm.admin, "list_records", { object: "deals", filters: "stage=won" })).rejects.toMatchObject({ code: "validation", message: expect.stringMatching(/list_records\.filters must be an array/) });
+    await expect(callTool(crm.admin, "list_records", { object: "deals", filters: [{ field: "stage", op: "like", value: "x" }] })).rejects.toMatchObject({ code: "validation", message: expect.stringMatching(/filters\[0\]\.op must be one of/) });
+    await expect(callTool(crm.admin, "list_records", { object: "deals", filters: [{ op: "eq", value: "x" }] })).rejects.toMatchObject({ code: "validation", message: expect.stringMatching(/filters\[0\]: missing required "field"/) });
+    await expect(callTool(crm.admin, "search_records", { query: 42 })).rejects.toMatchObject({ code: "validation", message: expect.stringMatching(/query must be a string/) });
+    await expect(callTool(crm.admin, "list_tasks", { status: "weird" })).rejects.toMatchObject({ code: "validation" });
+    await expect(callTool(crm.admin, "get_record", ["x"])).rejects.toMatchObject({ code: "validation", message: expect.stringMatching(/must be a JSON object/) });
+    // Numeric / boolean strings are coerced; null on optional keys reaches the handler.
+    const page = (await callTool(crm.admin, "list_records", { object: "deals", limit: "2" })) as { records: unknown[] };
+    expect(page.records).toHaveLength(2);
+    await expect(callTool(crm.admin, "list_tasks", { overdue: "true" })).resolves.toBeTruthy();
+    await expect(callTool(crm.admin, "set_appearance", { customCss: null })).resolves.toBeTruthy();
+  });
+
   it("works end-to-end on the journal backend (two clients)", async () => {
     const conn = createMemoryConnector();
     const a = createJournalStore({ connector: conn, root: "crm", passphrase: "pw", iterations: 1000 });

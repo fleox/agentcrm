@@ -44,7 +44,9 @@ Desktop apps may not see your shell's `PATH`: use the absolute path of `npx` (`w
 
 ## Tools
 
-Exactly the AI catalog of `src/ai/tools.ts` (also used by the in-admin assistant and `agentcrm tools list|call`): `describe_schema`, `search_records`, `list_records`, `get_record`, `create_record`, `update_record`, `delete_record`, `merge_records`, `add_note`, `log_activity`, `create_task`, `complete_task`, `list_tasks`, `list_activities`, `move_deal_stage`, `pipeline_summary`, `run_report`, `create_field`, `import_csv`, plus the automation tools.
+Exactly the AI catalog of `src/ai/tools.ts` (also used by the in-admin assistant and `agentcrm tools list|call`): `describe_schema`, `search_records`, `list_records`, `get_record`, `create_record`, `update_record`, `delete_record`, `merge_records`, `add_note`, `log_activity`, `create_task`, `complete_task`, `list_tasks`, `list_activities`, `move_deal_stage`, `pipeline_summary`, `run_report`, `create_field`, `import_csv`, the automation / form tools (`list_automations`, `create_automation`, `run_automations`, `list_forms`, `ingest_inbox`), `draft_email` (prepares a draft from the timeline, writes nothing), plus the file and customisation tools below.
+
+- Inputs are checked against each tool's JSON schema before the handler runs (required keys, types, enums, nested filters): a wrong shape comes back as an `isError` result with `code: "validation"` naming the path (e.g. `list_records.filters must be an array`). Numeric strings (`"5"`) and `"true"` / `"false"` are coerced; `null` on an optional key is passed through (several tools document it as "clear").
 
 - `annotations.readOnlyHint` = the tool doesn't write; `destructiveHint` for delete / merge / import / update; `idempotentHint` where repeating is harmless.
 - `tools/call` returns `structuredContent` (the JSON result) and a `text` content with the same JSON. Engine errors (validation, forbidden, not found) come back as `isError: true` results with `{ error: { code, message, hint } }`, so the model can correct itself; unknown tools are JSON-RPC errors (`-32602`).

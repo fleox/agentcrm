@@ -462,13 +462,62 @@ export function findTool(name: string): AiTool | undefined {
   return AI_TOOLS.find((t) => t.name === name) ?? extraTools.get(name);
 }
 
-// Runs a tool by name with light input checking (required keys present).
+function jsonTypeOf(value: unknown): string {
+  if (value === null) return "null";
+  if (Array.isArray(value)) return "array";
+  return typeof value;
+}
+
+// Checks (and lightly coerces) a value against a tool schema fragment: types,
+// enums, required keys, array items and nested objects. Models send numeric
+// strings ("5") and "true" / "false" often enough that those are coerced;
+// anything else of the wrong shape is a validation error naming the path, so
+// the model (or the CLI user) can correct itself instead of hitting an
+// internal error deep in an op. null on an optional key is left to the handler
+// (several tools document null as "clear").
+export function checkToolInput(schema: JsonSchema, value: unknown, path: string): unknown {
+  const types = schema.type === undefined ? [] : Array.isArray(schema.type) ? schema.type : [schema.type];
+  let v = value;
+  if (types.length && v !== null && v !== undefined) {
+    const actual = jsonTypeOf(v);
+    const accepts = (t: string) => t === actual || (t === "integer" && actual === "number" && Number.isInteger(v));
+    if (!types.some(accepts)) {
+      if ((types.includes("number") || types.includes("integer")) && typeof v === "string" && v.trim() !== "" && Number.isFinite(Number(v))) v = Number(v);
+      else if (types.includes("boolean") && (v === "true" || v === "false")) v = v === "true";
+      else throw new OpsError("validation", `${path} must be ${types.map((t) => (t === "array" || t === "object" || t === "integer" ? `an ${t}` : `a ${t}`)).join(" or ")}, got ${actual === "array" || actual === "object" ? `an ${actual}` : `${actual} ${JSON.stringify(v)}`.slice(0, 80)}.`);
+    }
+  }
+  if (v === null || v === undefined) return v;
+  if (schema.enum && !schema.enum.includes(v)) {
+    throw new OpsError("validation", `${path} must be one of ${schema.enum.map((e) => JSON.stringify(e)).join(", ")}, got ${JSON.stringify(v).slice(0, 80)}.`);
+  }
+  if (Array.isArray(v) && schema.items) {
+    const items = schema.items;
+    return v.map((item, i) => checkToolInput(items, item, `${path}[${i}]`));
+  }
+  if (jsonTypeOf(v) === "object" && (schema.properties || schema.required)) {
+    const obj = { ...(v as Record<string, unknown>) };
+    for (const key of schema.required ?? []) {
+      if (obj[key] === undefined || obj[key] === null) throw new OpsError("validation", `${path}: missing required "${key}".`);
+    }
+    for (const [key, sub] of Object.entries(schema.properties ?? {})) {
+      if (obj[key] !== undefined) obj[key] = checkToolInput(sub, obj[key], `${path}.${key}`);
+    }
+    return obj;
+  }
+  return v;
+}
+
+// Runs a tool by name after checking the input against its JSON schema
+// (required keys, types, enums — see checkToolInput).
 export async function callTool(ctx: OpsContext, name: string, input: unknown): Promise<unknown> {
   const tool = findTool(name);
   if (!tool) throw new OpsError("notFound", `Unknown tool "${name}". Tools: ${listAiTools().map((t) => t.name).join(", ")}.`);
-  const args = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
+  if (input !== undefined && input !== null && jsonTypeOf(input) !== "object") throw new OpsError("validation", `${name}: the input must be a JSON object, got ${jsonTypeOf(input) === "array" ? "an array" : `a ${jsonTypeOf(input)}`}.`);
+  const raw = (input ?? {}) as Record<string, unknown>;
   for (const key of tool.inputSchema.required ?? []) {
-    if (args[key] === undefined || args[key] === null) throw new OpsError("validation", `${name}: missing required "${key}".`);
+    if (raw[key] === undefined || raw[key] === null) throw new OpsError("validation", `${name}: missing required "${key}".`);
   }
+  const args = checkToolInput({ ...tool.inputSchema, required: [] }, raw, name) as Record<string, unknown>;
   return tool.handler(ctx, args);
 }
