@@ -61,6 +61,10 @@ describe("records ops", () => {
     const { admin } = await setupTestCrm({ demo: true });
     const all = listRecords(admin, "companies", { limit: 5 });
     expect(all.total).toBe(30);
+    // Demo addresses are plausible: the country is the city's.
+    const addresses = listRecords(admin, "companies", { limit: 30 }).items.map((r) => r.fields.address as { city: string; country: string });
+    expect(addresses.filter((a) => a.city === "New York").every((a) => a.country === "United States")).toBe(true);
+    expect(addresses.filter((a) => a.city === "Paris" || a.city === "Lyon").every((a) => a.country === "France")).toBe(true);
     expect(all.items).toHaveLength(5);
     expect(all.hasMore).toBe(true);
     const software = listRecords(admin, "companies", { filters: [{ field: "industry", op: "eq", value: "Software" }], sorts: [{ field: "employees", dir: "desc" }] });
