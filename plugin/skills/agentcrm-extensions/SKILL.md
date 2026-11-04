@@ -4,7 +4,7 @@ description: Create, test and ship AgentCRM extensions - scaffold a module or th
 license: PolyForm-Noncommercial-1.0.0
 compatibility: Requires Node.js 20+ (npm for the extension project's own build).
 metadata:
-  version: "0.4.0"
+  version: "0.5.0"
   repository: "https://github.com/fleox/agentcrm"
 allowed-tools: Bash Read Write Edit
 ---
@@ -33,7 +33,7 @@ AgentCRM is a static CRM: the admin is a single-page app that runs in the browse
 
 ## The toolchain: `agentcrm ext`
 
-Every command is `npx -y @fleox-agent-crm/agentcrm@0.4.0 <command> … --json`. Read `error.hint` when `ok` is false.
+Every command is `npx -y @fleox-agent-crm/agentcrm@0.5.0 <command> … --json`. Read `error.hint` when `ok` is false.
 
 | Action | What it does |
 |---|---|
@@ -51,7 +51,7 @@ Every command is `npx -y @fleox-agent-crm/agentcrm@0.4.0 <command> … --json`. 
 1. **Understand the request.** A new look = a **theme**. New pages, widgets, record tabs, AI tools, automation steps or reactions to CRM events = a **module**. Pick an id: lowercase letters, digits and dashes, 3 to 50 characters, not a built-in module id (records, deals, dashboard, reports, forms, tasks, automations, integrations, assistant, search, settings, setup, customize) nor agentcrm, core, runtime, admin, app, custom, default. Prefix it with the company or product (`acme-quotes`).
 2. **Scaffold and install the toolchain:**
    ```bash
-   npx -y @fleox-agent-crm/agentcrm@0.4.0 ext new module acme-quotes --author "Acme" --json
+   npx -y @fleox-agent-crm/agentcrm@0.5.0 ext new module acme-quotes --author "Acme" --json
    cd acme-quotes && npm install
    ```
 3. **Read the scaffold**, then the reference for what you are building:
@@ -64,15 +64,15 @@ Every command is `npx -y @fleox-agent-crm/agentcrm@0.4.0 <command> … --json`. 
    ```bash
    npm run typecheck
    npm run build
-   npx -y @fleox-agent-crm/agentcrm@0.4.0 ext check . --json
+   npx -y @fleox-agent-crm/agentcrm@0.5.0 ext check . --json
    ```
    Fix every error; read the warnings (missing French strings, tool names without the module prefix, nav entries without a route).
 6. **Pack and install** (plan first, then `--yes` once the user agreed):
    ```bash
-   npx -y @fleox-agent-crm/agentcrm@0.4.0 ext pack . --json
-   npx -y @fleox-agent-crm/agentcrm@0.4.0 ext install . --site acme --json
-   npx -y @fleox-agent-crm/agentcrm@0.4.0 ext install . --site acme --yes --json
-   npx -y @fleox-agent-crm/agentcrm@0.4.0 tools list --site acme --json
+   npx -y @fleox-agent-crm/agentcrm@0.5.0 ext pack . --json
+   npx -y @fleox-agent-crm/agentcrm@0.5.0 ext install . --site acme --json
+   npx -y @fleox-agent-crm/agentcrm@0.5.0 ext install . --site acme --yes --json
+   npx -y @fleox-agent-crm/agentcrm@0.5.0 tools list --site acme --json
    ```
    For a new release, bump `version` in `manifest.json` (semver) and install again: it upgrades in place.
 

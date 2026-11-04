@@ -3,7 +3,7 @@
 `agentcrm mcp` turns a CRM into a [Model Context Protocol](https://modelcontextprotocol.io) server on stdio, so Claude Desktop, Claude Code, Cursor or any MCP client can search, read and update it.
 
 ```bash
-npx -y @fleox-agent-crm/agentcrm@0.4.0 mcp --site acme [--read-only] [--as <user email>]
+npx -y @fleox-agent-crm/agentcrm@0.5.0 mcp --site acme [--read-only] [--as <user email>]
 ```
 
 The server uses this computer's AgentCRM state (`~/.agentcrm`: the registered site and its credentials) — install or register the CRM first (`agentcrm install` / `agentcrm site add`). It acts as the site's CLI user; roles apply.
@@ -13,9 +13,9 @@ The server uses this computer's AgentCRM state (`~/.agentcrm`: the registered si
 **Claude Code**
 
 ```bash
-claude mcp add agentcrm -- npx -y @fleox-agent-crm/agentcrm@0.4.0 mcp --site acme
+claude mcp add agentcrm -- npx -y @fleox-agent-crm/agentcrm@0.5.0 mcp --site acme
 # read-only:
-claude mcp add agentcrm-ro -- npx -y @fleox-agent-crm/agentcrm@0.4.0 mcp --site acme --read-only
+claude mcp add agentcrm-ro -- npx -y @fleox-agent-crm/agentcrm@0.5.0 mcp --site acme --read-only
 ```
 
 **Claude Desktop** — `claude_desktop_config.json` (Settings → Developer → Edit config):
@@ -25,7 +25,7 @@ claude mcp add agentcrm-ro -- npx -y @fleox-agent-crm/agentcrm@0.4.0 mcp --site 
   "mcpServers": {
     "agentcrm": {
       "command": "npx",
-      "args": ["-y", "@fleox-agent-crm/agentcrm@0.4.0", "mcp", "--site", "acme"]
+      "args": ["-y", "@fleox-agent-crm/agentcrm@0.5.0", "mcp", "--site", "acme"]
     }
   }
 }
