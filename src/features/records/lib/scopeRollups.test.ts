@@ -63,6 +63,16 @@ const qctx = { recordLabel: (_o: string, id: string) => labels[id] };
 const objectOf = (id: string) => [operators, presences].find((o) => o.id === id);
 
 describe("scoped rollups", () => {
+  it("rolls up the labels of a child select (ids differ from the parent's)", () => {
+    const selectChild: ObjectDef = {
+      ...presences,
+      fields: presences.fields.map((f) => (f.id === "statusLabel" ? { ...f, type: "select" as const, options: [{ id: "opt-live", label: "Live", color: "green" }, { id: "opt-closed", label: "Closed", color: "red" }] } : f)),
+    };
+    const ids = all.map((r) => (r.object === "presences" ? { ...r, fields: { ...r.fields, statusLabel: r.fields.statusLabel === "Live" ? "opt-live" : "opt-closed" } } : r));
+    const out = scopeRollups(records, ids, operators, [{ field: "markets", op: "eq", value: "gb" }], qctx, (id) => (id === "presences" ? selectChild : objectOf(id)));
+    expect(out.records[0].fields.status).toEqual(["live"]);
+  });
+
   it("keeps the stored values without a filter on the scope", () => {
     const out = scopeRollups(records, all, operators, [{ field: "name", op: "contains", value: "a" }], qctx, objectOf);
     expect(out.scoped).toEqual([]);

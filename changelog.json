@@ -1,6 +1,15 @@
 {
   "versions": [
     {
+      "version": "0.9.3",
+      "date": "2026-11-04",
+      "breaking": false,
+      "changes": [
+        "Scoped rollups read a child select / multiSelect by its option labels (the parent's options are matched by label, their ids may differ)."
+      ],
+      "actions": []
+    },
+    {
       "version": "0.9.2",
       "date": "2026-11-04",
       "breaking": false,

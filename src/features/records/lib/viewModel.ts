@@ -120,7 +120,11 @@ export function scopeRollups(
       const r = f.rollup!;
       const target = objectOf(r.object)?.fields.find((x) => x.id === r.scope!.via)?.relation?.object ?? "";
       const inScope = (children(f).get(rec.id) ?? []).filter((c) => inFilters(asIds(c.fields[r.scope!.via]), r.scope!.field, target, filters, qctx));
-      fields[f.id] = rollupValue(f, inScope.map((c) => c.fields[r.field]));
+      // A child select stores option ids: roll up their labels (the parent
+      // field's options are matched by label).
+      const childField = objectOf(r.object)?.fields.find((x) => x.id === r.field);
+      const label = (v: unknown) => childField?.options?.find((o) => o.id === v)?.label ?? v;
+      fields[f.id] = rollupValue(f, inScope.map((c) => (Array.isArray(c.fields[r.field]) ? (c.fields[r.field] as unknown[]).map(label) : label(c.fields[r.field]))));
     }
     for (const id of scopeFields) {
       const field = object.fields.find((x) => x.id === id);
