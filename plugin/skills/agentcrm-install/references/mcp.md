@@ -5,13 +5,13 @@
 Claude Code:
 
 ```bash
-claude mcp add agentcrm -- npx -y @fleox-agent-crm/agentcrm@0.8.0 mcp --site <alias>
+claude mcp add agentcrm -- npx -y @fleox-agent-crm/agentcrm@0.9.0 mcp --site <alias>
 ```
 
 Claude Desktop (`claude_desktop_config.json`) and Cursor (`.cursor/mcp.json`):
 
 ```json
-{ "mcpServers": { "agentcrm": { "command": "npx", "args": ["-y", "@fleox-agent-crm/agentcrm@0.8.0", "mcp", "--site", "<alias>"] } } }
+{ "mcpServers": { "agentcrm": { "command": "npx", "args": ["-y", "@fleox-agent-crm/agentcrm@0.9.0", "mcp", "--site", "<alias>"] } } }
 ```
 
 The server uses the credentials of this computer (`~/.agentcrm`) and acts as the site's CLI user.
