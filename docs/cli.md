@@ -3,7 +3,7 @@
 `agentcrm` is the headless front door of AgentCRM: it runs the admin's own engine (`src/ops/`) in Node.js 20+, against the same data, with the same validation, roles and automations.
 
 ```bash
-npx -y @fleox-agent-crm/agentcrm@0.3.2 <command> [action] [options] [--json]
+npx -y @fleox-agent-crm/agentcrm@0.3.3 <command> [action] [options] [--json]
 ```
 
 ## Conventions
