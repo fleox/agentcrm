@@ -214,4 +214,13 @@ describe("firebase CLI login", () => {
     expect(await checkFirebaseAccess(cli({ verified: false }), login, "p")).toMatchObject({ ok: false, detail: expect.stringMatching(/not verified/) });
     expect(await checkFirebaseAccess(cli({ admin: "boss@acme.io" }), login, "p")).toMatchObject({ ok: false, detail: expect.stringMatching(/bootstrap admin/) });
   });
+
+  it("mirrors an invitation for a user added before anything asked for the identity", async () => {
+    const api = cli();
+    await signInWithSecrets(api, login);
+    const store = createFirebaseStoreWith({ api, now: () => 1000 });
+    await store.ready(); // no identity() call, like a CLI site with a recorded --user
+    await store.write([{ op: "set", collection: "users", doc: { id: "p-ada", email: "Ada@Acme.io", name: "Ada", role: "admin" } }]);
+    expect(api.db.get("invites", "ada@acme.io")).toEqual({ role: "admin", userId: "p-ada", email: "ada@acme.io" });
+  });
 });

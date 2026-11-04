@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "0.3.3",
+      "date": "2026-11-04",
+      "breaking": false,
+      "changes": [
+        "Firebase: users added from the CLI / MCP get their invitation again. The store mirrors invitations only for an admin caller and the CLI never resolved its identity when the site has a recorded --user, so `users add` created the user without `invites/{email}` and that person could not sign in."
+      ],
+      "actions": [
+        "Users added from the CLI on a Firebase CRM with 0.3.1 or 0.3.2: re-save them once (e.g. `agentcrm users role <email> <role>`) to write the missing invitation."
+      ]
+    },
+    {
       "version": "0.3.2",
       "date": "2026-11-04",
       "breaking": false,

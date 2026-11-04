@@ -356,8 +356,24 @@ export function createFirebaseStoreWith(opts: FirebaseStoreOptions): FirebaseDat
     }
   }
 
+  function getIdentity(): Promise<StoreIdentity | null> {
+    if (!identityPromise) {
+      identityPromise = resolveIdentity().then((id) => {
+        currentIdentity = id;
+        // Never cache "no access" — a sign-in / invitation may follow.
+        if (!id) identityPromise = null;
+        return id;
+      });
+    }
+    return identityPromise;
+  }
+
   async function persist(mutations: DocMutation[], before: Snapshot, after: Snapshot): Promise<void> {
     const ops = mutationOps(mutations, before);
+    // A user change needs the caller's role to mirror invitations: the CLI
+    // may write before anything asked for the identity (a site with a
+    // recorded --user never does), and then added users got no invitation.
+    if (!currentIdentity && mutations.some((m) => m.collection === "users")) await getIdentity();
     // Invitations are written by admins only (the rules refuse others,
     // which would fail the whole batch).
     if (currentIdentity?.role === "admin") ops.push(...inviteOps(mutations, (id) => before.users.get(id) ?? rawUsers.get(id), after));
@@ -422,17 +438,7 @@ export function createFirebaseStoreWith(opts: FirebaseStoreOptions): FirebaseDat
       return () => offs.forEach((off) => off());
     },
 
-    identity() {
-      if (!identityPromise) {
-        identityPromise = resolveIdentity().then((id) => {
-          currentIdentity = id;
-          // Never cache "no access" — a sign-in / invitation may follow.
-          if (!id) identityPromise = null;
-          return id;
-        });
-      }
-      return identityPromise;
-    },
+    identity: getIdentity,
 
     close() {
       offAuth();
