@@ -1,6 +1,16 @@
 {
   "versions": [
     {
+      "version": "0.8.0",
+      "date": "2026-11-04",
+      "breaking": false,
+      "changes": [
+        "Drilldown fields: a field can link its value to another object's list filtered on the current record (`drilldown: { object, field }`, `field` being a relation of `object` pointing back). A market's operator count opens the operators of that market. Set by `fields add / update --data` or `schema apply` (applied after every relation of the file exists).",
+        "List pages accept `?filter=field:op:value` (repeatable): applied on top of the view, shown in a banner with a \"Show all\" button, never saved with the view."
+      ],
+      "actions": []
+    },
+    {
       "version": "0.7.0",
       "date": "2026-11-04",
       "breaking": false,
