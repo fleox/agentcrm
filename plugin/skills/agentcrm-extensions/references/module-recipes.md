@@ -182,8 +182,8 @@ function SettingsPage() {
 In AI tools / actions read it with `readConfig(ops.getModuleConfig(ctx, ID))`. From the CLI:
 
 ```bash
-npx -y @fleox-agent-crm/agentcrm@0.6.0 modules config get acme-projects --site acme --json
-npx -y @fleox-agent-crm/agentcrm@0.6.0 modules config set acme-projects --value '{"budgetAlert":50000}' --site acme --json
+npx -y @fleox-agent-crm/agentcrm@0.7.0 modules config get acme-projects --site acme --json
+npx -y @fleox-agent-crm/agentcrm@0.7.0 modules config set acme-projects --value '{"budgetAlert":50000}' --site acme --json
 ```
 
 (the second prints a plan; add `--yes`).

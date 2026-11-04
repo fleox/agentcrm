@@ -5,7 +5,7 @@ A module extension adds features to AgentCRM at runtime — pages, record tabs, 
 ## 1. Scaffold
 
 ```bash
-npx -y @fleox-agent-crm/agentcrm@0.6.0 ext new module acme-projects --author "Acme" --description "Projects board for Acme."
+npx -y @fleox-agent-crm/agentcrm@0.7.0 ext new module acme-projects --author "Acme" --description "Projects board for Acme."
 cd acme-projects
 npm install
 ```
@@ -226,8 +226,8 @@ function SettingsPage() {
 In AI tools / actions read it with `readConfig(ops.getModuleConfig(ctx, ID))`. From the CLI:
 
 ```bash
-npx -y @fleox-agent-crm/agentcrm@0.6.0 modules config get acme-projects --site acme --json
-npx -y @fleox-agent-crm/agentcrm@0.6.0 modules config set acme-projects --value '{"budgetAlert":50000}' --site acme --json
+npx -y @fleox-agent-crm/agentcrm@0.7.0 modules config get acme-projects --site acme --json
+npx -y @fleox-agent-crm/agentcrm@0.7.0 modules config set acme-projects --value '{"budgetAlert":50000}' --site acme --json
 ```
 
 (the second prints a plan; add `--yes`).
@@ -261,11 +261,11 @@ const fr: typeof en = { nav: "Projets", title: "Tableau des projets", status: { 
 ```bash
 npm run typecheck
 npm run build                                                           # dist/bundle.js
-npx -y @fleox-agent-crm/agentcrm@0.6.0 ext check .                             # validates + loads it in a demo CRM
-npx -y @fleox-agent-crm/agentcrm@0.6.0 ext pack .                              # acme-projects-0.1.0.zip
-npx -y @fleox-agent-crm/agentcrm@0.6.0 ext install . --site acme               # plan
-npx -y @fleox-agent-crm/agentcrm@0.6.0 ext install . --site acme --yes
-npx -y @fleox-agent-crm/agentcrm@0.6.0 tools list --site acme                  # your AI tools, source "extension"
+npx -y @fleox-agent-crm/agentcrm@0.7.0 ext check .                             # validates + loads it in a demo CRM
+npx -y @fleox-agent-crm/agentcrm@0.7.0 ext pack .                              # acme-projects-0.1.0.zip
+npx -y @fleox-agent-crm/agentcrm@0.7.0 ext install . --site acme               # plan
+npx -y @fleox-agent-crm/agentcrm@0.7.0 ext install . --site acme --yes
+npx -y @fleox-agent-crm/agentcrm@0.7.0 tools list --site acme                  # your AI tools, source "extension"
 ```
 
 `ext check` reports errors (manifest, imports, default export, load failures, theme values) and warnings (missing French strings, tool names without the module prefix, nav entries without a route), lists what the module registers, and calls each AI tool without required inputs once on demo data. Exit code 1 on errors — use it in CI.

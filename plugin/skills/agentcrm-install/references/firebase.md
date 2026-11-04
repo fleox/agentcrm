@@ -3,7 +3,7 @@
 1. Create a Firebase project (console.firebase.google.com), add a Web app and copy its config (apiKey, authDomain, projectId, appId...). The web apiKey is public by design.
 2. Enable Authentication → Sign-in method → Email/Password (and Google if wanted).
 3. Create Firestore (production mode) and publish the AgentCRM security rules (see docs/firebase.md in the repository).
-4. Create the first admin account (Authentication → Users → Add user). The user stores its login: `! npx -y @fleox-agent-crm/agentcrm@0.6.0 credentials set firebase:<name>` (email + password at hidden prompts).
+4. Create the first admin account (Authentication → Users → Add user). The user stores its login: `! npx -y @fleox-agent-crm/agentcrm@0.7.0 credentials set firebase:<name>` (email + password at hidden prompts).
 5. Plan:
 
 ```json
