@@ -13,7 +13,9 @@
     "more": "More actions",
     "exportView": "Export view as CSV",
     "import": "Import CSV",
-    "trash": "Deleted records"
+    "trash": "Deleted records",
+    "linkFilter": "Filtered from a link — {{filters}}",
+    "clearLinkFilter": "Show all"
   },
   "views": {
     "title": "Views",

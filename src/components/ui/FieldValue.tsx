@@ -15,6 +15,8 @@ export interface FieldValueProps {
   className?: string;
   // Text shown for empty values ("" by default).
   emptyText?: string;
+  // The record shown: lets a drilldown field link to its filtered list.
+  recordId?: string;
 }
 
 function stop(e: React.MouseEvent) {
@@ -22,7 +24,24 @@ function stop(e: React.MouseEvent) {
 }
 
 // Renders any stored field value according to its type.
-export function FieldValue({ field, value, compact, className, emptyText = "" }: FieldValueProps) {
+export function FieldValue(props: FieldValueProps) {
+  const ctx = useFieldContext();
+  const { field, recordId } = props;
+  if (field.drilldown && recordId && ctx.listHref && !isEmptyFieldValue(field, props.value)) {
+    return (
+      <a
+        href={ctx.listHref(field.drilldown.object, field.drilldown.field, recordId)}
+        onClick={stop}
+        className={cn("text-primary-600 underline-offset-2 hover:underline dark:text-primary-400", props.className)}
+      >
+        <PlainFieldValue {...props} />
+      </a>
+    );
+  }
+  return <PlainFieldValue {...props} />;
+}
+
+function PlainFieldValue({ field, value, compact, className, emptyText = "" }: FieldValueProps) {
   const ctx = useFieldContext();
   if (isEmptyFieldValue(field, value)) return emptyText ? <span className={cn("text-surface-400", className)}>{emptyText}</span> : null;
   const wrap = cn(compact ? "flex min-w-0 items-center gap-1 overflow-hidden" : "flex flex-wrap items-center gap-1", className);

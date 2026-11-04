@@ -14,7 +14,9 @@
     "exportView": "Exporter la vue en CSV",
     "import": "Importer un CSV",
     "trash": "Enregistrements supprimés",
-    "count_many": "{{count}} enregistrements"
+    "count_many": "{{count}} enregistrements",
+    "linkFilter": "Filtré depuis un lien — {{filters}}",
+    "clearLinkFilter": "Tout afficher"
   },
   "views": {
     "title": "Vues",

@@ -5,8 +5,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Download, MoreHorizontal, Plus, RotateCcw, Save, Search, Trash2, Upload } from "lucide-react";
-import type { CrmRecord, ViewDef } from "../../core/types";
+import { Download, Link2, MoreHorizontal, Plus, RotateCcw, Save, Search, Trash2, Upload, X } from "lucide-react";
+import { FILTER_OPS, type CrmRecord, type Filter, type FilterOp, type ObjectDef, type ViewDef } from "../../core/types";
 import { Button, downloadCsv, Dropdown, EmptyState, fileStamp, IconButton, Input, Kbd, ObjectIcon } from "../../components/ui";
 import { useCan, useCurrentUser, useObject, useOps, usePipelines, useRecords, useViews } from "../../app/CrmDataContext";
 import { paths } from "../../app/paths";
@@ -21,6 +21,17 @@ import { FilterBar } from "./views/FilterBar";
 import { FieldsMenu, SortMenu, ViewOptionsMenu } from "./views/ViewMenus";
 import { ViewTabs } from "./views/ViewTabs";
 import { DataGrid } from "./table/DataGrid";
+import { useFieldContext } from "../../components/ui/fieldContext";
+
+// `?filter=field:op:value` (repeatable): ad-hoc filters from a link (a
+// drilldown field), applied on top of the view and not saved with it.
+function parseLinkFilter(raw: string, object: ObjectDef): Filter | null {
+  const [field, op, ...rest] = raw.split(":");
+  if (!field || !op || !(FILTER_OPS as readonly string[]).includes(op)) return null;
+  if (!object.fields.some((f) => f.id === field)) return null;
+  const value = rest.join(":");
+  return { field, op: op as FilterOp, value: op === "in" || op === "notIn" ? value.split(",").filter(Boolean) : value };
+}
 import { BulkActions } from "./table/BulkActions";
 import { KanbanBoard } from "./kanban/KanbanBoard";
 
@@ -44,6 +55,16 @@ export function ObjectListPage() {
   const canImport = useCan("import");
 
   const viewId = params.get("view");
+  const fieldCtx = useFieldContext();
+  const linkFilters = useMemo(
+    () => (object ? params.getAll("filter").map((raw) => parseLinkFilter(raw, object)).filter((f): f is Filter => !!f) : []),
+    [params, object],
+  );
+  const clearLinkFilters = useCallback(() => {
+    const next = new URLSearchParams(params);
+    next.delete("filter");
+    setParams(next, { replace: true });
+  }, [params, setParams]);
   const saved = views.find((v) => v.id === viewId) ?? views[0];
   const view = useViewDraft(object, saved);
   const draft = view.draft;
@@ -54,7 +75,10 @@ export function ObjectListPage() {
   // Selection is per view; drop ids that disappeared.
   useEffect(() => setSelection(new Set()), [draft?.id, objectId]);
 
-  const rows = useMemo(() => (object && draft ? computeRows(records, object, { filters: draft.filters, sorts: draft.sorts, search }, qctx) : []), [records, object, draft, search, qctx]);
+  const rows = useMemo(
+    () => (object && draft ? computeRows(records, object, { filters: [...draft.filters, ...linkFilters], sorts: draft.sorts, search }, qctx) : []),
+    [records, object, draft, linkFilters, search, qctx],
+  );
   const selectedIds = useMemo(() => rows.filter((r) => selection.has(r.id)).map((r) => r.id), [rows, selection]);
 
   const selectView = useCallback(
@@ -167,6 +191,26 @@ export function ObjectListPage() {
             <ViewOptionsMenu object={object} view={draft} pipelines={pipelines} onChange={view.set} />
           </div>
         </div>
+        {linkFilters.length > 0 && (
+          <div className="mb-1.5 flex flex-wrap items-center gap-2 rounded-md bg-primary-50 px-2.5 py-1.5 text-xs text-primary-800 dark:bg-primary-950/40 dark:text-primary-200">
+            <Link2 className="h-3.5 w-3.5 shrink-0" />
+            <span>
+              {t("list.linkFilter", {
+                filters: linkFilters
+                  .map((f) => {
+                    const label = object.fields.find((x) => x.id === f.field)?.label ?? f.field;
+                    const values = (Array.isArray(f.value) ? f.value : [f.value]).map((v) => fieldCtx.recordLabel(String(v)) ?? String(v));
+                    return `${label}: ${values.join(", ")}`;
+                  })
+                  .join(" · "),
+              })}
+            </span>
+            <button type="button" onClick={clearLinkFilters} className="ml-auto inline-flex items-center gap-1 rounded px-1.5 py-0.5 hover:bg-primary-100 dark:hover:bg-primary-900/50">
+              <X className="h-3 w-3" />
+              {t("list.clearLinkFilter")}
+            </button>
+          </div>
+        )}
         <div className="flex min-h-9 flex-wrap items-center gap-2 border-t border-surface-100 py-1.5 dark:border-surface-800/70">
           <FilterBar object={object} filters={draft.filters} onChange={(filters) => view.set({ filters })} />
           {view.dirty && (

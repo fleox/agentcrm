@@ -12,6 +12,8 @@ export interface FieldContextValue {
   users: CrmUser[];
   // Link to a record page ("#/objects/<object>/<id>").
   recordHref(object: string, id: string): string;
+  // Link to an object's list filtered on "field in [recordId]" (drilldowns).
+  listHref?(object: string, field: string, recordId: string): string;
   // File id of a record's image (its object's imageField), for avatars.
   recordImage?(recordId: string): string | undefined;
 }
@@ -23,6 +25,7 @@ export const FieldContext = createContext<FieldContextValue>({
   searchRecords: () => [],
   users: [],
   recordHref: (object, id) => `#/objects/${object}/${id}`,
+  listHref: (object, field, id) => `#/objects/${object}?filter=${encodeURIComponent(`${field}:in:${id}`)}`,
 });
 
 export function useFieldContext(): FieldContextValue {

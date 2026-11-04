@@ -12,6 +12,12 @@ export const paths = {
   settings: (section?: string) => `/settings${section ? `/${section}` : ""}`,
 };
 
+// A list filtered on records whose relation `field` holds `recordId`
+// (drilldown links, read back by ObjectListPage's `filter` parameter).
+export function listHref(objectId: string, field: string, recordId: string): string {
+  return `#/objects/${objectId}?filter=${encodeURIComponent(`${field}:in:${recordId}`)}`;
+}
+
 // For plain <a href> (FieldValue relation chips).
 export function recordHref(objectId: string, recordId: string): string {
   return `#${paths.record(objectId, recordId)}`;

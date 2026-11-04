@@ -162,7 +162,7 @@ export function RelatedTab({ record, inv }: { record: CrmRecord; inv: InverseRel
                   </td>
                   {cols.map((c) => (
                     <td key={c.id} className="h-9 max-w-[220px] truncate border-b border-surface-100 px-3 dark:border-surface-800/70">
-                      <FieldValue field={c} value={r.fields[c.id]} compact />
+                      <FieldValue field={c} value={r.fields[c.id]} compact recordId={r.id} />
                     </td>
                   ))}
                   <td className="border-b border-surface-100 pr-2 text-right dark:border-surface-800/70">

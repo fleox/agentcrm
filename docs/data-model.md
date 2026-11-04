@@ -8,8 +8,11 @@ AgentCRM is metadata-driven (like Twenty): every business entity is a **record o
 interface ObjectDef { id: string /* "companies" */; labelSingular; labelPlural; icon; color; standard: boolean; labelField: string;
   imageField?: string /* image field shown as the record avatar */; fields: FieldDef[] }
 interface FieldDef { id; label; type: FieldType; required?; unique?; standard?; system?; hidden?; options?: SelectOption[]; currency?;
-  relation?: { object: string; cardinality: "one" | "many"; inverseField?: string }; defaultValue? }
+  relation?: { object: string; cardinality: "one" | "many"; inverseField?: string }; defaultValue?;
+  drilldown?: { object: string; field: string } }
 ```
+
+`drilldown` turns a value (typically a count) into a link to another object's list filtered on the current record: `{ object: "companies", field: "markets" }` on a market's `operatorCount` opens `#/objects/companies?filter=markets:in:<marketId>`. `field` must be a relation of `object` pointing at this object. The list page applies `?filter=field:op:value` (repeatable) on top of the view, shows it in a banner and never saves it with the view.
 
 Field types: `text`, `longText`, `number`, `currency`, `percent`, `date`, `datetime`, `boolean`, `select`, `multiSelect`, `email`, `phone`, `url`, `relation`, `user`, `rating`, `address`, `tags`, `image` (one file: photo / logo), `files` (several files).
 

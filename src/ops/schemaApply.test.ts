@@ -109,6 +109,23 @@ describe("schema apply", () => {
     expect(recordImageId(admin, r)).toBeUndefined(); // a URL is not a stored file
   });
 
+  it("links a count to the related list (drilldown), idempotent, target checked", async () => {
+    const { admin } = await setupTestCrm();
+    const withCount: SchemaSpec = {
+      objects: [
+        { id: "markets", labelSingular: "Market", labelPlural: "Markets", fields: [{ id: "operatorCount", label: "Operators", type: "number", drilldown: { object: "companies", field: "markets" } }] },
+        { id: "companies", labelSingular: "Operator", labelPlural: "Operators", fields: [{ id: "markets", label: "Markets", type: "relation", relation: { object: "markets", cardinality: "many" } }] },
+      ],
+    };
+    await applySchema(admin, withCount);
+    const count = listObjects(admin).find((o) => o.id === "markets")!.fields.find((f) => f.id === "operatorCount")!;
+    expect(count.drilldown).toEqual({ object: "companies", field: "markets" });
+    expect((await applySchema(admin, withCount)).changes).toEqual([]);
+    const broken: SchemaSpec = JSON.parse(JSON.stringify(withCount));
+    broken.objects![0].fields![0].drilldown = { object: "companies", field: "name" };
+    await expect(applySchema(admin, broken)).rejects.toThrow(/no relation field "name"/);
+  });
+
   it("rejects an object without id", () => {
     expect(() => parseSchemaSpec({ objects: [{ labelSingular: "X", labelPlural: "Xs" }] })).toThrow(/needs id/);
   });

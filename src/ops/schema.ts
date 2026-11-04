@@ -9,7 +9,7 @@ import { camelId } from "../shared/lib/utils";
 import { canConvertType, colorAt, convertValue, isEmptyFieldValue } from "../core/fields";
 import { slugId } from "../core/ids";
 import { defaultViewFor } from "../core/schema/standardObjects";
-import { FIELD_TYPES, type FieldDef, type FieldType, type ObjectDef, type SelectOption } from "../core/types";
+import { FIELD_TYPES, type DrilldownDef, type FieldDef, type FieldType, type ObjectDef, type SelectOption } from "../core/types";
 import type { DocMutation } from "../data/types";
 import { assertCan, OpsError, type OpsContext } from "./context";
 import { hardDeleteMutations } from "./records";
@@ -173,6 +173,18 @@ export interface FieldInput {
   currency?: string;
   relation?: FieldDef["relation"];
   defaultValue?: unknown;
+  drilldown?: DrilldownDef;
+}
+
+// A drilldown points at a relation field of another object that targets
+// this object (its list is then filtered on "field in [this record]").
+function checkDrilldown(ctx: OpsContext, objectId: string, d: DrilldownDef): DrilldownDef {
+  const target = requireObject(ctx.store, d.object);
+  const rel = target.fields.find((f) => f.id === d.field);
+  if (!rel || rel.type !== "relation" || rel.relation?.object !== objectId) {
+    throw new OpsError("validation", `Drilldown: ${target.labelPlural} has no relation field "${d.field}" pointing at ${objectId}.`);
+  }
+  return { object: d.object, field: d.field };
 }
 
 function buildOptions(input: Array<string | Partial<SelectOption>> | undefined, existing: SelectOption[] = []): SelectOption[] {
@@ -213,6 +225,7 @@ function buildField(ctx: OpsContext, object: ObjectDef, input: FieldInput): Fiel
     field.relation = { object: rel.object, cardinality: rel.cardinality === "many" ? "many" : "one", ...(rel.inverseField ? { inverseField: rel.inverseField } : {}) };
   }
   if (input.defaultValue !== undefined) field.defaultValue = input.defaultValue;
+  if (input.drilldown) field.drilldown = checkDrilldown(ctx, object.id, input.drilldown);
   return field;
 }
 
@@ -257,6 +270,8 @@ export interface FieldPatch {
   currency?: string;
   defaultValue?: unknown;
   type?: FieldType;
+  // null removes it.
+  drilldown?: DrilldownDef | null;
 }
 
 export interface FieldUpdateResult {
@@ -284,6 +299,7 @@ export async function updateField(ctx: OpsContext, objectId: string, fieldId: st
   }
   if (patch.currency !== undefined) field.currency = patch.currency.toUpperCase();
   if (patch.defaultValue !== undefined) field.defaultValue = patch.defaultValue;
+  if (patch.drilldown !== undefined) field.drilldown = patch.drilldown ? checkDrilldown(ctx, objectId, patch.drilldown) : undefined;
 
   const mutations: DocMutation[] = [];
   let converted: number | undefined;

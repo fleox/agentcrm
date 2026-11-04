@@ -18,7 +18,7 @@ import { FilesContext, type FilesBridge } from "../components/ui/files/context";
 import { prepareUpload } from "../components/ui/files/imageProcessing";
 import { deleteFile, getFileBytes, maxUploadBytes, uploadFile } from "../ops/files";
 import type { FileMeta } from "../core/types";
-import { recordHref } from "./paths";
+import { listHref, recordHref } from "./paths";
 import { useModuleStates } from "./featureRegistry";
 
 // ─── Live store ─────────────────────────────────────────────────────────
@@ -288,6 +288,7 @@ function FieldContextBridge({ children }: { children: ReactNode }) {
       users,
       recordLabel: labelOf,
       recordHref,
+      listHref,
       searchRecords(object, query, limit = 20) {
         const q = query.trim().toLowerCase();
         const o = byObject.get(object);

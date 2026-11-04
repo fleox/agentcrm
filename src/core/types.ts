@@ -82,6 +82,16 @@ export interface FieldDef {
   currency?: string;
   relation?: RelationDef;
   defaultValue?: unknown;
+  // Makes the value a link to another object's list, filtered on the
+  // records whose relation `field` points at this record (e.g. a market's
+  // operator count → the operators present on that market).
+  drilldown?: DrilldownDef;
+}
+
+export interface DrilldownDef {
+  object: string;
+  // Relation field of `object` that targets this field's object.
+  field: string;
 }
 
 export interface ObjectDef {

@@ -117,7 +117,7 @@ function CardBody({ record, object, fields, columns, currentKey, canWrite, onOpe
               <div key={f.id} className="flex min-w-0 items-center gap-2 text-xs">
                 <dt className="w-20 shrink-0 truncate text-surface-400">{f.label}</dt>
                 <dd className="min-w-0 flex-1 truncate text-surface-700 dark:text-surface-200">
-                  <FieldValue field={f} value={v} compact emptyText="—" />
+                  <FieldValue field={f} value={v} compact emptyText="—" recordId={record.id} />
                 </dd>
               </div>
             );

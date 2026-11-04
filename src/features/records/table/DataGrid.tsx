@@ -341,7 +341,7 @@ export function DataGrid(props: DataGridProps) {
                           </button>
                         </div>
                       ) : field ? (
-                        <FieldValue field={field} value={value} compact />
+                        <FieldValue field={field} value={value} compact recordId={r.id} />
                       ) : null}
                       {isEditing && field && (
                         <CellEditor
