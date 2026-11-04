@@ -110,9 +110,14 @@ function fieldPatch(field: FieldDef, spec: FieldInput): { patch: FieldPatch; cha
   }
   if (spec.currency !== undefined && spec.currency !== field.currency) (patch.currency = spec.currency), changes.push("currency");
   const add = missingOptions(field, spec.options);
-  if (add.length) {
-    patch.options = [...(field.options ?? []), ...add];
-    changes.push(`options +${add.join(", +")}`);
+  // An option given as { label, color } recolours the existing one (its id,
+  // hence the stored values, stay).
+  const colour = new Map((spec.options ?? []).flatMap((o) => (typeof o !== "string" && o.label && o.color ? [[o.label.toLowerCase(), o.color] as const] : [])));
+  const recoloured = (field.options ?? []).filter((o) => colour.has(o.label.toLowerCase()) && colour.get(o.label.toLowerCase()) !== o.color);
+  if (add.length || recoloured.length) {
+    patch.options = [...(field.options ?? []).map((o) => ({ ...o, color: colour.get(o.label.toLowerCase()) ?? o.color })), ...add];
+    if (add.length) changes.push(`options +${add.join(", +")}`);
+    if (recoloured.length) changes.push(`colors ${recoloured.map((o) => o.label).join(", ")}`);
   }
   return { patch, changes };
 }

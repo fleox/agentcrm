@@ -1,6 +1,15 @@
 {
   "versions": [
     {
+      "version": "0.9.2",
+      "date": "2026-11-04",
+      "breaking": false,
+      "changes": [
+        "`schema apply`: an option given as `{ label, color }` recolours the existing option (its id and the stored values stay); reported as `colors <labels>`."
+      ],
+      "actions": []
+    },
+    {
       "version": "0.9.1",
       "date": "2026-11-04",
       "breaking": false,

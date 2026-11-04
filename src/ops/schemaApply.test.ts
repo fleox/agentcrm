@@ -153,6 +153,18 @@ describe("schema apply", () => {
     await expect(applySchema(admin, broken)).rejects.toThrow(/must be relations to the same object/);
   });
 
+  it("recolours an existing option given as { label, color }, values kept", async () => {
+    const { admin } = await setupTestCrm();
+    const prio = (color: string): SchemaSpec => ({ objects: [{ id: "companies", labelSingular: "Company", labelPlural: "Companies", fields: [{ id: "prio", label: "Prio", type: "select", options: ["low", { label: "high", color }] }] }] });
+    await applySchema(admin, prio("blue"));
+    const id = () => listObjects(admin).find((o) => o.id === "companies")!.fields.find((f) => f.id === "prio")!.options!;
+    const highId = id().find((o) => o.label === "high")!.id;
+    const report = await applySchema(admin, prio("red"));
+    expect(report.changes.map((c) => c.changes)).toContainEqual(["colors high"]);
+    expect(id().find((o) => o.label === "high")).toMatchObject({ id: highId, color: "red" });
+    expect((await applySchema(admin, prio("red"))).changes).toEqual([]);
+  });
+
   it("rejects an object without id", () => {
     expect(() => parseSchemaSpec({ objects: [{ labelSingular: "X", labelPlural: "Xs" }] })).toThrow(/needs id/);
   });
