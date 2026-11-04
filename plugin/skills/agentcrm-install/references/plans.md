@@ -23,7 +23,7 @@
 }
 ```
 
-Use it from the browser with `npx -y @fleox-agent-crm/agentcrm@0.5.0 serve --json` and the folder picker.
+Use it from the browser with `npx -y @fleox-agent-crm/agentcrm@0.6.0 serve --json` and the folder picker.
 
 ## git-json in a private repo
 

@@ -37,7 +37,7 @@ jobs:
       AGENTCRM_S3_KEY_ID: ${{ secrets.AGENTCRM_S3_KEY_ID }}
       AGENTCRM_S3_SECRET: ${{ secrets.AGENTCRM_S3_SECRET }}
       AGENTCRM_PASSPHRASE: ${{ secrets.AGENTCRM_PASSPHRASE }}
-      CLI: npx -y @fleox-agent-crm/agentcrm@0.5.0
+      CLI: npx -y @fleox-agent-crm/agentcrm@0.6.0
     steps:
       - uses: actions/setup-node@v4
         with:
