@@ -12,17 +12,17 @@ Always confirm with `objects get <object>`: admins add fields and options.
 
 ```bash
 # A company and its contact
-npx -y @fleox-agent-crm/agentcrm@0.7.0 records create --site acme --object companies --set name="Globex" --set domain=globex.com --set industry=software --json
-npx -y @fleox-agent-crm/agentcrm@0.7.0 records create --site acme --object people --fields @grace.json --json
+npx -y @fleox-agent-crm/agentcrm@0.8.0 records create --site acme --object companies --set name="Globex" --set domain=globex.com --set industry=software --json
+npx -y @fleox-agent-crm/agentcrm@0.8.0 records create --site acme --object people --fields @grace.json --json
 
 # A deal linked to both
-npx -y @fleox-agent-crm/agentcrm@0.7.0 records create --site acme --object deals --fields '{"name":"Globex pilot","amount":12000,"closeDate":"2026-12-15","company":"<companyId>","contacts":["<personId>"]}' --json
+npx -y @fleox-agent-crm/agentcrm@0.8.0 records create --site acme --object deals --fields '{"name":"Globex pilot","amount":12000,"closeDate":"2026-12-15","company":"<companyId>","contacts":["<personId>"]}' --json
 
 # Leads created this week, without an owner
-npx -y @fleox-agent-crm/agentcrm@0.7.0 records list --site acme --object people --filter lifecycleStage:eq:lead --filter createdAt:withinDays:-7 --filter ownerId:empty --json
+npx -y @fleox-agent-crm/agentcrm@0.8.0 records list --site acme --object people --filter lifecycleStage:eq:lead --filter createdAt:withinDays:-7 --filter ownerId:empty --json
 
 # Assign an owner
-npx -y @fleox-agent-crm/agentcrm@0.7.0 records update <id> --site acme --owner <userId> --json
+npx -y @fleox-agent-crm/agentcrm@0.8.0 records update <id> --site acme --owner <userId> --json
 ```
 
 `records get` returns `relations` (records this one points to) and `related` (records pointing to it, e.g. a company's people and deals) plus `activityCount`.
