@@ -80,6 +80,7 @@ firebase deploy --only firestore
 | Users | write (roles, disable) | own `name` / `avatarUrl` only | own `name` / `avatarUrl` only | ✗ |
 | Invitations (`invites/{email}`) | write | — | — | read own |
 | Lead inbox (`inbox/{id}`) | read / delete / mark | read / delete / mark | — | **create only** (anyone) |
+| Tombstones (`deletions/{id}`, written with each delete) | write / purge | write | — | ✗ |
 | Anything else | ✗ | ✗ | ✗ | ✗ |
 
 - **Roles** live in `users/{uid}.role`. A user with `disabled: true` loses all
@@ -178,10 +179,29 @@ Dates are epoch milliseconds.
 
 ## Costs
 
-Every user loads the whole dataset when they open the admin, so reads scale
-with *users × documents*. The free Spark plan (50k reads / 20k writes a day)
-covers a small team with a few thousand records. On Blaze, set a budget
-alert.
+Firestore bills every document read. Since 0.4.0 each client keeps a local
+copy of the dataset (the admin in IndexedDB, the CLI in
+`~/.agentcrm/cache/`, mode 0600, one per project and signed-in user):
+
+- the first open of a browser / CLI home reads every document once;
+- every later open, and every CLI command, reads only the documents written
+  since the previous one: one query per collection, about 15 reads when
+  nothing changed (an empty query is billed 1 read);
+- live updates listen to those same queries, so they read only changes;
+- once a week the copy is read in full again, to catch what tombstones
+  can't see (documents deleted from the console).
+
+How it works: every write stamps a server time (`_ts`) on the document, and
+every delete leaves a tombstone in `deletions/{collection}__{id}` in the
+same batch. Clients ask for `_ts > the last one they saw`. Signing out of
+the admin clears that account's copy.
+
+Check what an open cost: `agentcrm doctor --site <alias>` (CLI, check
+`firestore-reads`), or `__AGENTCRM_FIRESTORE__` in the browser console.
+
+With that, the free Spark plan (50k reads / 20k writes a day) holds a CRM of
+several thousand records used by a team every day: the full read happens
+once per browser per week. On Blaze, set a budget alert anyway.
 
 ## Troubleshooting
 

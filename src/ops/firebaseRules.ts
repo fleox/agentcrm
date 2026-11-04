@@ -196,7 +196,7 @@ export function buildFirestoreRules(input: FirestoreRulesOptions): string {
     "      // Nobody changes their own role / email / disabled flag.",
     "      allow update: if (isAdmin() && validRole(request.resource.data.role))",
     "        || (isActive() && request.auth.uid == uid",
-    "            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'avatarUrl', 'updatedAt']));",
+    "            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'avatarUrl', 'updatedAt', '_ts']));",
     "      allow delete: if isAdmin();",
     "    }",
     "",
@@ -224,7 +224,7 @@ export function buildFirestoreRules(input: FirestoreRulesOptions): string {
     "      allow read: if isActive();",
     "      allow create, delete: if isAdmin();",
     "      allow update: if isAdmin()",
-    "        || (isMember() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastRunAt', 'updatedAt']));",
+    "        || (isMember() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastRunAt', 'updatedAt', '_ts']));",
     "    }",
     "",
     "    match /automationRuns/{id} {",
@@ -250,6 +250,17 @@ export function buildFirestoreRules(input: FirestoreRulesOptions): string {
     "    match /extensionChunks/{id} {",
     "      allow read: if isActive();",
     "      allow write: if isAdmin();",
+    "    }",
+    "",
+    "    // Tombstones of deleted documents, so cached copies drop them on the",
+    "    // next incremental read (src/data/firebase/api.ts, withChangeTracking).",
+    "    // Written in the same batch as the delete, which the rules above judge.",
+    "    match /deletions/{id} {",
+    "      allow read: if isActive();",
+    "      allow create, update: if isMember()",
+    "        && request.resource.data.keys().hasOnly(['collection', 'id', '_ts'])",
+    "        && request.resource.data._ts == request.time;",
+    "      allow delete: if isAdmin();",
     "    }",
     "",
     "    // ─── inbox/{id}: public lead-form submissions ──────────────────────",
@@ -300,7 +311,7 @@ export function buildFirebaseJson(): string {
 }
 
 // Every CRM collection the rules cover (tests assert it is all of them).
-export const RULED_COLLECTIONS: readonly string[] = [...MEMBER_WRITE, "views", "automations", "automationRuns", "files", ...ADMIN_WRITE, "users"];
+export const RULED_COLLECTIONS: readonly string[] = [...MEMBER_WRITE, "views", "automations", "automationRuns", "files", ...ADMIN_WRITE, "users", "deletions"];
 
 // ─── Firebase Storage rules (file bytes) ────────────────────────────────
 

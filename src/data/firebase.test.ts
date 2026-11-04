@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { assembleExtensionDocs, checkFirebaseAccess, createFirebaseStoreWith, EXTENSION_CHUNKS_COLLECTION, EXTENSION_CHUNK_CHARS, inviteOps, mutationOps, signInWithSecrets } from "./firebase";
 import { DELETE_FIELD, type FirebaseAuthUser } from "./firebase/api";
 import { createMemoryFirebaseApi, crmRulesModel } from "./firebase/memoryApi";
+import { memoryFirebaseCache, type FirebaseCache } from "./firebase/cache";
 import { snapshotFromDocs } from "./core";
 
 const ADMIN: FirebaseAuthUser = { uid: "u-admin", email: "Boss@Acme.io", displayName: "Boss", emailVerified: true };
@@ -222,5 +223,81 @@ describe("firebase CLI login", () => {
     await store.ready(); // no identity() call, like a CLI site with a recorded --user
     await store.write([{ op: "set", collection: "users", doc: { id: "p-ada", email: "Ada@Acme.io", name: "Ada", role: "admin" } }]);
     expect(api.db.get("invites", "ada@acme.io")).toEqual({ role: "admin", userId: "p-ada", email: "ada@acme.io" });
+  });
+});
+
+describe("firebase incremental loading", () => {
+  // 13 collections + extension chunks + tombstones: one query each.
+  const DELTA_QUERIES = 15;
+  const bigDataset = (n: number) => Array.from({ length: n }, (_, i) => ({ op: "set" as const, collection: "records" as const, doc: { id: `r${i}`, object: "people", fields: { name: `P${i}` }, createdAt: 1, updatedAt: 1 } }));
+
+  async function seeded(n = 300) {
+    const api = createMemoryFirebaseApi({ rules: crmRulesModel("boss@acme.io"), user: ADMIN });
+    const writer = createFirebaseStoreWith({ api, now: () => 1000 });
+    await writer.ready();
+    await writer.write(bigDataset(n));
+    return { api, cache: memoryFirebaseCache() };
+  }
+  const open = async (api: ReturnType<typeof createMemoryFirebaseApi>, cache: FirebaseCache, now = 5000) => {
+    const store = createFirebaseStoreWith({ api, cache, projectId: "p", now: () => now });
+    await store.ready();
+    return store;
+  };
+
+  it("reads everything once, then only what changed", async () => {
+    const { api, cache } = await seeded();
+    const first = await open(api, cache);
+    expect(first.lastLoad()).toMatchObject({ mode: "full" });
+    expect(first.lastLoad()!.reads).toBeGreaterThanOrEqual(300);
+    expect(first.list("records")).toHaveLength(300);
+    expect(first.get("records", "r0")).not.toHaveProperty("_ts");
+
+    const second = await open(api, cache);
+    expect(second.lastLoad()).toEqual({ mode: "incremental", reads: DELTA_QUERIES });
+    expect(second.list("records")).toHaveLength(300);
+  });
+
+  it("picks up another client's update and delete from the cached copy", async () => {
+    const { api, cache } = await seeded();
+    await open(api, cache);
+    const other = createFirebaseStoreWith({ api, now: () => 2000 });
+    await other.ready();
+    await other.write([{ op: "patch", collection: "records", id: "r1", fields: { "fields.name": "Renamed" } }]);
+    await other.write([{ op: "delete", collection: "records", id: "r2" }]);
+
+    const reopened = await open(api, cache);
+    expect(reopened.lastLoad()!.mode).toBe("incremental");
+    expect(reopened.lastLoad()!.reads).toBeLessThan(DELTA_QUERIES + 5);
+    expect((reopened.get("records", "r1")?.fields as Record<string, unknown>).name).toBe("Renamed");
+    expect(reopened.get("records", "r2")).toBeUndefined();
+    expect(reopened.list("records")).toHaveLength(299);
+  });
+
+  it("live updates read only the changes", async () => {
+    const { api, cache } = await seeded();
+    const store = await open(api, cache);
+    const off = store.subscribe(() => undefined);
+    await flush();
+    const before = api.readCount();
+    expect(before - store.readCount()).toBe(0);
+    const other = createFirebaseStoreWith({ api, now: () => 2000 });
+    await other.ready();
+    const afterOtherLoad = api.readCount();
+    await other.write([{ op: "set", collection: "records", doc: { id: "new", object: "people", fields: { name: "New" }, createdAt: 2, updatedAt: 2 } }]);
+    await flush();
+    expect(store.get("records", "new")).toBeDefined();
+    expect(api.readCount() - afterOtherLoad).toBeLessThan(5);
+    await other.write([{ op: "delete", collection: "records", id: "new" }]);
+    await flush();
+    expect(store.get("records", "new")).toBeUndefined();
+    off();
+  });
+
+  it("reads everything again after a week, and per signed-in user", async () => {
+    const { api, cache } = await seeded();
+    await open(api, cache, 5000);
+    expect((await open(api, cache, 5000 + 8 * 24 * 3600 * 1000)).lastLoad()!.mode).toBe("full");
+    api.signInAs({ ...BOB, uid: "u-other" });
+    expect([...cache.entries.keys()]).toEqual(["p:u-admin"]);
   });
 });

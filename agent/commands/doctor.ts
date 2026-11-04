@@ -94,6 +94,17 @@ export async function runDoctor(site: SiteRecord, opts: { repair?: boolean } = {
     try {
       const store = session.store;
       add({ id: "data-access", status: "ok", message: `Dataset opened (${store.kind}${session.user ? `, acting as ${session.user.email} (${session.user.role})` : ""}).` });
+      const { isFirebaseStore } = await import("../../src/data/firebase");
+      const load = isFirebaseStore(store) ? store.lastLoad() : null;
+      if (load) {
+        add({
+          id: "firestore-reads",
+          status: "ok",
+          message: load.mode === "incremental"
+            ? `Loaded from the local cache + changes: ${load.reads} Firestore reads.`
+            : `Full read: ${load.reads} Firestore reads (the next commands read only what changed).`,
+        });
+      }
       const { usersOf, objectsOf, pipelinesOf, settingsDoc, recordsOf } = await import("../../src/ops/store");
       const missing: string[] = [];
       for (const id of ["companies", "people", "deals"]) if (!objectsOf(store).some((o) => o.id === id)) missing.push(`object ${id}`);

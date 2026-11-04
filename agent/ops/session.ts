@@ -130,7 +130,8 @@ export async function openStore(
     await prepareFirebaseSession(opts.account, runtime.firebase, opts.secrets.email);
   }
   const { createDataStore } = await import("../../src/data");
-  return createDataStore(runtime, { secrets: opts.secrets ?? {}, passphrase: opts.passphrase ?? null, clientId: cliClientId() });
+  const firebaseCache = runtime.backend === "firebase" ? (await import("../firebaseCache")).fileFirebaseCache() : undefined;
+  return createDataStore(runtime, { secrets: opts.secrets ?? {}, passphrase: opts.passphrase ?? null, clientId: cliClientId(), firebaseCache });
 }
 
 function siteSecrets(site: SiteRecord): { dataTarget?: Target; secrets?: Record<string, unknown>; passphrase?: string | null; account?: string } {

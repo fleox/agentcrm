@@ -1,6 +1,19 @@
 {
   "versions": [
     {
+      "version": "0.4.0",
+      "date": "2026-11-04",
+      "breaking": false,
+      "changes": [
+        "Firebase: incremental loading. Each client keeps a local copy of the dataset (admin: IndexedDB, CLI: ~/.agentcrm/cache/, mode 0600, per project and user) and reads only the documents written since its last open; live updates listen to those changes only. Before, every open of the admin read the whole dataset twice and every CLI command once, which the free Spark plan (50k reads a day) could not hold for a CRM of a few thousand records. A full read still happens once a week.",
+        "Firebase: every write stamps a server time (`_ts`) and every delete leaves a tombstone in `deletions/{collection}__{id}`, in the same batch.",
+        "doctor reports the Firestore reads of the load (`firestore-reads`); the admin exposes the same figure as `__AGENTCRM_FIRESTORE__` in the browser console."
+      ],
+      "actions": [
+        "Firebase CRMs: publish the new Firestore rules (Settings → Data backend → Firestore security rules, or `agentcrm options --firebase-rules <bootstrap admin email>`). Until then every delete is refused (its tombstone has no rule) and self profile edits fail."
+      ]
+    },
+    {
       "version": "0.3.3",
       "date": "2026-11-04",
       "breaking": false,

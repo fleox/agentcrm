@@ -3,7 +3,18 @@
 // the real security rules would (return false → "permission-denied").
 
 import { getPath, setPath, splitPath } from "../patch";
-import { DELETE_FIELD, type FirebaseApi, type FirebaseAuthUser, type FirestoreDocData, type FirestoreWriteOp } from "./api";
+import {
+  DELETE_FIELD,
+  SERVER_TIMESTAMP,
+  splitTs,
+  TS_FIELD,
+  withChangeTracking,
+  type CollectionChanges,
+  type FirebaseApi,
+  type FirebaseAuthUser,
+  type FirestoreDocData,
+  type FirestoreWriteOp,
+} from "./api";
 
 export interface MemoryFirestoreRules {
   read?(collection: string, id: string | null, auth: FirebaseAuthUser | null, db: MemoryFirestore): boolean;
@@ -47,10 +58,30 @@ export function createMemoryFirebaseApi(opts: { rules?: MemoryFirestoreRules; us
   const rules = opts.rules ?? {};
 
   const docsOf = (c: string): FirestoreDocData[] =>
-    [...coll(c).entries()].map(([id, data]) => ({ id, data: JSON.parse(JSON.stringify(data)) as Record<string, unknown> }));
+    [...coll(c).entries()].map(([id, data]) => splitTs(id, JSON.parse(JSON.stringify(data)) as Record<string, unknown>));
+  const docsSince = (c: string, ms: number) => docsOf(c).filter((d) => (d.ts ?? 0) > ms);
+
+  // Server clock of the fake: one tick per committed batch.
+  let clock = 1_000_000;
+  let reads = 0;
+  const billed = (n: number) => (reads += Math.max(n, 1));
+
+  // watchSince listeners: what each one has delivered (id → ts).
+  const sinceWatchers = new Map<string, Set<{ ms: number; seen: Map<string, number>; onChanges: (c: CollectionChanges) => void }>>();
+  const pushSince = (c: string, w: { ms: number; seen: Map<string, number>; onChanges: (c: CollectionChanges) => void }) => {
+    const now = docsSince(c, w.ms);
+    const upserts = now.filter((d) => w.seen.get(d.id) !== d.ts);
+    const ids = new Set(now.map((d) => d.id));
+    const removed = [...w.seen.keys()].filter((id) => !ids.has(id));
+    for (const d of upserts) w.seen.set(d.id, d.ts ?? 0);
+    for (const id of removed) w.seen.delete(id);
+    billed(upserts.length + removed.length);
+    if (upserts.length || removed.length) w.onChanges({ upserts, removed });
+  };
 
   const emit = (c: string) => {
     for (const w of watchers.get(c) ?? []) w(docsOf(c));
+    for (const w of sinceWatchers.get(c) ?? []) pushSince(c, w);
   };
 
   const objects = new Map<string, Uint8Array>();
@@ -80,9 +111,32 @@ export function createMemoryFirebaseApi(opts: { rules?: MemoryFirestoreRules; us
       for (const l of authListeners) l(u);
     },
 
+    readCount: () => reads,
     async listCollection(c) {
       if (rules.read && !rules.read(c, null, user, db)) throw denied();
-      return docsOf(c);
+      const docs = docsOf(c);
+      billed(docs.length);
+      return docs;
+    },
+    async listSince(c, ms) {
+      if (rules.read && !rules.read(c, null, user, db)) throw denied();
+      const docs = docsSince(c, ms);
+      billed(docs.length);
+      return docs;
+    },
+    watchSince(c, ms, onChanges, onError) {
+      if (rules.read && !rules.read(c, null, user, db)) {
+        queueMicrotask(() => onError(denied()));
+        return () => undefined;
+      }
+      let set = sinceWatchers.get(c);
+      if (!set) sinceWatchers.set(c, (set = new Set()));
+      const w = { ms, seen: new Map<string, number>(), onChanges };
+      set.add(w);
+      queueMicrotask(() => {
+        if (set!.has(w)) pushSince(c, w);
+      });
+      return () => set!.delete(w);
     },
     watchCollection(c, onDocs, onError) {
       if (rules.read && !rules.read(c, null, user, db)) {
@@ -97,8 +151,9 @@ export function createMemoryFirebaseApi(opts: { rules?: MemoryFirestoreRules; us
     },
     async getDoc(c, id) {
       if (rules.read && !rules.read(c, id, user, db)) throw denied();
+      billed(1);
       const d = coll(c).get(id);
-      return d ? (JSON.parse(JSON.stringify(d)) as Record<string, unknown>) : null;
+      return d ? splitTs(id, JSON.parse(JSON.stringify(d)) as Record<string, unknown>).data : null;
     },
     async commit(ops) {
       if (ops.length > 500) throw Object.assign(new Error("Too many writes in one batch"), { code: "invalid-argument" });
@@ -107,9 +162,14 @@ export function createMemoryFirebaseApi(opts: { rules?: MemoryFirestoreRules; us
         api.failNextCommit = null;
         throw err;
       }
-      // Validate everything first (atomic batch).
+      // Validate everything first (atomic batch). Server time is one value
+      // per batch, like Firestore's request.time.
+      const ts = ++clock;
+      const resolve = (data: Record<string, unknown>) =>
+        Object.fromEntries(Object.entries(data).map(([k, v]) => [k, v === SERVER_TIMESTAMP ? ts : v]));
+      const tracked = withChangeTracking(ops).map((op) => (op.type === "delete" ? op : ({ ...op, data: resolve(op.data) } as FirestoreWriteOp)));
       const staged: Array<[string, string, Record<string, unknown> | null]> = [];
-      for (const op of ops) {
+      for (const op of tracked) {
         const current = coll(op.collection).get(op.id);
         let next: Record<string, unknown> | null;
         if (op.type === "set") next = JSON.parse(JSON.stringify(op.data)) as Record<string, unknown>;
@@ -191,10 +251,11 @@ export function crmRulesModel(adminEmail: string, opts: { signup?: "invite" | "o
           return opts.signup === "open" && next?.role === "member";
         }
         if (op.type === "update" && auth && op.id === auth.uid && role) {
-          return Object.keys(op.data).every((k) => ["name", "avatarUrl", "updatedAt"].includes(k.split(".")[0]));
+          return Object.keys(op.data).every((k) => ["name", "avatarUrl", "updatedAt", TS_FIELD].includes(k.split(".")[0]));
         }
         return false;
       }
+      if (op.collection === "deletions") return op.type === "delete" ? role === "admin" : role === "admin" || role === "member";
       if (["records", "activities", "automationRuns"].includes(op.collection)) return role === "admin" || role === "member";
       if (op.collection === "files") return op.type === "delete" ? role === "admin" : role === "admin" || role === "member";
       if (op.collection === "views") {

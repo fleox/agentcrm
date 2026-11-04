@@ -25,6 +25,12 @@ describe("firestore rules generator", () => {
   it("is balanced and covers every CRM collection + invites + inbox, closed by default", () => {
     expect(rules.split("{").length).toBe(rules.split("}").length);
     for (const c of COLLECTIONS) expect(RULED_COLLECTIONS).toContain(c);
+    // Incremental loads: tombstones are ruled, and the server-time stamp
+    // never breaks the narrow self-updates.
+    expect(rules).toContain("match /deletions/{id}");
+    expect(rules).toContain("request.resource.data._ts == request.time");
+    expect(rules).toContain("hasOnly(['name', 'avatarUrl', 'updatedAt', '_ts'])");
+    expect(rules).toContain("hasOnly(['lastRunAt', 'updatedAt', '_ts'])");
     for (const c of [...COLLECTIONS, "invites", "inbox"]) block(rules, `/${c}/{${c === "users" ? "uid" : c === "invites" ? "email" : "id"}}`);
     expect(block(rules, "/{document=**}")).toContain("allow read, write: if false;");
   });
@@ -44,7 +50,7 @@ describe("firestore rules generator", () => {
 
   it("users can't escalate: self updates limited to profile keys", () => {
     const users = block(rules, "/users/{uid}");
-    expect(users).toContain("affectedKeys().hasOnly(['name', 'avatarUrl', 'updatedAt'])");
+    expect(users).toContain("affectedKeys().hasOnly(['name', 'avatarUrl', 'updatedAt', '_ts'])");
     expect(users).toContain("allow delete: if isAdmin();");
     expect(rules).toContain("(isBootstrapAdmin() && d.role == 'admin')");
   });

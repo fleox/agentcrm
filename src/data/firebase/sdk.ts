@@ -26,10 +26,24 @@ import {
   getFirestore,
   initializeFirestore,
   onSnapshot,
+  query,
+  serverTimestamp,
+  where,
   writeBatch,
   type Firestore,
 } from "firebase/firestore";
-import { DELETE_FIELD, type FirebaseApi, type FirebaseAuthUser, type FirebaseStorageApi, type FirestoreDocData, type FirestoreWriteOp } from "./api";
+import {
+  DELETE_FIELD,
+  SERVER_TIMESTAMP,
+  splitTs,
+  TS_FIELD,
+  withChangeTracking,
+  type FirebaseApi,
+  type FirebaseAuthUser,
+  type FirebaseStorageApi,
+  type FirestoreDocData,
+  type FirestoreWriteOp,
+} from "./api";
 
 // Firebase Storage, loaded on first use (its SDK chunk only ships to
 // those who upload / view files). Reading needs the bucket's CORS
@@ -113,16 +127,53 @@ export function createSdkFirebaseApi(options: FirebaseOptions): FirebaseApi {
     });
   });
 
+  // Firestore bills each document a query returns, and 1 for an empty one.
+  let reads = 0;
+  const billed = (n: number) => (reads += Math.max(n, 1));
+  const toDoc = (id: string, raw: unknown): FirestoreDocData => splitTs(id, fromFirestore(raw) as Record<string, unknown>);
+  const since = (name: string, ms: number) => query(collection(db, name), where(TS_FIELD, ">", Timestamp.fromMillis(ms)));
+  const writeValue = (v: unknown) => (v === DELETE_FIELD ? deleteField() : v === SERVER_TIMESTAMP ? serverTimestamp() : v);
+
   return {
     ...(options.storageBucket ? { storage: sdkStorage(app) } : {}),
+    readCount: () => reads,
     async listCollection(name) {
       const snap = await getDocs(collection(db, name));
-      return snap.docs.map((d) => ({ id: d.id, data: fromFirestore(d.data()) as Record<string, unknown> }));
+      billed(snap.size);
+      return snap.docs.map((d) => toDoc(d.id, d.data()));
+    },
+    async listSince(name, ms) {
+      const snap = await getDocs(since(name, ms));
+      billed(snap.size);
+      return snap.docs.map((d) => toDoc(d.id, d.data()));
     },
     watchCollection(name, onDocs, onError) {
       return onSnapshot(
         collection(db, name),
-        (snap) => onDocs(snap.docs.map((d): FirestoreDocData => ({ id: d.id, data: fromFirestore(d.data()) as Record<string, unknown> }))),
+        (snap) => {
+          if (!snap.metadata.fromCache) billed(snap.docChanges().length);
+          onDocs(snap.docs.map((d) => toDoc(d.id, d.data())));
+        },
+        onError,
+      );
+    },
+    watchSince(name, ms, onChanges, onError) {
+      return onSnapshot(
+        since(name, ms),
+        (snap) => {
+          if (!snap.metadata.fromCache) billed(snap.docChanges().length);
+          const upserts: FirestoreDocData[] = [];
+          const removed: string[] = [];
+          for (const ch of snap.docChanges()) {
+            // A local write shows up first with no server time yet; its
+            // confirmed version follows.
+            if (ch.doc.metadata.hasPendingWrites) continue;
+            // Leaving the query only happens on delete (TS_FIELD only grows).
+            if (ch.type === "removed") removed.push(ch.doc.id);
+            else upserts.push(toDoc(ch.doc.id, ch.doc.data()));
+          }
+          if (upserts.length || removed.length) onChanges({ upserts, removed });
+        },
         onError,
       );
     },
@@ -132,15 +183,16 @@ export function createSdkFirebaseApi(options: FirebaseOptions): FirebaseApi {
     },
     async commit(ops: FirestoreWriteOp[]) {
       const batch = writeBatch(db);
-      for (const op of ops) {
+      for (const op of withChangeTracking(ops)) {
         const ref = doc(db, op.collection, op.id);
-        if (op.type === "set") batch.set(ref, op.data);
-        else if (op.type === "delete") batch.delete(ref);
-        else {
-          const data: Record<string, unknown> = {};
-          for (const [k, v] of Object.entries(op.data)) data[k] = v === DELETE_FIELD ? deleteField() : v;
-          batch.update(ref, data);
+        if (op.type === "delete") {
+          batch.delete(ref);
+          continue;
         }
+        const data: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(op.data)) data[k] = writeValue(v);
+        if (op.type === "set") batch.set(ref, data);
+        else batch.update(ref, data);
       }
       await batch.commit();
     },

@@ -24,16 +24,18 @@ import { registerAuthAdapter } from "../app/AuthContext";
 import type { FirebaseRuntimeConfig, RuntimeConfig } from "../lib/runtimeConfig";
 import { createStoreCore, emptySnapshot, type Snapshot } from "./core";
 import {
-  chunk,
   DELETE_FIELD,
   errorCode,
-  FIRESTORE_BATCH_LIMIT,
+  chunkForCommit,
+  DELETIONS_COLLECTION,
+  setTrackedCollections,
   isPermissionDenied,
   type FirebaseApi,
   type FirebaseAuthUser,
   type FirestoreDocData,
   type FirestoreWriteOp,
 } from "./firebase/api";
+import { FIREBASE_CACHE_VERSION, firebaseCacheKey, indexedDbFirebaseCache, isUsableCache, type FirebaseCache } from "./firebase/cache";
 import { assertFileId, FileStoreUnavailableError, withFileStore } from "./files";
 import { normalizeDoc, plainCopy } from "./patch";
 import type { BackendOptions } from "./registry";
@@ -48,6 +50,9 @@ export const INVITES_COLLECTION = "invites";
 export const EXTENSION_CHUNKS_COLLECTION = "extensionChunks";
 export const EXTENSION_CHUNK_CHARS = 300_000;
 export const INBOX_COLLECTION = "inbox";
+// What the store keeps in memory and in its local cache (change-tracked).
+const TRACKED: readonly string[] = [...COLLECTIONS, EXTENSION_CHUNKS_COLLECTION];
+setTrackedCollections(TRACKED);
 type Role = StoreIdentity["role"];
 const ROLES: readonly Role[] = ["admin", "member", "viewer"];
 
@@ -69,6 +74,11 @@ export interface FirebaseStoreOptions {
   // Require a verified address (must match the rules; default true).
   requireVerifiedEmail?: boolean;
   now?: () => number;
+  // Local copy of the dataset (incremental loads). Absent: every open
+  // reads everything.
+  cache?: FirebaseCache | null;
+  // Project the cache entry belongs to (with the signed-in uid).
+  projectId?: string;
 }
 
 export interface FirebaseDataStore extends DataStore {
@@ -78,6 +88,10 @@ export interface FirebaseDataStore extends DataStore {
   accessError(): FirebaseAccessError | null;
   // Forget the cached identity (after a sign-in / verification).
   resetSession(): void;
+  // Documents read from Firestore by this store's api so far (billed reads).
+  readCount(): number;
+  // How the last load went: from the local cache + changes, or a full read.
+  lastLoad(): { mode: "full" | "incremental"; reads: number } | null;
 }
 
 export function isFirebaseStore(store: DataStore): store is FirebaseDataStore {
@@ -286,7 +300,7 @@ export function createFirebaseStoreWith(opts: FirebaseStoreOptions): FirebaseDat
     return s;
   }
 
-  async function readCollection(c: CollectionName | typeof EXTENSION_CHUNKS_COLLECTION): Promise<FirestoreDocData[]> {
+  async function readCollection(c: string): Promise<FirestoreDocData[]> {
     try {
       return await api.listCollection(c);
     } catch (err) {
@@ -377,7 +391,7 @@ export function createFirebaseStoreWith(opts: FirebaseStoreOptions): FirebaseDat
     // Invitations are written by admins only (the rules refuse others,
     // which would fail the whole batch).
     if (currentIdentity?.role === "admin") ops.push(...inviteOps(mutations, (id) => before.users.get(id) ?? rawUsers.get(id), after));
-    for (const part of chunk(ops, FIRESTORE_BATCH_LIMIT)) await api.commit(part);
+    for (const part of chunkForCommit(ops)) await api.commit(part);
     for (const m of mutations) {
       if (m.collection !== "users") continue;
       const id = m.op === "set" ? m.doc.id : m.id;
@@ -387,55 +401,160 @@ export function createFirebaseStoreWith(opts: FirebaseStoreOptions): FirebaseDat
     }
   }
 
+  // ─── Incremental loading ───────────────────────────────────────────────
+  // `docs` mirrors every tracked collection as read from Firestore; the
+  // snapshot is rebuilt from it. With a cache, an open restores `docs`
+  // and reads only documents written after `cursor` (+ tombstones).
+  const docs = new Map<string, Map<string, FirestoreDocData>>(TRACKED.map((c) => [c, new Map()]));
+  let cursor = 0;
+  let fullAt = 0;
+  let cacheKey: string | null = null;
+  let loadInfo: { mode: "full" | "incremental"; reads: number } | null = null;
+  let markLoaded: () => void = () => undefined;
+  const loadedOnce = new Promise<void>((resolve) => (markLoaded = resolve));
+  let saveTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const advance = (d: FirestoreDocData) => {
+    if (typeof d.ts === "number" && d.ts > cursor) cursor = d.ts;
+  };
+
+  function upsert(c: string, list: FirestoreDocData[]) {
+    const m = docs.get(c)!;
+    for (const d of list) {
+      m.set(d.id, d);
+      advance(d);
+    }
+  }
+
+  function applyTombstones(list: FirestoreDocData[]) {
+    for (const t of list) {
+      advance(t);
+      const c = t.data.collection;
+      const id = t.data.id;
+      if (typeof c === "string" && typeof id === "string") docs.get(c)?.delete(id);
+    }
+  }
+
+  function snapshotFromDocsMap(): Snapshot {
+    const raw = new Map<CollectionName, FirestoreDocData[]>(COLLECTIONS.map((c) => [c, [...docs.get(c)!.values()]]));
+    return buildSnapshot(raw, [...docs.get(EXTENSION_CHUNKS_COLLECTION)!.values()]);
+  }
+
+  async function saveCache(): Promise<void> {
+    if (!opts.cache || !cacheKey) return;
+    const collections = Object.fromEntries(TRACKED.map((c) => [c, [...docs.get(c)!.values()]]));
+    await opts.cache.write(cacheKey, { v: FIREBASE_CACHE_VERSION, cursor, fullAt, collections });
+  }
+
+  function scheduleSave() {
+    if (saveTimer) return;
+    saveTimer = setTimeout(() => {
+      saveTimer = null;
+      void saveCache();
+    }, 1000);
+    (saveTimer as { unref?: () => void }).unref?.();
+  }
+
+  // Denied collections (viewer, not invited) are empty, as before.
+  async function readSince(c: string, since: number): Promise<FirestoreDocData[] | null> {
+    try {
+      return await api.listSince(c, since);
+    } catch (err) {
+      if (isPermissionDenied(err)) return null;
+      throw err;
+    }
+  }
+
   const core = createStoreCore({
     kind: "firebase",
 
     async load() {
-      const raw = new Map<CollectionName, FirestoreDocData[]>();
-      let chunks: FirestoreDocData[] = [];
-      await Promise.all([...COLLECTIONS.map(async (c) => raw.set(c, await readCollection(c))), readCollection(EXTENSION_CHUNKS_COLLECTION).then((d) => (chunks = d))]);
-      const snap = buildSnapshot(raw, chunks);
+      const readsBefore = api.readCount();
+      const user = await api.auth.currentUser();
+      cacheKey = opts.cache && opts.projectId && user ? firebaseCacheKey(opts.projectId, user.uid) : null;
+      const cached = cacheKey ? await opts.cache!.read(cacheKey) : null;
+      let mode: "full" | "incremental" = "full";
+      if (isUsableCache(cached, now())) {
+        mode = "incremental";
+        cursor = cached.cursor;
+        fullAt = cached.fullAt;
+        for (const c of TRACKED) docs.set(c, new Map((cached.collections[c] ?? []).map((d) => [d.id, d])));
+        const since = cursor;
+        const changed = await Promise.all(TRACKED.map(async (c) => [c, await readSince(c, since)] as const));
+        for (const [c, list] of changed) {
+          if (list === null) docs.set(c, new Map());
+          else upsert(c, list);
+        }
+        applyTombstones((await readSince(DELETIONS_COLLECTION, since)) ?? []);
+      } else {
+        cursor = 0;
+        const all = await Promise.all(TRACKED.map(async (c) => [c, await readCollection(c)] as const));
+        for (const [c, list] of all) {
+          docs.set(c, new Map());
+          upsert(c, list);
+        }
+        fullAt = now();
+      }
+      loadInfo = { mode, reads: api.readCount() - readsBefore };
+      // Read it from the browser console to check the cost of an open.
+      (globalThis as { __AGENTCRM_FIRESTORE__?: unknown }).__AGENTCRM_FIRESTORE__ = { ...loadInfo, cursor, totalReads: api.readCount };
+      await saveCache();
+      markLoaded();
+      const snap = snapshotFromDocsMap();
       scheduleReconcile();
       return snap;
     },
 
     persist: (mutations, before, after) => persist(mutations, before, after),
 
+    // Live updates: one listener per collection on documents written after
+    // the load's cursor — only changes are read (and billed).
     watch(onRemote) {
-      const raw = new Map<CollectionName, FirestoreDocData[]>();
-      let chunks: FirestoreDocData[] | null = null;
+      let offs: Array<() => void> = [];
+      let stopped = false;
       const emit = () => {
-        if (raw.size < COLLECTIONS.length || chunks === null) return;
-        onRemote(buildSnapshot(raw, chunks));
+        onRemote(snapshotFromDocsMap());
         scheduleReconcile();
+        scheduleSave();
       };
-      const offs = COLLECTIONS.map((c) =>
-        api.watchCollection(
-          c,
-          (docs) => {
-            raw.set(c, docs);
-            emit();
-          },
-          (err) => {
-            if (isPermissionDenied(err)) raw.set(c, []);
-            else console.warn(`[firebase] live updates of ${c} stopped:`, err);
-          },
-        ),
-      );
-      offs.push(
-        api.watchCollection(
-          EXTENSION_CHUNKS_COLLECTION,
-          (docs) => {
-            chunks = docs;
-            emit();
-          },
-          (err) => {
-            if (isPermissionDenied(err)) chunks = [];
-            else console.warn("[firebase] live updates of extension chunks stopped:", err);
-          },
-        ),
-      );
-      return () => offs.forEach((off) => off());
+      void loadedOnce.then(() => {
+        if (stopped) return;
+        const since = cursor;
+        offs = TRACKED.map((c) =>
+          api.watchSince(
+            c,
+            since,
+            (ch) => {
+              upsert(c, ch.upserts);
+              for (const id of ch.removed) docs.get(c)!.delete(id);
+              emit();
+            },
+            (err) => {
+              if (isPermissionDenied(err)) {
+                docs.set(c, new Map());
+                emit();
+              } else console.warn(`[firebase] live updates of ${c} stopped:`, err);
+            },
+          ),
+        );
+        offs.push(
+          api.watchSince(
+            DELETIONS_COLLECTION,
+            since,
+            (ch) => {
+              applyTombstones(ch.upserts);
+              emit();
+            },
+            (err) => {
+              if (!isPermissionDenied(err)) console.warn("[firebase] live deletions stopped:", err);
+            },
+          ),
+        );
+      });
+      return () => {
+        stopped = true;
+        offs.forEach((off) => off());
+      };
     },
 
     identity: getIdentity,
@@ -499,9 +618,25 @@ export function createFirebaseStoreWith(opts: FirebaseStoreOptions): FirebaseDat
     }
   }
 
+  // Persist what live updates brought before the store goes away.
+  const closeCore = core.close?.bind(core);
+  core.close = () => {
+    if (saveTimer) {
+      clearTimeout(saveTimer);
+      saveTimer = null;
+      void saveCache();
+    }
+    closeCore?.();
+  };
+
   withFileStore(core, firebaseFileStore(api));
+  activeCacheClear = async () => {
+    if (opts.cache && cacheKey) await opts.cache.clear(cacheKey);
+  };
   return Object.assign(core as FirebaseDataStore, {
     api,
+    readCount: () => api.readCount(),
+    lastLoad: () => loadInfo,
     accessError: () => lastAccessError,
     resetSession() {
       identityPromise = null;
@@ -529,9 +664,12 @@ export function firebaseApiFor(config: FirebaseRuntimeConfig): Promise<FirebaseA
 }
 
 let activeApi: FirebaseApi | null = null;
+let activeCacheClear: (() => Promise<void>) | null = null;
 
 registerAuthAdapter("firebase", {
   async signOut() {
+    // The local copy belongs to the account that signs out.
+    await activeCacheClear?.();
     await activeApi?.auth.signOut();
   },
 });
@@ -595,5 +733,6 @@ export async function createFirebaseStore(config: RuntimeConfig, opts: BackendOp
   const api = await firebaseApiFor(cfg);
   activeApi = api;
   await signInWithSecrets(api, opts.secrets);
-  return createFirebaseStoreWith({ api });
+  const cache = opts.firebaseCache === undefined ? indexedDbFirebaseCache() : opts.firebaseCache;
+  return createFirebaseStoreWith({ api, cache, projectId: cfg.firebase.projectId });
 }

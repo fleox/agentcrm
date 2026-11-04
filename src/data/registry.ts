@@ -16,6 +16,9 @@ export interface BackendOptions {
   secrets?: Record<string, unknown>;
   // Journal client id (stable per CLI process / browser tab).
   clientId?: string;
+  // Firebase: local copy of the dataset for incremental loads (browser
+  // default: IndexedDB; the CLI passes a file cache; null disables it).
+  firebaseCache?: import("./firebase/cache").FirebaseCache | null;
   pollIntervalMs?: number;
 }
 
