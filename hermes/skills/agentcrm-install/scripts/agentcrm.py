@@ -36,7 +36,7 @@ from typing import Any, Dict, List, Optional, Sequence
 
 # Pinned to the release these skills were written for (kept in step by the
 # repository's release script).
-VERSION = "0.3.1"
+VERSION = "0.3.2"
 PACKAGE = "@fleox-agent-crm/agentcrm"
 MIN_NODE = (20, 6)
 
