@@ -35,13 +35,13 @@ Settings → **Modules** → tab **Installed extensions**:
 ### With the CLI
 
 ```bash
-npx -y @fleox-agent-crm/agentcrm@0.9.0 ext install ./sales-goals-1.0.0.zip --site acme          # plan
-npx -y @fleox-agent-crm/agentcrm@0.9.0 ext install ./sales-goals-1.0.0.zip --site acme --yes    # install + load
-npx -y @fleox-agent-crm/agentcrm@0.9.0 ext list --site acme
-npx -y @fleox-agent-crm/agentcrm@0.9.0 ext disable sales-goals --site acme --yes
-npx -y @fleox-agent-crm/agentcrm@0.9.0 ext enable sales-goals --site acme --cascade --yes
-npx -y @fleox-agent-crm/agentcrm@0.9.0 ext export sales-goals --site acme --out backup.zip
-npx -y @fleox-agent-crm/agentcrm@0.9.0 ext uninstall sales-goals --site acme --yes
+npx -y @fleox-agent-crm/agentcrm@0.9.1 ext install ./sales-goals-1.0.0.zip --site acme          # plan
+npx -y @fleox-agent-crm/agentcrm@0.9.1 ext install ./sales-goals-1.0.0.zip --site acme --yes    # install + load
+npx -y @fleox-agent-crm/agentcrm@0.9.1 ext list --site acme
+npx -y @fleox-agent-crm/agentcrm@0.9.1 ext disable sales-goals --site acme --yes
+npx -y @fleox-agent-crm/agentcrm@0.9.1 ext enable sales-goals --site acme --cascade --yes
+npx -y @fleox-agent-crm/agentcrm@0.9.1 ext export sales-goals --site acme --out backup.zip
+npx -y @fleox-agent-crm/agentcrm@0.9.1 ext uninstall sales-goals --site acme --yes
 ```
 
 `ext install` accepts a ZIP, an unpacked folder or a built project folder. It first loads the bundle in a throw-away CRM, like `ext check`: a package that doesn't load is refused and the installed version stays as it was (`--force` skips this check). Re-installing the same version or a lower one is allowed, with a warning in the plan. A module whose dependencies are disabled is installed disabled (the plan says so); `ext enable <id> --cascade` turns the dependencies on.
@@ -110,10 +110,10 @@ In the CRM's own data, collection `extensions` (one document per extension: mani
 
 ## Checklist for authors
 
-1. `npx -y @fleox-agent-crm/agentcrm@0.9.0 ext new module|theme <id>` — then `npm install`.
+1. `npx -y @fleox-agent-crm/agentcrm@0.9.1 ext new module|theme <id>` — then `npm install`.
 2. Code against `@agent-crm/runtime` ([reference](runtime-api-reference.md)); strings in English **and** French.
 3. `npm run typecheck && npm run build`.
-4. `npx -y @fleox-agent-crm/agentcrm@0.9.0 ext check .` — no errors, read the warnings.
-5. `npx -y @fleox-agent-crm/agentcrm@0.9.0 ext pack .` → `<id>-<version>.zip`.
+4. `npx -y @fleox-agent-crm/agentcrm@0.9.1 ext check .` — no errors, read the warnings.
+5. `npx -y @fleox-agent-crm/agentcrm@0.9.1 ext pack .` → `<id>-<version>.zip`.
 6. Try it on a test CRM (`ext install … --yes`), in light and dark mode, in French, as an admin and as a member / viewer.
 7. Bump `version` for every release.

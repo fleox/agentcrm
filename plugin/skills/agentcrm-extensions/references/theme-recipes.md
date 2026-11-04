@@ -57,9 +57,9 @@ Variables: `--acc-50` … `--acc-950` (accent scale), `--srf-50` … `--srf-950`
 
 ```bash
 npm run build
-npx -y @fleox-agent-crm/agentcrm@0.9.0 ext check . --json
-npx -y @fleox-agent-crm/agentcrm@0.9.0 ext install . --site acme --yes --json
-npx -y @fleox-agent-crm/agentcrm@0.9.0 appearance preset acme-brand --site acme --json
+npx -y @fleox-agent-crm/agentcrm@0.9.1 ext check . --json
+npx -y @fleox-agent-crm/agentcrm@0.9.1 ext install . --site acme --yes --json
+npx -y @fleox-agent-crm/agentcrm@0.9.1 appearance preset acme-brand --site acme --json
 ```
 
 `ext check` prints the resolved values (`data.theme.appearance`) and the CSS size. `appearance preset` prints the before / after plan; add `--yes` to apply. Open the admin to look at it (light and dark, a table and a record page).
