@@ -41,14 +41,14 @@ Modules with a settings section link to it from their card (deals → Pipelines,
 ## CLI
 
 ```bash
-npx -y @fleox-agent-crm/agentcrm@0.9.2 modules list --site acme
-npx -y @fleox-agent-crm/agentcrm@0.9.2 modules get deals --site acme
-npx -y @fleox-agent-crm/agentcrm@0.9.2 modules disable forms --site acme                  # plan: which modules change
-npx -y @fleox-agent-crm/agentcrm@0.9.2 modules disable forms --site acme --yes
-npx -y @fleox-agent-crm/agentcrm@0.9.2 modules disable deals --site acme --cascade --yes  # also disables modules needing deals
-npx -y @fleox-agent-crm/agentcrm@0.9.2 modules enable deals --site acme --yes
-npx -y @fleox-agent-crm/agentcrm@0.9.2 modules config get sales-goals --site acme
-npx -y @fleox-agent-crm/agentcrm@0.9.2 modules config set sales-goals --value '{"targets":{"owner":50000}}' --site acme --yes
+npx -y @fleox-agent-crm/agentcrm@0.9.3 modules list --site acme
+npx -y @fleox-agent-crm/agentcrm@0.9.3 modules get deals --site acme
+npx -y @fleox-agent-crm/agentcrm@0.9.3 modules disable forms --site acme                  # plan: which modules change
+npx -y @fleox-agent-crm/agentcrm@0.9.3 modules disable forms --site acme --yes
+npx -y @fleox-agent-crm/agentcrm@0.9.3 modules disable deals --site acme --cascade --yes  # also disables modules needing deals
+npx -y @fleox-agent-crm/agentcrm@0.9.3 modules enable deals --site acme --yes
+npx -y @fleox-agent-crm/agentcrm@0.9.3 modules config get sales-goals --site acme
+npx -y @fleox-agent-crm/agentcrm@0.9.3 modules config set sales-goals --value '{"targets":{"owner":50000}}' --site acme --yes
 ```
 
 AI tools: `list_modules`, `set_module_enabled` (`cascade`); MCP resource: `agentcrm://modules`.
