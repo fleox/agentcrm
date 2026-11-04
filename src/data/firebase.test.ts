@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assembleExtensionDocs, createFirebaseStoreWith, EXTENSION_CHUNKS_COLLECTION, EXTENSION_CHUNK_CHARS, inviteOps, mutationOps } from "./firebase";
+import { assembleExtensionDocs, checkFirebaseAccess, createFirebaseStoreWith, EXTENSION_CHUNKS_COLLECTION, EXTENSION_CHUNK_CHARS, inviteOps, mutationOps, signInWithSecrets } from "./firebase";
 import { DELETE_FIELD, type FirebaseAuthUser } from "./firebase/api";
 import { createMemoryFirebaseApi, crmRulesModel } from "./firebase/memoryApi";
 import { snapshotFromDocs } from "./core";
@@ -178,5 +178,40 @@ describe("firebase extension chunks", () => {
     expect(ops).toHaveLength(1);
     const docs = assembleExtensionDocs([{ id: "e", data: { chunks: { "bundle.js": 2 }, files: {} } }], [{ id: "e__bundle.js__0", data: { ext: "e", file: "bundle.js", index: 0, data: "a" } }]);
     expect(docs[0].data).toEqual({ files: {} });
+  });
+});
+
+describe("firebase CLI login", () => {
+  const ROBOT: FirebaseAuthUser = { uid: "u-robot", email: "robot@acme.io", displayName: "Robot", emailVerified: true };
+  const login = { email: "Robot@Acme.io ", password: "s3cret" };
+
+  function cli(opts: { verified?: boolean; admin?: string } = {}) {
+    const api = createMemoryFirebaseApi({ rules: crmRulesModel(opts.admin ?? "robot@acme.io"), user: null });
+    api.accounts.set("robot@acme.io", { password: "s3cret", user: { ...ROBOT, emailVerified: opts.verified ?? true } });
+    return api;
+  }
+
+  it("signs in with the secrets, and only once per address", async () => {
+    const api = cli();
+    expect(await signInWithSecrets(api, undefined)).toBeNull();
+    expect((await signInWithSecrets(api, login))?.uid).toBe("u-robot");
+    api.accounts.clear(); // a second sign-in would now fail
+    expect((await signInWithSecrets(api, login))?.uid).toBe("u-robot");
+  });
+
+  it("lets the CLI seed the CRM through the rules once signed in", async () => {
+    const api = cli();
+    await signInWithSecrets(api, login);
+    const store = createFirebaseStoreWith({ api, now: () => 1000 });
+    await store.ready();
+    await store.write([{ op: "set", collection: "settings", doc: { id: "general", name: "Acme" } }]);
+    expect(api.db.get("settings", "general")).toMatchObject({ name: "Acme" });
+  });
+
+  it("access check: ok, wrong password, unverified address, rules for another admin", async () => {
+    expect(await checkFirebaseAccess(cli(), login, "p")).toMatchObject({ ok: true, existing: false });
+    expect(await checkFirebaseAccess(cli(), { ...login, password: "nope" }, "p")).toMatchObject({ ok: false, detail: expect.stringMatching(/refused the login/) });
+    expect(await checkFirebaseAccess(cli({ verified: false }), login, "p")).toMatchObject({ ok: false, detail: expect.stringMatching(/not verified/) });
+    expect(await checkFirebaseAccess(cli({ admin: "boss@acme.io" }), login, "p")).toMatchObject({ ok: false, detail: expect.stringMatching(/bootstrap admin/) });
   });
 });

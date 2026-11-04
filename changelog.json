@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "0.3.2",
+      "date": "2026-11-04",
+      "breaking": false,
+      "changes": [
+        "CLI / MCP on a Firebase CRM: the stored firebase:<name> login now signs in. Up to 0.3.1 the CLI read and wrote Firestore unauthenticated, so the rules refused every write (install, doctor --repair, records…) and reads came back empty.",
+        "Firebase sessions are kept between CLI runs (~/.agentcrm/sessions/, mode 0600) instead of a password sign-in per command, which Firebase rate-limits; `credentials set` / `remove` forget the session of that login.",
+        "install --dry-run on Firebase really checks access: it signs in, refuses an unverified address and reads through the rules (it used to report ok without checking anything)."
+      ],
+      "actions": []
+    },
+    {
       "version": "0.3.1",
       "date": "2026-11-03",
       "breaking": false,

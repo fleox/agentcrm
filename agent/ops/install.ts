@@ -3,6 +3,7 @@ import { createRemoteGitTransport } from "../../src/shared/git";
 import { testStorageConnection } from "../../src/shared/storage/testConnection";
 import { subscribeToToasts } from "../../src/shared/lib/toast";
 import type { SeedReport } from "../../src/ops/seed";
+import { installBrowserEnv } from "../browserEnv";
 import { setCredential } from "../credentials";
 import { adminOps, applyOps, buildConnector } from "./hosting";
 import type { ResolvedPlan, Target } from "./plan";
@@ -105,8 +106,19 @@ export async function checkPlan(plan: ResolvedPlan): Promise<CheckReport> {
   } else if (plan.runtime.backend === "git-json") {
     const access = await probeTarget({ connectorId: "git-pages", settings: { ...plan.runtime.git, ...(plan.backendSecrets ?? {}) } }, { requireSiteUrl: false, requirePrivate: true });
     data = { ...access, existing: false };
+  } else if (plan.runtime.backend === "firebase") {
+    // Signs in with the plan's login and reads through the rules, like the
+    // install will (it used to report ok without checking anything).
+    const runtime = plan.runtime;
+    try {
+      installBrowserEnv();
+      const { firebaseApiFor, checkFirebaseAccess } = await import("../../src/data/firebase");
+      data = await checkFirebaseAccess(await firebaseApiFor(runtime), plan.backendSecrets, runtime.firebase.projectId ?? "");
+    } catch (err) {
+      data = { ok: false, detail: (err as Error).message, existing: false };
+    }
   } else {
-    data = { ok: true, detail: `Firebase project ${(plan.runtime as { firebase: { projectId?: string } }).firebase.projectId} (checked at install: sign-in + rules)`, existing: false };
+    data = { ok: true, detail: "no data access to check", existing: false };
   }
   const hosting = plan.hostingTarget ? await probeTarget(plan.hostingTarget, { requireSiteUrl: plan.hostingTarget.connectorId !== "local-folder" }) : null;
   return { data, hosting };
@@ -132,7 +144,7 @@ export async function runInstall(plan: ResolvedPlan, onStep: (label: string) => 
       onStep(`Generated the dataset passphrase (stored as ${plan.passphraseAccount})`);
     }
     onStep("Opening the dataset");
-    const store = await openStore(plan.runtime, { dataTarget: plan.dataTarget, secrets: plan.backendSecrets, passphrase: plan.passphrase });
+    const store = await openStore(plan.runtime, { dataTarget: plan.dataTarget, secrets: plan.backendSecrets, passphrase: plan.passphrase, account: plan.credentials.data });
     let seed: SeedReport;
     try {
       await store.ready();

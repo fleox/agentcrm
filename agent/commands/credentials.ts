@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { copyToClipboard, fromAwsProfile, fromEnv, fromGh, promptHidden } from "../credentialSources";
+import { forgetFirebaseSession } from "../firebaseSession";
 import { CREDENTIAL_TYPES, listCredentials, parseAccount, removeCredential, requireCredential, setCredential } from "../credentials";
 import { CliError, printResult } from "../output";
 import { PACKAGE_NAME, readVersionInfo } from "../paths";
@@ -49,6 +50,7 @@ export const credentialsCommand: Command = {
     const spec = CREDENTIAL_TYPES[type];
     if (action === "remove") {
       const removed = removeCredential(account);
+      forgetFirebaseSession(account);
       printResult(io, { account, removed }, () => (removed ? `Removed ${account}.` : `${account} was not stored.`));
       return;
     }
@@ -99,6 +101,7 @@ export const credentialsCommand: Command = {
       for (const field of spec.fields) values[field] = await promptHidden(`${field}: `);
     }
     const saved = setCredential(account, values);
+    forgetFirebaseSession(account); // a new login starts a new session
     printResult(io, { account, type, fields: Object.keys(saved.values) }, () => `Stored ${account} (${Object.keys(saved.values).join(", ")}).`);
   },
 };

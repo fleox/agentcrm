@@ -530,12 +530,64 @@ registerAuthAdapter("firebase", {
   },
 });
 
+function loginOf(secrets: Record<string, unknown> | undefined): { email: string; password: string } | null {
+  const email = typeof secrets?.email === "string" ? secrets.email.trim() : "";
+  const password = typeof secrets?.password === "string" ? secrets.password : "";
+  return email && password ? { email, password } : null;
+}
+
+// CLI / MCP front doors: the `firebase:<name>` login (email + password)
+// arrives as backend secrets and signs the api in, unless a session of
+// that same address is already restored. The admin passes no secrets: its
+// login screen signs in. Without this the CLI read and wrote Firestore
+// unauthenticated, and the rules denied everything.
+export async function signInWithSecrets(api: FirebaseApi, secrets: Record<string, unknown> | undefined): Promise<FirebaseAuthUser | null> {
+  const login = loginOf(secrets);
+  if (!login) return null;
+  const current = await api.auth.currentUser();
+  if (current?.email && current.email.toLowerCase() === login.email.toLowerCase()) return current;
+  if (current) await api.auth.signOut();
+  return api.auth.signInWithPassword(login.email, login.password);
+}
+
+export interface FirebaseAccessCheck {
+  ok: boolean;
+  detail: string;
+  existing: boolean;
+}
+
+// Install dry run: signs in with the login, then reads settings/general,
+// which the generated rules only allow to a verified bootstrap admin or an
+// active user. Side-effect free.
+export async function checkFirebaseAccess(api: FirebaseApi, secrets: Record<string, unknown> | undefined, projectId: string): Promise<FirebaseAccessCheck> {
+  const login = loginOf(secrets);
+  if (!login) return { ok: false, detail: "the Firebase login (email + password) is missing", existing: false };
+  let user: FirebaseAuthUser | null;
+  try {
+    user = await signInWithSecrets(api, secrets);
+  } catch (err) {
+    const code = (err as { code?: string }).code ?? "";
+    return { ok: false, detail: `Firebase refused the login of ${login.email} (${code || (err as Error).message}): check the address, the password and that Email/Password sign-in is enabled`, existing: false };
+  }
+  if (!user?.emailVerified) {
+    return { ok: false, detail: `${login.email} is not verified yet: open the verification email Firebase sent to it (the rules refuse unverified addresses), then retry`, existing: false };
+  }
+  try {
+    const settings = await api.getDoc("settings", "general");
+    return { ok: true, detail: `Firebase project ${projectId}: signed in as ${login.email}, rules accept it${settings ? " — existing CRM: it is kept, only what's missing is seeded" : ""}`, existing: !!settings };
+  } catch (err) {
+    if (!isPermissionDenied(err)) throw err;
+    return { ok: false, detail: `Firestore refused ${login.email}: publish the AgentCRM rules with this address as bootstrap admin (\`agentcrm options --firebase-rules ${login.email}\`), or invite it`, existing: false };
+  }
+}
+
 // The DataStore factory is synchronous in the registry contract but the
 // SDK loads lazily, so this returns a promise (the registry accepts it).
-export async function createFirebaseStore(config: RuntimeConfig, _opts: BackendOptions = {}): Promise<FirebaseDataStore> {
+export async function createFirebaseStore(config: RuntimeConfig, opts: BackendOptions = {}): Promise<FirebaseDataStore> {
   const cfg = config as FirebaseRuntimeConfig;
   if (!cfg.firebase?.apiKey || !cfg.firebase.projectId) throw new Error("The Firebase web config (apiKey, projectId) is missing.");
   const api = await firebaseApiFor(cfg);
   activeApi = api;
+  await signInWithSecrets(api, opts.secrets);
   return createFirebaseStoreWith({ api });
 }

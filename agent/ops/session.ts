@@ -95,7 +95,7 @@ export function hostingTargetOf(site: SiteRecord): Target | null {
 // hold them, for src/ code that reads secrets from there.
 export async function openStore(
   runtime: RuntimeConfig,
-  opts: { dataTarget?: Target; secrets?: Record<string, unknown>; passphrase?: string | null },
+  opts: { dataTarget?: Target; secrets?: Record<string, unknown>; passphrase?: string | null; account?: string },
 ): Promise<DataStore> {
   installBrowserEnv();
   const rc = await import("../../src/lib/runtimeConfig");
@@ -124,11 +124,16 @@ export async function openStore(
     const token = String(opts.secrets?.token ?? "");
     if (token) rc.setGitToken(runtime.git, token);
   }
+  if (runtime.backend === "firebase" && opts.account && typeof opts.secrets?.email === "string") {
+    // Session kept between runs; the store signs in with the secrets.
+    const { prepareFirebaseSession } = await import("../firebaseSession");
+    await prepareFirebaseSession(opts.account, runtime.firebase, opts.secrets.email);
+  }
   const { createDataStore } = await import("../../src/data");
   return createDataStore(runtime, { secrets: opts.secrets ?? {}, passphrase: opts.passphrase ?? null, clientId: cliClientId() });
 }
 
-function siteSecrets(site: SiteRecord): { dataTarget?: Target; secrets?: Record<string, unknown>; passphrase?: string | null } {
+function siteSecrets(site: SiteRecord): { dataTarget?: Target; secrets?: Record<string, unknown>; passphrase?: string | null; account?: string } {
   const passphrase = site.credentials.passphrase ? requireCredential(site.credentials.passphrase).values.passphrase : null;
   if (site.runtime.backend === "journal") return { dataTarget: dataTargetOf(site), passphrase };
   if (site.runtime.backend === "git-json" || site.runtime.backend === "firebase") {
@@ -139,7 +144,7 @@ function siteSecrets(site: SiteRecord): { dataTarget?: Target; secrets?: Record<
         `Store it (\`agentcrm credentials set ${site.runtime.backend === "firebase" ? "firebase" : site.runtime.git.provider}:<name>\`), then \`agentcrm site credentials ${site.alias} --data-credential <account>\`.`,
       );
     }
-    return { secrets: requireCredential(site.credentials.data).values, passphrase };
+    return { secrets: requireCredential(site.credentials.data).values, passphrase, account: site.credentials.data };
   }
   return { passphrase };
 }
