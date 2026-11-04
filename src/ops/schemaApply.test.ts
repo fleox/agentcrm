@@ -89,6 +89,14 @@ describe("schema apply", () => {
     expect(listPipelines(admin).some((p) => p.id === "p2")).toBe(false);
   });
 
+  it("ignores key order in stored view filters (Firestore reorders map keys)", async () => {
+    const { admin } = await setupTestCrm();
+    await applySchema(admin, spec);
+    const view = listViews(admin, "accounts").find((v) => v.name === "Pending accounts")!;
+    await admin.store.write([{ op: "patch", collection: "views", id: view.id, fields: { filters: [{ value: "pending", op: "eq", field: "status" }] } }]);
+    expect((await applySchema(admin, spec)).changes).toEqual([]);
+  });
+
   it("rejects an object without id", () => {
     expect(() => parseSchemaSpec({ objects: [{ labelSingular: "X", labelPlural: "Xs" }] })).toThrow(/needs id/);
   });

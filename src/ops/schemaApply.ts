@@ -63,7 +63,13 @@ export interface SchemaApplyReport {
   extraFields: string[];
 }
 
-const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+// Key order is not significant (Firestore returns map keys in its own order).
+function stable(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(stable);
+  if (v && typeof v === "object") return Object.fromEntries(Object.keys(v as object).sort().map((k) => [k, stable((v as Record<string, unknown>)[k])]));
+  return v ?? null;
+}
+const same = (a: unknown, b: unknown) => JSON.stringify(stable(a)) === JSON.stringify(stable(b));
 
 export function parseSchemaSpec(raw: unknown): SchemaSpec {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new OpsError("validation", "A schema is a JSON object with objects, pipelines and / or views.");
