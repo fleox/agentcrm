@@ -126,6 +126,33 @@ describe("schema apply", () => {
     await expect(applySchema(admin, broken)).rejects.toThrow(/no relation field "name"/);
   });
 
+  it("sets a rollup scoped on a relation, idempotent, fields checked", async () => {
+    const { admin } = await setupTestCrm();
+    const rollup = { object: "presences", via: "operator", field: "status", scope: { field: "markets", via: "market" } };
+    const withRollup: SchemaSpec = {
+      objects: [
+        { id: "companies", labelSingular: "Operator", labelPlural: "Operators", fields: [{ id: "markets", label: "Markets", type: "relation", relation: { object: "markets", cardinality: "many" } }, { id: "igmStatus", label: "Status", type: "tags", rollup }] },
+        { id: "markets", labelSingular: "Market", labelPlural: "Markets", fields: [] },
+        {
+          id: "presences",
+          labelSingular: "Presence",
+          labelPlural: "Presences",
+          fields: [
+            { id: "operator", label: "Operator", type: "relation", relation: { object: "companies", cardinality: "one" } },
+            { id: "market", label: "Market", type: "relation", relation: { object: "markets", cardinality: "one" } },
+            { id: "status", label: "Status", type: "text" },
+          ],
+        },
+      ],
+    };
+    await applySchema(admin, withRollup);
+    expect(listObjects(admin).find((o) => o.id === "companies")!.fields.find((f) => f.id === "igmStatus")!.rollup).toEqual(rollup);
+    expect((await applySchema(admin, withRollup)).changes).toEqual([]);
+    const broken: SchemaSpec = JSON.parse(JSON.stringify(withRollup));
+    broken.objects![0].fields![1].rollup = { ...rollup, scope: { field: "markets", via: "operator" } };
+    await expect(applySchema(admin, broken)).rejects.toThrow(/must be relations to the same object/);
+  });
+
   it("rejects an object without id", () => {
     expect(() => parseSchemaSpec({ objects: [{ labelSingular: "X", labelPlural: "Xs" }] })).toThrow(/needs id/);
   });

@@ -9,7 +9,7 @@ import { camelId } from "../shared/lib/utils";
 import { canConvertType, colorAt, convertValue, isEmptyFieldValue } from "../core/fields";
 import { slugId } from "../core/ids";
 import { defaultViewFor } from "../core/schema/standardObjects";
-import { FIELD_TYPES, type DrilldownDef, type FieldDef, type FieldType, type ObjectDef, type SelectOption } from "../core/types";
+import { FIELD_TYPES, type DrilldownDef, type FieldDef, type FieldType, type ObjectDef, type RollupDef, type SelectOption } from "../core/types";
 import type { DocMutation } from "../data/types";
 import { assertCan, OpsError, type OpsContext } from "./context";
 import { hardDeleteMutations } from "./records";
@@ -174,6 +174,7 @@ export interface FieldInput {
   relation?: FieldDef["relation"];
   defaultValue?: unknown;
   drilldown?: DrilldownDef;
+  rollup?: RollupDef;
 }
 
 // A drilldown points at a relation field of another object that targets
@@ -185,6 +186,26 @@ function checkDrilldown(ctx: OpsContext, objectId: string, d: DrilldownDef): Dri
     throw new OpsError("validation", `Drilldown: ${target.labelPlural} has no relation field "${d.field}" pointing at ${objectId}.`);
   }
   return { object: d.object, field: d.field };
+}
+
+// A rollup reads a field of a child object linked back to this object; its
+// scope pairs a relation of this object with the child's relation to the
+// same target.
+function checkRollup(ctx: OpsContext, objectId: string, r: RollupDef): RollupDef {
+  const child = requireObject(ctx.store, r.object);
+  const via = child.fields.find((f) => f.id === r.via);
+  if (!via || via.type !== "relation" || via.relation?.object !== objectId) {
+    throw new OpsError("validation", `Rollup: ${child.labelPlural} has no relation field "${r.via}" pointing at ${objectId}.`);
+  }
+  if (!child.fields.some((f) => f.id === r.field)) throw new OpsError("validation", `Rollup: ${child.labelPlural} has no field "${r.field}".`);
+  if (r.scope) {
+    const own = requireObject(ctx.store, objectId).fields.find((f) => f.id === r.scope!.field);
+    const theirs = child.fields.find((f) => f.id === r.scope!.via);
+    if (!own || own.type !== "relation" || !theirs || theirs.type !== "relation" || own.relation?.object !== theirs.relation?.object) {
+      throw new OpsError("validation", `Rollup scope: "${r.scope.field}" and ${child.labelPlural}."${r.scope.via}" must be relations to the same object.`);
+    }
+  }
+  return { object: r.object, via: r.via, field: r.field, ...(r.scope ? { scope: { field: r.scope.field, via: r.scope.via } } : {}), ...(r.where?.length ? { where: r.where } : {}) };
 }
 
 function buildOptions(input: Array<string | Partial<SelectOption>> | undefined, existing: SelectOption[] = []): SelectOption[] {
@@ -226,6 +247,7 @@ function buildField(ctx: OpsContext, object: ObjectDef, input: FieldInput): Fiel
   }
   if (input.defaultValue !== undefined) field.defaultValue = input.defaultValue;
   if (input.drilldown) field.drilldown = checkDrilldown(ctx, object.id, input.drilldown);
+  if (input.rollup) field.rollup = checkRollup(ctx, object.id, input.rollup);
   return field;
 }
 
@@ -272,6 +294,7 @@ export interface FieldPatch {
   type?: FieldType;
   // null removes it.
   drilldown?: DrilldownDef | null;
+  rollup?: RollupDef | null;
 }
 
 export interface FieldUpdateResult {
@@ -300,6 +323,7 @@ export async function updateField(ctx: OpsContext, objectId: string, fieldId: st
   if (patch.currency !== undefined) field.currency = patch.currency.toUpperCase();
   if (patch.defaultValue !== undefined) field.defaultValue = patch.defaultValue;
   if (patch.drilldown !== undefined) field.drilldown = patch.drilldown ? checkDrilldown(ctx, objectId, patch.drilldown) : undefined;
+  if (patch.rollup !== undefined) field.rollup = patch.rollup ? checkRollup(ctx, objectId, patch.rollup) : undefined;
 
   const mutations: DocMutation[] = [];
   let converted: number | undefined;

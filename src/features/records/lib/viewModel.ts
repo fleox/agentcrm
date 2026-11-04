@@ -2,7 +2,7 @@
 // field type, record defaults derived from filters, kanban columns. No
 // React here (unit-testable).
 
-import { isEmptyFieldValue, recordLabel } from "../../../core/fields";
+import { findOption, isEmptyFieldValue, recordLabel } from "../../../core/fields";
 import { applyFilters, applySorts, resolveField, getRecordValue, type QueryContext } from "../../../core/query";
 import type { CrmRecord, CrmUser, FieldDef, FieldType, Filter, FilterOp, ObjectDef, Pipeline, PipelineStage, Sort, ViewDef } from "../../../core/types";
 
@@ -81,6 +81,102 @@ export function isFilterComplete(f: Filter): boolean {
   if (!opNeedsValue(f.op)) return true;
   if (Array.isArray(f.value)) return f.value.length > 0;
   return f.value !== undefined && f.value !== null && f.value !== "";
+}
+
+// Rollup fields (`field.rollup`) store the values of every child record (an
+// operator's status on all its markets). While the list is filtered on a
+// rollup's scope relation (Markets = FR), the rollup is recomputed from the
+// children in that scope only, so the cells, the other filters and the sorts
+// all see the values for those markets. Unscoped: the stored values stand.
+export function scopeRollups(
+  records: CrmRecord[],
+  allRecords: CrmRecord[],
+  object: ObjectDef,
+  filters: Filter[],
+  qctx: Omit<QueryContext, "object">,
+  objectOf: (id: string) => ObjectDef | undefined,
+): { records: CrmRecord[]; scoped: string[] } {
+  const rollups = object.fields.filter((f) => f.rollup?.scope && filters.some((x) => x.field === f.rollup!.scope!.field && isFilterComplete(x)));
+  if (!rollups.length) return { records, scoped: [] };
+  const childCache = new Map<string, Map<string, CrmRecord[]>>();
+  const children = (f: FieldDef): Map<string, CrmRecord[]> => {
+    const r = f.rollup!;
+    const key = JSON.stringify([r.object, r.via, r.where ?? []]);
+    if (!childCache.has(key)) {
+      const childObject = objectOf(r.object);
+      let list = allRecords.filter((c) => c.object === r.object && !c.deletedAt);
+      if (childObject && r.where?.length) list = applyFilters(list, r.where, { ...qctx, object: childObject });
+      const byParent = new Map<string, CrmRecord[]>();
+      for (const c of list) for (const p of asIds(c.fields[r.via])) byParent.set(p, [...(byParent.get(p) ?? []), c]);
+      childCache.set(key, byParent);
+    }
+    return childCache.get(key)!;
+  };
+  const out = records.map((rec) => {
+    const fields = { ...rec.fields };
+    for (const f of rollups) {
+      const r = f.rollup!;
+      const inScope = (children(f).get(rec.id) ?? []).filter((c) =>
+        filters.every((x) => x.field !== r.scope!.field || !isFilterComplete(x) || scopeMatches(asIds(c.fields[r.scope!.via]), x, r.scope!.via, qctx, objectOf(r.object))),
+      );
+      fields[f.id] = rollupValue(f, inScope.map((c) => c.fields[r.field]));
+    }
+    return { ...rec, fields };
+  });
+  return { records: out, scoped: rollups.map((f) => f.id) };
+}
+
+function asIds(v: unknown): string[] {
+  return (Array.isArray(v) ? v : v === undefined || v === null || v === "" ? [] : [v]).map(String);
+}
+
+// Does a child (its scope relation ids) match one filter of the list on the
+// parent's scope relation? eq / in / contains narrow; other operators (neq,
+// notIn, empty…) select parents, not markets: the child stays in scope.
+function scopeMatches(ids: string[], filter: Filter, via: string, qctx: Omit<QueryContext, "object">, childObject: ObjectDef | undefined): boolean {
+  const values = asIds(filter.value);
+  switch (filter.op) {
+    case "eq":
+    case "in":
+      return ids.some((id) => values.includes(id));
+    case "contains": {
+      const target = childObject?.fields.find((f) => f.id === via)?.relation?.object ?? "";
+      const needle = String(filter.value ?? "").trim().toLowerCase();
+      return ids.some((id) => (qctx.recordLabel?.(target, id) ?? id).toLowerCase().includes(needle));
+    }
+    default:
+      return true;
+  }
+}
+
+// Child values → the rollup field's own type: options in option order,
+// distinct tags / ids, a sum for numbers, distinct text joined.
+function rollupValue(field: FieldDef, values: unknown[]): unknown {
+  const flat = values.flatMap((v) => (Array.isArray(v) ? v : [v])).filter((v) => v !== undefined && v !== null && v !== "");
+  switch (field.type) {
+    case "multiSelect":
+    case "select": {
+      const ids = new Set(flat.map((v) => findOption(field, v)?.id).filter((x): x is string => !!x));
+      const ordered = (field.options ?? []).map((o) => o.id).filter((id) => ids.has(id));
+      return field.type === "select" ? ordered[0] : ordered.length ? ordered : undefined;
+    }
+    case "relation": {
+      const ids = [...new Set(flat.map(String))];
+      return field.relation?.cardinality === "one" ? ids[0] : ids.length ? ids : undefined;
+    }
+    case "tags": {
+      const tags = [...new Set(flat.map((v) => String(v).trim()))].sort((a, b) => a.localeCompare(b));
+      return tags.length ? tags : undefined;
+    }
+    case "number":
+    case "currency":
+    case "percent":
+      return flat.length ? flat.reduce<number>((s, v) => s + (Number(v) || 0), 0) : undefined;
+    default: {
+      const text = [...new Set(flat.map(String))];
+      return text.length ? text.join(", ") : undefined;
+    }
+  }
 }
 
 // Field values implied by the active filters (a record created from a

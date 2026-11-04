@@ -86,12 +86,30 @@ export interface FieldDef {
   // records whose relation `field` points at this record (e.g. a market's
   // operator count → the operators present on that market).
   drilldown?: DrilldownDef;
+  // The value rolls up a field of child records (an operator's status on
+  // each of its markets). The stored value covers every child; a list
+  // filtered on `scope` recomputes it from the children in that scope.
+  rollup?: RollupDef;
 }
 
 export interface DrilldownDef {
   object: string;
   // Relation field of `object` that targets this field's object.
   field: string;
+}
+
+export interface RollupDef {
+  // Child object and its relation to this field's object.
+  object: string;
+  via: string;
+  // Child field whose values are collected.
+  field: string;
+  // Narrowing: a relation of this object (`field`, e.g. "markets") and the
+  // child's relation to the same target (`via`, e.g. "market"). A list
+  // filtered on `field` only rolls up the children whose `via` matches.
+  scope?: { field: string; via: string };
+  // Children counted (e.g. archived ≠ true).
+  where?: Filter[];
 }
 
 export interface ObjectDef {

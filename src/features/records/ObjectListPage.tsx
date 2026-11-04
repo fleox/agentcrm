@@ -8,7 +8,7 @@ import { useTranslation } from "react-i18next";
 import { Download, Link2, MoreHorizontal, Plus, RotateCcw, Save, Search, Trash2, Upload, X } from "lucide-react";
 import { FILTER_OPS, type CrmRecord, type Filter, type FilterOp, type ObjectDef, type ViewDef } from "../../core/types";
 import { Button, downloadCsv, Dropdown, EmptyState, fileStamp, IconButton, Input, Kbd, ObjectIcon } from "../../components/ui";
-import { useCan, useCurrentUser, useObject, useOps, usePipelines, useRecords, useViews } from "../../app/CrmDataContext";
+import { useCan, useCurrentUser, useObject, useObjects, useOps, usePipelines, useRecords, useViews } from "../../app/CrmDataContext";
 import { paths } from "../../app/paths";
 import { emitShellEvent } from "../../app/shellEvents";
 import { createRecord, updateRecord } from "../../ops/records";
@@ -16,12 +16,14 @@ import { createView, updateView } from "../../ops/views";
 import { exportCsv } from "../../ops/exportCsv";
 import { toast } from "../../shared/lib/toast";
 import { useLocalState, useQueryCtx, useRun, useViewDraft } from "./lib/hooks";
-import { computeRows, defaultsFromFilters, isFilterComplete, visibleColumns } from "./lib/viewModel";
+import { computeRows, defaultsFromFilters, isFilterComplete, scopeRollups, visibleColumns } from "./lib/viewModel";
 import { FilterBar } from "./views/FilterBar";
 import { FieldsMenu, SortMenu, ViewOptionsMenu } from "./views/ViewMenus";
 import { ViewTabs } from "./views/ViewTabs";
 import { DataGrid } from "./table/DataGrid";
 import { useFieldContext } from "../../components/ui/fieldContext";
+import { BulkActions } from "./table/BulkActions";
+import { KanbanBoard } from "./kanban/KanbanBoard";
 
 // `?filter=field:op:value` (repeatable): ad-hoc filters from a link (a
 // drilldown field), applied on top of the view and not saved with it.
@@ -32,8 +34,6 @@ function parseLinkFilter(raw: string, object: ObjectDef): Filter | null {
   const value = rest.join(":");
   return { field, op: op as FilterOp, value: op === "in" || op === "notIn" ? value.split(",").filter(Boolean) : value };
 }
-import { BulkActions } from "./table/BulkActions";
-import { KanbanBoard } from "./kanban/KanbanBoard";
 
 export function ObjectListPage() {
   const { objectId = "" } = useParams();
@@ -45,6 +45,8 @@ export function ObjectListPage() {
   const user = useCurrentUser();
   const object = useObject(objectId);
   const records = useRecords(objectId);
+  const allRecords = useRecords(undefined);
+  const objects = useObjects({ includeHidden: true });
   const views = useViews(objectId);
   const pipelines = usePipelines(objectId);
   const qctx = useQueryCtx();
@@ -75,9 +77,16 @@ export function ObjectListPage() {
   // Selection is per view; drop ids that disappeared.
   useEffect(() => setSelection(new Set()), [draft?.id, objectId]);
 
+  const filters = useMemo(() => [...(draft?.filters ?? []), ...linkFilters], [draft, linkFilters]);
+  // Rollups narrowed to the filtered scope (an operator's status on the
+  // filtered markets only); `scoped` lists the recomputed fields.
+  const scoped = useMemo(
+    () => (object ? scopeRollups(records, allRecords, object, filters, qctx, (id) => objects.find((o) => o.id === id)) : { records, scoped: [] }),
+    [records, allRecords, object, filters, qctx, objects],
+  );
   const rows = useMemo(
-    () => (object && draft ? computeRows(records, object, { filters: [...draft.filters, ...linkFilters], sorts: draft.sorts, search }, qctx) : []),
-    [records, object, draft, linkFilters, search, qctx],
+    () => (object && draft ? computeRows(scoped.records, object, { filters, sorts: draft.sorts, search }, qctx) : []),
+    [scoped, object, draft, filters, search, qctx],
   );
   const selectedIds = useMemo(() => rows.filter((r) => selection.has(r.id)).map((r) => r.id), [rows, selection]);
 
@@ -157,6 +166,16 @@ export function ObjectListPage() {
           <span className="shrink-0 rounded bg-surface-100 px-1.5 text-xs tabular-nums text-surface-500 dark:bg-surface-800" data-testid="record-count">
             {rows.length === records.length ? t("list.count", { count: records.length }) : t("list.countFiltered", { count: rows.length, total: records.length })}
           </span>
+          {scoped.scoped.length > 0 && (
+            <span className="hidden truncate text-xs text-surface-500 sm:inline" data-testid="scoped-rollups">
+              {t("list.scopedRollups", {
+                fields: scoped.scoped.map((id) => object.fields.find((f) => f.id === id)?.label ?? id).join(", "),
+                scope: [...new Set(scoped.scoped.map((id) => object.fields.find((f) => f.id === id)?.rollup?.scope?.field))]
+                  .map((id) => object.fields.find((f) => f.id === id)?.label ?? id)
+                  .join(", "),
+              })}
+            </span>
+          )}
           <div className="ml-auto flex items-center gap-1.5">
             <Input
               icon={<Search />}

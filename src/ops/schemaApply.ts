@@ -94,8 +94,9 @@ function missingOptions(field: FieldDef, wanted: FieldInput["options"]): string[
   return (wanted ?? []).map((o) => (typeof o === "string" ? o : o.label ?? "")).filter((l) => l && !have.has(l.toLowerCase()));
 }
 
-function withoutDrilldown<F extends FieldInput>(f: F): Omit<F, "drilldown"> {
-  const { drilldown: _drilldown, ...rest } = f;
+// Drilldowns and rollups point at fields of other objects: set in the last pass.
+function withoutLinks<F extends FieldInput>(f: F): Omit<F, "drilldown" | "rollup"> {
+  const { drilldown: _drilldown, rollup: _rollup, ...rest } = f;
   return rest;
 }
 
@@ -127,7 +128,7 @@ export async function applySchema(ctx: OpsContext, spec: SchemaSpec): Promise<Sc
       // Relation fields may point at objects created later in the same spec:
       // they are added in the field pass below.
       // `name` comes with every custom object (system field): patched below.
-      const plain = fields.filter((f) => f.type !== "relation" && f.id !== "name").map(withoutDrilldown);
+      const plain = fields.filter((f) => f.type !== "relation" && f.id !== "name").map(withoutLinks);
       current = await createObject(ctx, { id: o.id, labelSingular: o.labelSingular, labelPlural: o.labelPlural, icon: o.icon, color: o.color, fields: plain });
       report.changes.push({ kind: "object", action: "create", target: o.id, changes: plain.map((f) => f.id) });
     } else {
@@ -150,7 +151,7 @@ export async function applySchema(ctx: OpsContext, spec: SchemaSpec): Promise<Sc
       const current = listObjects(ctx).find((x) => x.id === o.id)!;
       const field = current.fields.find((x) => x.id === f.id);
       if (!field) {
-        await createField(ctx, o.id, withoutDrilldown(f));
+        await createField(ctx, o.id, withoutLinks(f));
         report.changes.push({ kind: "field", action: "create", target: `${o.id}.${f.id}`, changes: [f.type] });
         continue;
       }
@@ -177,15 +178,18 @@ export async function applySchema(ctx: OpsContext, spec: SchemaSpec): Promise<Sc
     for (const f of current.fields) if (!f.standard && !f.system && !listed.has(f.id)) report.extraFields.push(`${o.id}.${f.id}`);
   }
 
-  // Drilldowns last: they point at relation fields of other objects, which
-  // the field pass may only just have created.
+  // Drilldowns and rollups last: they point at fields of other objects,
+  // which the field pass may only just have created.
   for (const o of spec.objects ?? []) {
     for (const f of o.fields ?? []) {
-      if (f.drilldown === undefined) continue;
       const field = listObjects(ctx).find((x) => x.id === o.id)?.fields.find((x) => x.id === f.id);
-      if (!field || field.type !== f.type || same(f.drilldown, field.drilldown)) continue;
-      await updateField(ctx, o.id, f.id, { drilldown: f.drilldown });
-      report.changes.push({ kind: "field", action: "update", target: `${o.id}.${f.id}`, changes: ["drilldown"] });
+      if (!field || field.type !== f.type) continue;
+      const patch: FieldPatch = {};
+      if (f.drilldown !== undefined && !same(f.drilldown, field.drilldown)) patch.drilldown = f.drilldown;
+      if (f.rollup !== undefined && !same(f.rollup, field.rollup)) patch.rollup = f.rollup;
+      if (!Object.keys(patch).length) continue;
+      await updateField(ctx, o.id, f.id, patch);
+      report.changes.push({ kind: "field", action: "update", target: `${o.id}.${f.id}`, changes: Object.keys(patch) });
     }
   }
 

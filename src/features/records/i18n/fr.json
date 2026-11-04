@@ -16,7 +16,8 @@
     "trash": "Enregistrements supprimés",
     "count_many": "{{count}} enregistrements",
     "linkFilter": "Filtré depuis un lien — {{filters}}",
-    "clearLinkFilter": "Tout afficher"
+    "clearLinkFilter": "Tout afficher",
+    "scopedRollups": "{{fields}} : valeurs pour les {{scope}} filtrés"
   },
   "views": {
     "title": "Vues",

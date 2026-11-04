@@ -15,7 +15,8 @@
     "import": "Import CSV",
     "trash": "Deleted records",
     "linkFilter": "Filtered from a link — {{filters}}",
-    "clearLinkFilter": "Show all"
+    "clearLinkFilter": "Show all",
+    "scopedRollups": "{{fields}}: values for the filtered {{scope}}"
   },
   "views": {
     "title": "Views",

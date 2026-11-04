@@ -1,6 +1,15 @@
 {
   "versions": [
     {
+      "version": "0.9.0",
+      "date": "2026-11-04",
+      "breaking": false,
+      "changes": [
+        "Scoped rollups: a field can declare `rollup: { object, via, field, scope?, where? }` (the values of child records, e.g. an operator's status on each of its markets). A list filtered on the scope relation (Markets = FR) recomputes the rollup from the children in that scope, so the cells, the other filters (Status = Live means Live on the filtered markets) and the sorts follow the filter; the header names the narrowed fields. Without such a filter the stored values stand. Set by `fields add / update --data` or `schema apply` (validated, applied after every relation of the file exists)."
+      ],
+      "actions": []
+    },
+    {
       "version": "0.8.0",
       "date": "2026-11-04",
       "breaking": false,
