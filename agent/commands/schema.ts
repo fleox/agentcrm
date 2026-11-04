@@ -163,3 +163,52 @@ export const fieldsCommand: Command = {
     }
   },
 };
+
+// Schema as code (src/ops/schemaApply.ts): a JSON description of objects +
+// fields, pipelines and views, applied additively. Without --yes it runs on
+// an in-memory copy and prints the plan (needsConfirmation: true).
+export const schemaCommand: Command = {
+  name: "schema",
+  usage: "schema apply <file|-> [--yes]",
+  summary:
+    "Bring the data model in line with a JSON description ({ objects: [{ id, labelSingular, labelPlural, icon, color, labelField, fields: [{ id, label, type, options, relation… }] }], pipelines: [{ id, name, object, stages }], views: [{ object, name, columns, filters, sorts, groupBy, shared }] }). Creates what is missing and updates what differs; never deletes, never changes a field type (reported as a conflict), never removes a select option or a stage; reports custom fields the description doesn't list. Prints the plan unless --yes.",
+  subcommands: [{ name: "apply", usage: "schema apply <file|-> [--yes]", summary: "Apply a schema description (plan unless --yes).", writes: true }],
+  options: [SITE_OPTION, AS_OPTION, YES_OPTION],
+  async run({ io, options, positionals }) {
+    const [action, source] = positionals;
+    if (action !== "apply") usage(`Unknown schema action "${action ?? ""}".`, "Use schema apply <file|-> [--yes].");
+    if (!source) usage("schema apply needs a file (or - for stdin).", "Example: agentcrm schema apply crm-schema.json");
+    const { readTextValue } = await import("./util");
+    const text = readTextValue(source === "-" ? "-" : `@${source}`, "schema");
+    let raw: unknown;
+    try {
+      raw = JSON.parse(text);
+    } catch (err) {
+      usage(`The schema is not valid JSON: ${(err as Error).message}`);
+    }
+    const apply = options.yes === true;
+    const { applySchema, parseSchemaSpec } = await import("../../src/ops/schemaApply");
+    const spec = parseSchemaSpec(raw);
+    return withSession(
+      io,
+      options,
+      { lock: apply },
+      async ({ ctx }) => {
+        if (apply) return applySchema(ctx, spec);
+        const { dryRun } = await import("../ops/dryRun");
+        const { result } = await dryRun(ctx, (copy) => applySchema(copy, spec));
+        return result.changes.length ? { needsConfirmation: true as const, plan: result } : { ...result, upToDate: true };
+      },
+      (r) => {
+        const report = ("needsConfirmation" in r ? r.plan : r) as import("../../src/ops/schemaApply").SchemaApplyReport;
+        const lines = report.changes.map((c) => `  ${c.action} ${c.kind} ${c.target}${c.changes?.length ? ` (${c.changes.join(", ")})` : ""}`);
+        const extra = [
+          ...report.conflicts.map((c) => `  conflict: ${c}`),
+          ...(report.extraFields.length ? [`  not in the schema (kept): ${report.extraFields.join(", ")}`] : []),
+        ];
+        if ("needsConfirmation" in r) return [`Would change ${report.changes.length} thing(s):`, ...lines, ...extra, "Nothing changed — re-run with --yes once the user agrees."].join("\n");
+        return [report.changes.length ? `Applied ${report.changes.length} change(s):` : "The data model already matches the schema.", ...lines, ...extra].join("\n");
+      },
+    );
+  },
+};

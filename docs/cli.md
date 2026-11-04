@@ -277,6 +277,45 @@ agentcrm fields <add|update|delete> --object <id> …
 | `--description <value>` | Help text. |
 | `--data <value>` | update: raw FieldPatch JSON. |
 
+### `schema`
+
+Schema as code: bring the data model in line with a JSON description, so a team keeps its CRM model in a repository and re-applies it after every change.
+
+```
+agentcrm schema apply <file|-> [--yes]
+```
+
+| Action | Usage | What it does |
+|---|---|---|
+| `apply` ⚠ | `agentcrm schema apply <file\|-> [--yes]` | Create what is missing, update what differs. Plan unless --yes. |
+
+The description:
+
+```json
+{
+  "objects": [
+    { "id": "accounts", "labelSingular": "Account", "labelPlural": "Accounts", "icon": "Handshake", "labelField": "name",
+      "fields": [
+        { "id": "name", "label": "Account", "type": "text" },
+        { "id": "status", "label": "Status", "type": "select", "options": ["active", "pending", "closed"] },
+        { "id": "operators", "label": "Operators", "type": "relation", "relation": { "object": "companies", "cardinality": "many" } }
+      ] }
+  ],
+  "pipelines": [
+    { "id": "partnerships", "name": "Partnerships", "object": "deals",
+      "stages": [{ "id": "p-prospect", "label": "Prospect", "probability": 10 }, { "id": "p-signed", "label": "Signed", "probability": 100, "kind": "won" }] }
+  ],
+  "views": [
+    { "object": "accounts", "name": "Pending accounts", "columns": ["name", "status"], "filters": [{ "field": "status", "op": "eq", "value": "pending" }], "shared": true }
+  ]
+}
+```
+
+- Additive and idempotent: a second apply of the same file changes nothing. Objects and fields match by `id`, pipelines by `id`, views by object + name.
+- Never deletes and never changes a field type (reported in `conflicts`); select options and stages are only added, never removed (records point at them). Custom fields the file doesn't list are reported in `extraFields`.
+- Relation fields may point at objects defined later in the same file. Standard objects (`companies`, `people`, `deals`) can be relabelled and extended.
+- Stage ids are unique across all pipelines: a stage id another pipeline uses is a conflict (prefix them, e.g. `p-prospect`).
+
 ### `activities`
 
 Timeline entries: log calls, emails, meetings and notes on records; list a record's timeline (optionally with its related records' activities).

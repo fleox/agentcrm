@@ -16,7 +16,7 @@ import { filesCommand } from "./files";
 import { installCommand } from "./install";
 import { optionsCommand, statusCommand, versionCommand } from "./meta";
 import { recordsCommand } from "./records";
-import { fieldsCommand, objectsCommand } from "./schema";
+import { fieldsCommand, objectsCommand, schemaCommand } from "./schema";
 import { serveCommand } from "./serve";
 import { siteCommand } from "./site";
 import { mcpCommand, toolsCommand } from "./tools";
@@ -81,6 +81,7 @@ export const COMMANDS: Command[] = [
   deployAdminCommand,
   recordsCommand,
   objectsCommand,
+  schemaCommand,
   fieldsCommand,
   activitiesCommand,
   notesCommand,

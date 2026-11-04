@@ -1,6 +1,15 @@
 {
   "versions": [
     {
+      "version": "0.5.0",
+      "date": "2026-11-04",
+      "breaking": false,
+      "changes": [
+        "New `agentcrm schema apply <file> [--yes]`: schema as code. A JSON description of objects + fields, pipelines and views is applied additively and idempotently (creates what is missing, updates what differs, never deletes, never changes a field type, never removes a select option or a stage); conflicts and custom fields the file doesn't list are reported. Plan unless --yes. Also gives the CLI a way to create pipelines."
+      ],
+      "actions": []
+    },
+    {
       "version": "0.4.0",
       "date": "2026-11-04",
       "breaking": false,

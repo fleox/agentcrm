@@ -1,0 +1,95 @@
+import { describe, expect, it } from "vitest";
+import { setupTestCrm } from "./testing";
+import { applySchema, parseSchemaSpec, type SchemaSpec } from "./schemaApply";
+import { listPipelines } from "./pipelines";
+import { listObjects, updateField } from "./schema";
+import { listViews } from "./views";
+
+const spec: SchemaSpec = {
+  objects: [
+    {
+      id: "companies",
+      labelSingular: "Operator",
+      labelPlural: "Operators",
+      fields: [{ id: "rankingsId", label: "Rankings id", type: "text", unique: true }],
+    },
+    {
+      id: "accounts",
+      labelSingular: "Affiliate account",
+      labelPlural: "Affiliate accounts",
+      icon: "Handshake",
+      labelField: "name",
+      fields: [
+        { id: "name", label: "Account", type: "text" },
+        { id: "status", label: "Status", type: "select", options: ["active", "pending", "closed"] },
+        { id: "operators", label: "Operators", type: "relation", relation: { object: "companies", cardinality: "many" } },
+        { id: "market", label: "Market", type: "relation", relation: { object: "markets", cardinality: "one" } },
+      ],
+    },
+    { id: "markets", labelSingular: "Market", labelPlural: "Markets", fields: [{ id: "regulated", label: "Regulated", type: "boolean" }] },
+  ],
+  pipelines: [
+    {
+      id: "partnerships",
+      name: "Partnerships",
+      object: "deals",
+      stages: [
+        { id: "prospect", label: "Prospect", probability: 10 },
+        { id: "signed", label: "Signed", probability: 100, kind: "won" },
+        { id: "dropped", label: "Lost", probability: 0, kind: "lost" },
+      ],
+    },
+  ],
+  views: [{ object: "accounts", name: "Pending accounts", columns: ["name", "status"], filters: [{ field: "status", op: "eq", value: "pending" }], shared: true }],
+};
+
+describe("schema apply", () => {
+  it("creates what is missing, relations to objects created later included", async () => {
+    const { admin } = await setupTestCrm();
+    const report = await applySchema(admin, parseSchemaSpec(JSON.parse(JSON.stringify(spec))));
+    const objects = listObjects(admin);
+    expect(objects.find((o) => o.id === "companies")).toMatchObject({ labelPlural: "Operators" });
+    const accounts = objects.find((o) => o.id === "accounts")!;
+    expect(accounts.fields.map((f) => f.id)).toEqual(expect.arrayContaining(["name", "status", "operators", "market"]));
+    expect(accounts.fields.find((f) => f.id === "name")!.label).toBe("Account");
+    expect(accounts.fields.find((f) => f.id === "market")!.relation).toMatchObject({ object: "markets", cardinality: "one" });
+    expect(listPipelines(admin).find((p) => p.id === "partnerships")!.stages.map((s) => s.id)).toEqual(["prospect", "signed", "dropped"]);
+    expect(listViews(admin, "accounts").some((v) => v.name === "Pending accounts")).toBe(true);
+    expect(report.conflicts).toEqual([]);
+    expect(report.changes.length).toBeGreaterThan(5);
+  });
+
+  it("is idempotent: a second apply changes nothing", async () => {
+    const { admin } = await setupTestCrm();
+    await applySchema(admin, spec);
+    const again = await applySchema(admin, spec);
+    expect(again.changes).toEqual([]);
+  });
+
+  it("adds options and stages, never removes them, reports type conflicts and extra fields", async () => {
+    const { admin } = await setupTestCrm();
+    await applySchema(admin, spec);
+    await updateField(admin, "markets", "regulated", { type: "text" });
+    const next: SchemaSpec = JSON.parse(JSON.stringify(spec));
+    next.objects![1].fields!.find((f) => f.id === "status")!.options = ["active", "archived"];
+    next.objects![1].fields = next.objects![1].fields!.filter((f) => f.id !== "market");
+    next.pipelines![0].stages = [{ id: "prospect", label: "Prospect", probability: 10 }, { id: "p-negotiation", label: "Negotiation", probability: 50 }];
+    const report = await applySchema(admin, next);
+    const status = listObjects(admin).find((o) => o.id === "accounts")!.fields.find((f) => f.id === "status")!;
+    expect(status.options!.map((o) => o.label)).toEqual(["active", "pending", "closed", "archived"]);
+    expect(listPipelines(admin).find((p) => p.id === "partnerships")!.stages.map((s) => s.id)).toEqual(["prospect", "p-negotiation", "signed", "dropped"]);
+    expect(report.conflicts).toEqual([expect.stringMatching(/markets\.regulated: type is text/)]);
+    expect(report.extraFields).toContain("accounts.market");
+  });
+
+  it("refuses a stage id another pipeline uses (it would be renamed and re-added)", async () => {
+    const { admin } = await setupTestCrm();
+    const report = await applySchema(admin, { pipelines: [{ id: "p2", name: "P2", object: "deals", stages: [{ id: "negotiation", label: "Negotiation" }] }] });
+    expect(report.conflicts).toEqual([expect.stringMatching(/negotiation \(used by sales\)/)]);
+    expect(listPipelines(admin).some((p) => p.id === "p2")).toBe(false);
+  });
+
+  it("rejects an object without id", () => {
+    expect(() => parseSchemaSpec({ objects: [{ labelSingular: "X", labelPlural: "Xs" }] })).toThrow(/needs id/);
+  });
+});
