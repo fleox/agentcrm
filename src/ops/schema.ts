@@ -120,7 +120,9 @@ export async function updateObject(
     if (patch.imageField === null || patch.imageField === "") delete object.imageField;
     else {
       const f = object.fields.find((x) => x.id === patch.imageField);
-      if (!f || f.type !== "image") throw new OpsError("validation", `"${patch.imageField}" can't be the image field (needs an image field).`);
+      // An image field (stored file) or a URL field (image hosted elsewhere,
+      // e.g. a logo CDN: no file storage needed).
+      if (!f || (f.type !== "image" && f.type !== "url")) throw new OpsError("validation", `"${patch.imageField}" can't be the image field (needs an image or URL field).`);
       object.imageField = patch.imageField;
     }
   }
@@ -341,8 +343,8 @@ export async function updateField(ctx: OpsContext, objectId: string, fieldId: st
 
   const fields = object.fields.map((f) => (f.id === fieldId ? field : f));
   const nextObject: ObjectDef = { ...object, fields };
-  // The record image must stay an image field.
-  if (object.imageField === fieldId && field.type !== "image") delete nextObject.imageField;
+  // The record image must stay an image or URL field.
+  if (object.imageField === fieldId && field.type !== "image" && field.type !== "url") delete nextObject.imageField;
   mutations.unshift(saveObject(ctx, nextObject));
   await ctx.store.write(mutations, { message: `Update field ${field.label}` });
   return { field: requireField(requireObject(ctx.store, objectId), fieldId), ...(converted !== undefined ? { converted, cleared } : {}) };

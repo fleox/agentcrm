@@ -1,6 +1,15 @@
 {
   "versions": [
     {
+      "version": "0.7.0",
+      "date": "2026-11-04",
+      "breaking": false,
+      "changes": [
+        "Record images from a URL: an object's image field (avatar / logo) can now be a URL field. The image hosted elsewhere (e.g. a logo CDN) shows in lists, kanban cards, the command palette and the record header, without Firebase Storage or any upload; a remote image that fails to load falls back to the initials. `schema apply` accepts `imageField` on an object."
+      ],
+      "actions": []
+    },
+    {
       "version": "0.6.0",
       "date": "2026-11-04",
       "breaking": false,

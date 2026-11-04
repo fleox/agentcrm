@@ -17,14 +17,16 @@ export function RecordAvatarEditor({ record, object, name, disabled }: { record:
   const ops = useOps();
   const bridge = useFilesBridge();
   const canWrite = useCan("records.write") && !disabled;
-  const field = object.imageField ? object.fields.find((f) => f.id === object.imageField && f.type === "image") : undefined;
+  // A URL image field is shown (FileAvatar takes the URL) but edited like any
+  // other field: upload / crop / remove only apply to stored images.
+  const field = object.imageField ? object.fields.find((f) => f.id === object.imageField && (f.type === "image" || f.type === "url")) : undefined;
   const value = field ? record.fields[field.id] : undefined;
   const imageId = typeof value === "string" ? value : undefined;
   const square = object.id === "companies";
   const [file, setFile] = useState<File | null>(null);
   const [over, setOver] = useState(false);
   const input = useRef<HTMLInputElement>(null);
-  const editable = canWrite && !!field && !!bridge;
+  const editable = canWrite && field?.type === "image" && !!bridge;
 
   const pick = (files: File[]) => {
     const img = files.find((f) => f.type.startsWith("image/"));

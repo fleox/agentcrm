@@ -437,9 +437,15 @@ async function retireImage(ctx: OpsContext, fileId: string, recordId: string): P
   await deleteFile(ctx, fileId);
 }
 
-// Record image file id (for avatars), or undefined.
+// Record image file id (for avatars), or undefined. A URL image field
+// holds no file: undefined.
 export function recordImageId(ctx: Pick<OpsContext, "store">, record: CrmRecord): string | undefined {
   const object = objectOf(ctx.store, record.object);
   const id = object?.imageField ? record.fields[object.imageField] : undefined;
-  return typeof id === "string" && id ? id : undefined;
+  return typeof id === "string" && id && !isImageUrl(id) ? id : undefined;
+}
+
+// An image field value that is a remote image (URL image field), not a file id.
+export function isImageUrl(value: string): boolean {
+  return /^https:\/\//i.test(value);
 }

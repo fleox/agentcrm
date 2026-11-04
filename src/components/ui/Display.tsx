@@ -1,4 +1,4 @@
-import { type ReactNode, type HTMLAttributes } from "react";
+import { type ReactNode, type HTMLAttributes, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { cn, initials } from "../../shared/lib/utils";
 import { chipClass, dotClass } from "./colors";
@@ -23,7 +23,9 @@ function hash(s: string): number {
 export function Avatar({ name, src, size = "md", square, className }: { name: string; src?: string; size?: "xs" | "sm" | "md" | "lg"; square?: boolean; className?: string }) {
   const dims = { xs: "h-4 w-4 text-[8px]", sm: "h-5 w-5 text-[10px]", md: "h-6 w-6 text-[11px]", lg: "h-9 w-9 text-sm" }[size];
   const shape = square ? "rounded" : "rounded-full";
-  if (src) return <img src={src} alt={name} className={cn("shrink-0 object-cover", dims, shape, className)} />;
+  // A remote logo that fails to load falls back to the initials.
+  const [failed, setFailed] = useState<string | null>(null);
+  if (src && failed !== src) return <img src={src} alt={name} onError={() => setFailed(src)} className={cn("shrink-0 object-cover", dims, shape, className)} />;
   return (
     <span className={cn("inline-flex shrink-0 select-none items-center justify-center font-semibold text-white", dims, shape, AVATAR_COLORS[hash(name || "?") % AVATAR_COLORS.length], className)} aria-hidden="true">
       {initials(name)}

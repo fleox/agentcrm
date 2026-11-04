@@ -19,6 +19,8 @@ export interface ObjectSpec {
   icon?: string;
   color?: string;
   labelField?: string;
+  // Field shown as the record avatar: an image field, or a URL field.
+  imageField?: string;
   fields?: Array<FieldInput & { id: string }>;
 }
 
@@ -161,6 +163,10 @@ export async function applySchema(ctx: OpsContext, spec: SchemaSpec): Promise<Sc
     if (o.labelField && o.labelField !== current.labelField) {
       await updateObject(ctx, o.id, { labelField: o.labelField });
       report.changes.push({ kind: "object", action: "update", target: o.id, changes: ["labelField"] });
+    }
+    if (o.imageField && o.imageField !== listObjects(ctx).find((x) => x.id === o.id)!.imageField) {
+      await updateObject(ctx, o.id, { imageField: o.imageField });
+      report.changes.push({ kind: "object", action: "update", target: o.id, changes: ["imageField"] });
     }
     const listed = new Set((o.fields ?? []).map((f) => f.id));
     for (const f of current.fields) if (!f.standard && !f.system && !listed.has(f.id)) report.extraFields.push(`${o.id}.${f.id}`);

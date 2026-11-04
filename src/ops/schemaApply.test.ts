@@ -97,6 +97,18 @@ describe("schema apply", () => {
     expect((await applySchema(admin, spec)).changes).toEqual([]);
   });
 
+  it("sets a URL field as the record image (logo hosted elsewhere)", async () => {
+    const { admin } = await setupTestCrm();
+    const withLogo: SchemaSpec = { objects: [{ id: "companies", labelSingular: "Company", labelPlural: "Companies", imageField: "logoUrl", fields: [{ id: "logoUrl", label: "Logo URL", type: "url" }] }] };
+    expect((await applySchema(admin, withLogo)).changes.map((c) => c.changes)).toContainEqual(["imageField"]);
+    expect(listObjects(admin).find((o) => o.id === "companies")!.imageField).toBe("logoUrl");
+    expect((await applySchema(admin, withLogo)).changes).toEqual([]);
+    const { createRecord } = await import("./records");
+    const { recordImageId } = await import("./files");
+    const r = await createRecord(admin, "companies", { name: "Acme", logoUrl: "https://cdn.example.com/acme.webp" });
+    expect(recordImageId(admin, r)).toBeUndefined(); // a URL is not a stored file
+  });
+
   it("rejects an object without id", () => {
     expect(() => parseSchemaSpec({ objects: [{ labelSingular: "X", labelPlural: "Xs" }] })).toThrow(/needs id/);
   });

@@ -149,7 +149,7 @@ export function ObjectFormModal({ object, onClose, onCreated }: { object: Object
   const [imageField, setImageField] = useState(object?.imageField ?? "");
   const [saving, setSaving] = useState(false);
   const labelCandidates = (object?.fields ?? []).filter((f) => ["text", "email", "url", "phone"].includes(f.type));
-  const imageCandidates = (object?.fields ?? []).filter((f) => f.type === "image");
+  const imageCandidates = (object?.fields ?? []).filter((f) => f.type === "image" || f.type === "url");
 
   const submit = async () => {
     setSaving(true);

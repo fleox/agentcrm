@@ -11,9 +11,11 @@ import type { PreparedUpload } from "./context";
 type Size = "xs" | "sm" | "md" | "lg";
 
 // Avatar showing a stored image (thumbnail) with the initials fallback.
+// An https URL (URL image field: a logo hosted elsewhere) is shown as is.
 export function FileAvatar({ fileId, name, size = "md", square, className }: { fileId?: string | null; name: string; size?: Size; square?: boolean; className?: string }) {
-  const { url } = useFileUrl(fileId ?? null, { thumb: true });
-  return <Avatar name={name} src={url ?? undefined} size={size} square={square} className={className} />;
+  const remote = fileId && /^https:\/\//i.test(fileId) ? fileId : null;
+  const { url } = useFileUrl(remote ? null : fileId ?? null, { thumb: true });
+  return <Avatar name={name} src={remote ?? url ?? undefined} size={size} square={square} className={className} />;
 }
 
 // A record's avatar / logo: its object's image field (FieldContext), else initials.
