@@ -200,6 +200,7 @@ agentcrm records <list|get|create|update|delete|restore|search|duplicates|merge|
 | `restore` | `agentcrm records restore <id>` | Restore a soft-deleted record. |
 | `search` | `agentcrm records search <query> [--object <id>]… [--limit n]` | Full-text search (names, emails, domains, phones). |
 | `duplicates` | `agentcrm records duplicates --object <id> [--by email,domain,name,phone]` | Groups of likely duplicates (same email / domain / name / phone). |
+| `sync` ⚠ | `agentcrm records sync --object <id> --key <fieldId> --rows <json\|@file\|-> [--archive-field <fieldId>] [--ref-key <fieldId>] [--yes]` | Mirror an external source into one object (see below). Plan unless --yes. |
 | `merge` ⚠ | `agentcrm records merge <primaryId> <duplicateId>… [--yes]` | Merge duplicates into the primary (empty fields filled, relations and activities moved). Plan unless --yes. |
 | `image` | `agentcrm records image <recordId> <path> \| --remove [--field <imageFieldId>]` | Set the record's avatar / logo from a local image (the object's image field), or --remove it. |
 
@@ -221,6 +222,10 @@ agentcrm records <list|get|create|update|delete|restore|search|duplicates|merge|
 | `--by <value>` | duplicates: email,domain,name,phone. |
 | `--remove` | image: remove the record's image. |
 | `--field <value>` | image: image field id (default: the object's image field). |
+
+#### Mirroring an external source (`records sync`)
+
+`--rows` is a JSON array of `{ "key": "<source id>", "fields": { … } }`. Rows are matched on the `--key` field (a text field, ideally unique); a record is created when the key is new and patched only on the fields whose value differs, so a second run of the same rows writes nothing. A relation value can point at another mirrored record by its key: `{ "$key": "12" }` (one) or `{ "$key": ["12", "13"] }` (many), resolved against the related object's `--ref-key` field (default: the same field id as `--key`) — mirror the referenced objects first; references with no match are counted in `unresolved`. With `--archive-field <boolean field>`, records whose key is missing from the rows are flagged `true` (and `false` again when they come back): they are never deleted, so notes, tasks and deals attached to them stay. No automation fires. Invalid rows are reported in `errors` and the others are still written.
 
 ### `objects`
 

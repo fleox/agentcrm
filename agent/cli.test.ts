@@ -28,7 +28,7 @@ describe("CLI contract", () => {
     const names = r.body.data.commands.map((c: { name: string }) => c.name);
     expect(names).toEqual(expect.arrayContaining(REQUIRED));
     const records = r.body.data.commands.find((c: { name: string }) => c.name === "records");
-    expect(records.subcommands.map((s: { name: string }) => s.name)).toEqual(["list", "get", "create", "update", "delete", "restore", "search", "duplicates", "merge", "image"]);
+    expect(records.subcommands.map((s: { name: string }) => s.name)).toEqual(["list", "get", "create", "update", "delete", "restore", "search", "duplicates", "merge", "image", "sync"]);
     expect(records.options.map((o: { name: string }) => o.name)).toEqual(expect.arrayContaining(["object", "filter", "sort", "limit", "fields", "set", "site", "yes"]));
     for (const c of r.body.data.commands) {
       expect(c.usage.startsWith(c.name)).toBe(true);

@@ -1,6 +1,15 @@
 {
   "versions": [
     {
+      "version": "0.6.0",
+      "date": "2026-11-04",
+      "breaking": false,
+      "changes": [
+        "New `agentcrm records sync`: mirror an external source into one object. Rows are matched on a key field, created or patched only where a value differs (a second run writes nothing), relations reference other mirrored records by their key, and records that left the source are flagged in an archive field instead of being deleted. One write for the whole batch, no automation fires; plan unless --yes."
+      ],
+      "actions": []
+    },
+    {
       "version": "0.5.0",
       "date": "2026-11-04",
       "breaking": false,

@@ -34,11 +34,12 @@ const U = {
   duplicates: "records duplicates --object <id> [--by email,domain,name,phone]",
   merge: "records merge <primaryId> <duplicateId>… [--yes]",
   image: "records image <recordId> <path> | --remove [--field <imageFieldId>]",
+  sync: "records sync --object <id> --key <fieldId> --rows <json|@file|-> [--archive-field <fieldId>] [--ref-key <fieldId>] [--yes]",
 };
 
 export const recordsCommand: Command = {
   name: "records",
-  usage: "records <list|get|create|update|delete|restore|search|duplicates|merge|image> …",
+  usage: "records <list|get|create|update|delete|restore|search|duplicates|merge|image|sync> …",
   summary: "Records of any object (companies, people, deals, custom objects): list with filters / sorts / pagination, get with relations and timeline counts, create, update (only the given fields), soft delete / restore, full-text search, find and merge duplicates.",
   subcommands: [
     { name: "list", usage: U.list, summary: `List records. Filter ops: ${FILTER_OPS.join(", ")}. Values: in/notIn comma-separated; dates YYYY-MM-DD, today, +30d.` },
@@ -51,6 +52,13 @@ export const recordsCommand: Command = {
     { name: "duplicates", usage: U.duplicates, summary: "Groups of likely duplicates (same email / domain / name / phone)." },
     { name: "merge", usage: U.merge, summary: "Merge duplicates into the primary (empty fields filled, relations and activities moved). Plan unless --yes.", writes: true, destructive: true },
     { name: "image", usage: U.image, summary: "Set the record's avatar / logo from a local image (the object's image field), or --remove it.", writes: true },
+    {
+      name: "sync",
+      usage: U.sync,
+      summary:
+        'Mirror an external source into one object: rows [{ key, fields }] matched on the --key field, created / updated only where a value differs; relation values reference other mirrored records by their key ({ "$key": "12" } or { "$key": ["12","13"] }); records whose key is missing get --archive-field = true (never deleted). No automation fires. Plan unless --yes.',
+      writes: true,
+    },
   ],
   options: [
     SITE_OPTION,
@@ -72,6 +80,10 @@ export const recordsCommand: Command = {
     { name: "by", type: "string", description: "duplicates: email,domain,name,phone." },
     { name: "remove", type: "boolean", description: "image: remove the record's image." },
     { name: "field", type: "string", description: "image: image field id (default: the object's image field)." },
+    { name: "key", type: "string", description: "sync: field holding the source id (match key)." },
+    { name: "rows", type: "string", description: "sync: rows as a JSON array [{ key, fields }], @file.json or - (stdin)." },
+    { name: "archive-field", type: "string", description: "sync: boolean field set to true on records whose key is missing from the rows." },
+    { name: "ref-key", type: "string", description: "sync: key field of related objects for { \"$key\": … } (default: --key)." },
   ],
   async run({ io, options, positionals }) {
     const [action, ...args] = positionals;
@@ -182,8 +194,36 @@ export const recordsCommand: Command = {
       }
       case "image":
         return (await import("./files")).recordImageAction(io, options, args);
+      case "sync": {
+        const objectId = (Array.isArray(options.object) ? options.object[0] : options.object) as string | undefined;
+        const key = strOpt(options, "key");
+        const rowsRaw = strOpt(options, "rows");
+        if (!objectId || !key || !rowsRaw) usage("records sync needs --object, --key and --rows.", `Usage: agentcrm ${U.sync}`);
+        const { readTextValue } = await import("./util");
+        let rows: unknown;
+        try {
+          rows = JSON.parse(readTextValue(rowsRaw!, "rows"));
+        } catch (err) {
+          usage(`--rows is not valid JSON: ${(err as Error).message}`);
+        }
+        if (!Array.isArray(rows)) usage("--rows must be a JSON array of { key, fields }.");
+        const spec = { object: objectId!, key: key!, rows: rows as Array<{ key: string; fields: Record<string, unknown> }>, archiveField: strOpt(options, "archive-field"), refKey: strOpt(options, "ref-key") };
+        const apply = options.yes === true;
+        return withSession(io, options, { lock: apply }, async ({ ctx }) => {
+          const { syncRecords } = await import("../../src/ops/syncRecords");
+          if (apply) return syncRecords(ctx, spec);
+          const { dryRun } = await import("../ops/dryRun");
+          const { result } = await dryRun(ctx, (copy) => syncRecords(copy, spec));
+          const pending = result.created + result.updated + result.archived;
+          return pending ? { needsConfirmation: true as const, plan: result } : result;
+        }, (r) => {
+          const s = ("needsConfirmation" in r ? r.plan : r) as import("../../src/ops/syncRecords").SyncReport;
+          const line = `${s.object}: ${s.rows} rows → ${s.created} new, ${s.updated} updated, ${s.unchanged} unchanged, ${s.archived} archived${s.unresolved ? `, ${s.unresolved} unresolved references` : ""}${s.errors.length ? `, ${s.errors.length} errors (first: ${s.errors[0].key}: ${s.errors[0].message})` : ""}`;
+          return "needsConfirmation" in r ? `${line}\nNothing changed — re-run with --yes once the user agrees.` : line;
+        });
+      }
       default:
-        usage(`Unknown records action "${action ?? ""}".`, "Use list, get, create, update, delete, restore, search, duplicates, merge or image.");
+        usage(`Unknown records action "${action ?? ""}".`, "Use list, get, create, update, delete, restore, search, duplicates, merge, image or sync.");
     }
   },
 };
