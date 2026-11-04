@@ -81,7 +81,7 @@ export function ObjectListPage() {
   // Rollups narrowed to the filtered scope (an operator's status on the
   // filtered markets only); `scoped` lists the recomputed fields.
   const scoped = useMemo(
-    () => (object ? scopeRollups(records, allRecords, object, filters, qctx, (id) => objects.find((o) => o.id === id)) : { records, scoped: [] }),
+    () => (object ? scopeRollups(records, allRecords, object, filters, qctx, (id) => objects.find((o) => o.id === id)) : { records, scoped: [], narrowed: [] }),
     [records, allRecords, object, filters, qctx, objects],
   );
   const rows = useMemo(
@@ -291,6 +291,7 @@ export function ObjectListPage() {
           onOpen={(r) => navigate(paths.record(object.id, r.id))}
           onSave={(r, c, v) => void onSave(r, c, v)}
           onQuickAdd={quickAdd}
+          readOnlyColumns={scoped.narrowed}
         />
       )}
 

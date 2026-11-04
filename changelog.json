@@ -1,6 +1,15 @@
 {
   "versions": [
     {
+      "version": "0.9.1",
+      "date": "2026-11-04",
+      "breaking": false,
+      "changes": [
+        "Scoped rollups: the scope relation itself is narrowed too (a list filtered on Markets = FR shows FR in the Markets column, not every market of the record), and the narrowed columns can't be edited inline while the filter is on (saving would keep only the shown part)."
+      ],
+      "actions": []
+    },
+    {
       "version": "0.9.0",
       "date": "2026-11-04",
       "breaking": false,

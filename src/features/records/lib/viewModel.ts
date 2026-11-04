@@ -87,7 +87,8 @@ export function isFilterComplete(f: Filter): boolean {
 // operator's status on all its markets). While the list is filtered on a
 // rollup's scope relation (Markets = FR), the rollup is recomputed from the
 // children in that scope only, so the cells, the other filters and the sorts
-// all see the values for those markets. Unscoped: the stored values stand.
+// all see the values for those markets. The scope relation itself (Markets)
+// is narrowed to the filtered markets too. Unscoped: the stored values stand.
 export function scopeRollups(
   records: CrmRecord[],
   allRecords: CrmRecord[],
@@ -95,9 +96,10 @@ export function scopeRollups(
   filters: Filter[],
   qctx: Omit<QueryContext, "object">,
   objectOf: (id: string) => ObjectDef | undefined,
-): { records: CrmRecord[]; scoped: string[] } {
+): { records: CrmRecord[]; scoped: string[]; narrowed: string[] } {
   const rollups = object.fields.filter((f) => f.rollup?.scope && filters.some((x) => x.field === f.rollup!.scope!.field && isFilterComplete(x)));
-  if (!rollups.length) return { records, scoped: [] };
+  if (!rollups.length) return { records, scoped: [], narrowed: [] };
+  const scopeFields = [...new Set(rollups.map((f) => f.rollup!.scope!.field))];
   const childCache = new Map<string, Map<string, CrmRecord[]>>();
   const children = (f: FieldDef): Map<string, CrmRecord[]> => {
     const r = f.rollup!;
@@ -116,31 +118,40 @@ export function scopeRollups(
     const fields = { ...rec.fields };
     for (const f of rollups) {
       const r = f.rollup!;
-      const inScope = (children(f).get(rec.id) ?? []).filter((c) =>
-        filters.every((x) => x.field !== r.scope!.field || !isFilterComplete(x) || scopeMatches(asIds(c.fields[r.scope!.via]), x, r.scope!.via, qctx, objectOf(r.object))),
-      );
+      const target = objectOf(r.object)?.fields.find((x) => x.id === r.scope!.via)?.relation?.object ?? "";
+      const inScope = (children(f).get(rec.id) ?? []).filter((c) => inFilters(asIds(c.fields[r.scope!.via]), r.scope!.field, target, filters, qctx));
       fields[f.id] = rollupValue(f, inScope.map((c) => c.fields[r.field]));
+    }
+    for (const id of scopeFields) {
+      const field = object.fields.find((x) => x.id === id);
+      const target = field?.relation?.object ?? "";
+      const kept = asIds(rec.fields[id]).filter((v) => inFilters([v], id, target, filters, qctx));
+      fields[id] = field?.relation?.cardinality === "one" ? kept[0] : kept;
     }
     return { ...rec, fields };
   });
-  return { records: out, scoped: rollups.map((f) => f.id) };
+  // `narrowed`: every field whose shown value is partial (not editable inline).
+  return { records: out, scoped: rollups.map((f) => f.id), narrowed: [...rollups.map((f) => f.id), ...scopeFields] };
 }
 
 function asIds(v: unknown): string[] {
   return (Array.isArray(v) ? v : v === undefined || v === null || v === "" ? [] : [v]).map(String);
 }
 
-// Does a child (its scope relation ids) match one filter of the list on the
-// parent's scope relation? eq / in / contains narrow; other operators (neq,
-// notIn, empty…) select parents, not markets: the child stays in scope.
-function scopeMatches(ids: string[], filter: Filter, via: string, qctx: Omit<QueryContext, "object">, childObject: ObjectDef | undefined): boolean {
+// Do these ids (of `target` records) pass every list filter on the scope
+// relation `field`? eq / in / contains narrow; other operators (neq, notIn,
+// empty…) select parents, not markets: they keep everything.
+function inFilters(ids: string[], field: string, target: string, filters: Filter[], qctx: Omit<QueryContext, "object">): boolean {
+  return filters.every((x) => x.field !== field || !isFilterComplete(x) || scopeMatches(ids, x, target, qctx));
+}
+
+function scopeMatches(ids: string[], filter: Filter, target: string, qctx: Omit<QueryContext, "object">): boolean {
   const values = asIds(filter.value);
   switch (filter.op) {
     case "eq":
     case "in":
       return ids.some((id) => values.includes(id));
     case "contains": {
-      const target = childObject?.fields.find((f) => f.id === via)?.relation?.object ?? "";
       const needle = String(filter.value ?? "").trim().toLowerCase();
       return ids.some((id) => (qctx.recordLabel?.(target, id) ?? id).toLowerCase().includes(needle));
     }

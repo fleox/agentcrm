@@ -69,6 +69,9 @@ export interface DataGridProps {
   onOpen(record: CrmRecord): void;
   onSave(record: CrmRecord, col: string, value: unknown): void;
   onQuickAdd?(label: string): Promise<void>;
+  // Columns showing a partial value (rollups narrowed by the filters):
+  // editing them inline would save the partial value.
+  readOnlyColumns?: readonly string[];
 }
 
 interface Cell {
@@ -139,7 +142,7 @@ export function DataGrid(props: DataGridProps) {
   };
 
   const startEdit = (cell: Cell) => {
-    if (!canWrite || !isEditable(object, columns[cell.col])) return;
+    if (!canWrite || !isEditable(object, columns[cell.col]) || props.readOnlyColumns?.includes(columns[cell.col])) return;
     setActive(cell);
     setEditing(cell);
   };

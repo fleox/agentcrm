@@ -73,6 +73,9 @@ describe("scoped rollups", () => {
     const out = scopeRollups(records, all, operators, [{ field: "markets", op: "eq", value: "gb" }], qctx, objectOf);
     expect(out.scoped).toEqual(["status", "managers"]);
     expect(out.records[0].fields).toMatchObject({ status: ["live"], managers: ["Ann"] });
+    // The scope relation shows the filtered markets only.
+    expect(out.records[0].fields.markets).toEqual(["gb"]);
+    expect(out.records[1].fields.markets).toEqual([]);
     // op2's GB presence is archived (rollup where): nothing in scope.
     expect(out.records[1].fields.status).toBeUndefined();
     expect(out.records[0]).not.toBe(records[0]);
