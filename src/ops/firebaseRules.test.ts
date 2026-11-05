@@ -29,7 +29,7 @@ describe("firestore rules generator", () => {
     // never breaks the narrow self-updates.
     expect(rules).toContain("match /deletions/{id}");
     expect(rules).toContain("request.resource.data._ts == request.time");
-    expect(rules).toContain("hasOnly(['name', 'avatarUrl', 'updatedAt', '_ts'])");
+    expect(rules).toContain("hasOnly(['name', 'avatarUrl', 'prefs', 'updatedAt', '_ts'])");
     expect(rules).toContain("hasOnly(['lastRunAt', 'updatedAt', '_ts'])");
     for (const c of [...COLLECTIONS, "invites", "inbox"]) block(rules, `/${c}/{${c === "users" ? "uid" : c === "invites" ? "email" : "id"}}`);
     expect(block(rules, "/{document=**}")).toContain("allow read, write: if false;");
@@ -50,7 +50,7 @@ describe("firestore rules generator", () => {
 
   it("users can't escalate: self updates limited to profile keys", () => {
     const users = block(rules, "/users/{uid}");
-    expect(users).toContain("affectedKeys().hasOnly(['name', 'avatarUrl', 'updatedAt', '_ts'])");
+    expect(users).toContain("affectedKeys().hasOnly(['name', 'avatarUrl', 'prefs', 'updatedAt', '_ts'])");
     expect(users).toContain("allow delete: if isAdmin();");
     expect(rules).toContain("(isBootstrapAdmin() && d.role == 'admin')");
   });

@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { defaultViewFor } from "../../../core/schema/standardObjects";
-import type { ObjectDef, ViewDef } from "../../../core/types";
+import type { ObjectDef, ViewDef, ViewPrefs } from "../../../core/types";
 import { useRecordLabel, useUsers } from "../../../app/CrmDataContext";
 import { toast } from "../../../shared/lib/toast";
 import { viewSignature } from "./viewModel";
+import { applyViewPrefs, layoutOverrides } from "./userPrefs";
 
 // Query context for core/query (labels of related records, user names).
 export function useQueryCtx() {
@@ -25,22 +26,60 @@ export interface ViewDraft {
   reset(): void;
 }
 
+// The user's remembered layout of one view (see ./userPrefs).
+export interface ViewLayoutStore {
+  get(viewId: string): ViewPrefs | undefined;
+  put(viewId: string, value: ViewPrefs): void;
+}
+
 // Editable copy of the current view; `dirty` once it differs from the
-// saved one. Resets when the saved view changes (switch / save / remote).
-export function useViewDraft(object: ObjectDef | undefined, saved: ViewDef | undefined): ViewDraft {
+// saved one. Starts from the saved view with the user's remembered layout
+// on top, and remembers every change (`layouts`), so a reload or another
+// device shows the list as the user left it. Re-derived when the saved
+// view changes (switch / save / remote) or the layout is changed on
+// another device.
+export function useViewDraft(object: ObjectDef | undefined, saved: ViewDef | undefined, layouts?: ViewLayoutStore): ViewDraft {
   const base = useMemo<ViewDef | undefined>(() => saved ?? (object ? defaultViewFor(object) : undefined), [saved, object]);
-  const [draft, setDraft] = useState<ViewDef | undefined>(base);
+  const stored = base ? layouts?.get(base.id) : undefined;
+  const start = useMemo(() => (base && object ? applyViewPrefs(base, object, stored) : base), [base, object, stored]);
+  const [draft, setDraft] = useState<ViewDef | undefined>(start);
   const baseSig = base ? viewSignature(base) : "";
-  const lastBase = useRef<{ id?: string; sig: string }>({ id: base?.id, sig: baseSig });
+  // Layout copies written from here: their echo is not re-applied.
+  const mine = useRef<number[]>([]);
+  const seen = useRef<{ id?: string; baseSig: string; at?: number }>({ id: base?.id, baseSig, at: stored?.at });
   useEffect(() => {
-    if (lastBase.current.id !== base?.id || lastBase.current.sig !== baseSig) {
-      lastBase.current = { id: base?.id, sig: baseSig };
-      setDraft(base);
-    }
-  }, [base, baseSig]);
-  const current = draft && draft.id === base?.id ? draft : base;
-  const set = useCallback((patch: Partial<ViewDef>) => setDraft((d) => (d ? { ...d, ...patch } : d)), []);
-  const reset = useCallback(() => setDraft(base), [base]);
+    const at = stored?.at;
+    const prev = seen.current;
+    seen.current = { id: base?.id, baseSig, at };
+    const elsewhere = at !== prev.at && !(at !== undefined && mine.current.includes(at));
+    if (prev.id !== base?.id || prev.baseSig !== baseSig || elsewhere) setDraft(start);
+  }, [base?.id, baseSig, stored?.at, start]);
+  const current = draft && draft.id === base?.id ? draft : start;
+  const currentRef = useRef(current);
+  currentRef.current = current;
+
+  const remember = useCallback(
+    (next: ViewDef | undefined) => {
+      if (!layouts || !base || !next) return;
+      const at = Date.now();
+      mine.current = [...mine.current.slice(-20), at];
+      const widths = layouts.get(base.id)?.widths;
+      layouts.put(base.id, { ...layoutOverrides(next, base), ...(widths ? { widths } : {}), at } as ViewPrefs);
+    },
+    [layouts, base],
+  );
+  const set = useCallback(
+    (patch: Partial<ViewDef>) => {
+      const next = currentRef.current ? { ...currentRef.current, ...patch } : currentRef.current;
+      setDraft(next);
+      remember(next);
+    },
+    [remember],
+  );
+  const reset = useCallback(() => {
+    setDraft(base);
+    remember(base);
+  }, [base, remember]);
   return {
     saved,
     draft: current as ViewDef,

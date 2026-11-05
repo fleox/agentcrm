@@ -41,8 +41,8 @@ Default pipeline **Sales**: New → Qualified → Proposal → Negotiation → W
 | `activities` | notes, tasks, calls, emails, meetings: `{ type, title, body?, targets[], dueAt?, doneAt?, assigneeId?, meta?, attachments?: fileId[] }` |
 | `files` | file metadata `{ name, mime, size, width?, height?, thumbId?, sha256, targets: { kind: record / activity, object?, id }[], deletedAt? }` — bytes in the backend's file storage ([files.md](files.md)) |
 | `pipelines` | `{ object, name, stageField, stages[] }` |
-| `views` | saved table / kanban views: columns, filters, sorts, groupBy, shared |
-| `users` | `{ email, name, role: admin / member / viewer, disabled? }` |
+| `views` | saved table / kanban views: columns, filters, sorts, groupBy, shared — each user's unsaved changes are kept in their `users.prefs` |
+| `users` | `{ email, name, role: admin / member / viewer, disabled?, prefs? }` — `prefs`, written by the user only: `views.<viewId>` = their own layout of that list (filters, sorts, columns, type / groupBy, column widths, `at`) laid over the saved view without changing it, and `lastView.<objectId>` = `{ id, at }`, the view reopened next time. The newest copy wins between devices; the browser keeps one too (`localStorage`), the only one on git-json |
 | `automations`, `automationRuns` | see [automations.md](automations.md) |
 | `forms` | lead capture forms |
 | `settings` | `general`: name, currency, locale, timezone, staleDealDays, maxUploadMb… |

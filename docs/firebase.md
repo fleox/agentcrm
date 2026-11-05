@@ -77,7 +77,7 @@ firebase deploy --only firestore
 | Automations | edit | stamp `lastRunAt` when running them | — | ✗ |
 | Automation runs | all | create / update | — | ✗ |
 | Objects & fields, pipelines, forms, settings, config | write | — | — | ✗ |
-| Users | write (roles, disable) | own `name` / `avatarUrl` only | own `name` / `avatarUrl` only | ✗ |
+| Users | write (roles, disable) | own `name` / `avatarUrl` / `prefs` only | own `name` / `avatarUrl` / `prefs` only | ✗ |
 | Invitations (`invites/{email}`) | write | — | — | read own |
 | Lead inbox (`inbox/{id}`) | read / delete / mark | read / delete / mark | — | **create only** (anyone) |
 | Tombstones (`deletions/{id}`, written with each delete) | write / purge | write | — | ✗ |
@@ -110,7 +110,9 @@ firebase deploy --only firestore
   `{ status, error }`. See `src/features/forms/INBOX.md`.
 
 Re-generate and re-publish the rules whenever you change the admin email or
-the sign-up mode.
+the sign-up mode, and when a release says so in its changelog `actions`
+(0.11.0: users keep their own `prefs`; with older rules the list layouts
+stay in each browser instead of following the user).
 
 ### Indexes
 

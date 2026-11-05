@@ -251,7 +251,7 @@ export function crmRulesModel(adminEmail: string, opts: { signup?: "invite" | "o
           return opts.signup === "open" && next?.role === "member";
         }
         if (op.type === "update" && auth && op.id === auth.uid && role) {
-          return Object.keys(op.data).every((k) => ["name", "avatarUrl", "updatedAt", TS_FIELD].includes(k.split(".")[0]));
+          return Object.keys(op.data).every((k) => ["name", "avatarUrl", "prefs", "updatedAt", TS_FIELD].includes(k.split(".")[0]));
         }
         return false;
       }

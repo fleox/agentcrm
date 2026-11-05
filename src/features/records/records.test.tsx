@@ -117,6 +117,51 @@ describe("table view", () => {
     await c.waitFor(() => c.find('[data-testid="record-count"]').textContent === `${expected} of ${total}`);
   });
 
+  it("remembers each user's layout and last view across reloads and devices", async () => {
+    const c = (current = await renderCrm(<ObjectListPage />, { ...listRoute, route: "/objects/people", role: "member" }));
+    const crm = c.crm;
+    await c.waitFor(() => !!document.querySelector('[data-testid="data-grid"]'));
+    const total = records(c, "people").length;
+    c.click(c.find("button", "Filter"));
+    c.click(c.find("button", /^Lifecycle stageSelect$/));
+    await c.waitFor(() => !!document.querySelector('[data-testid="filter-editor"]'));
+    const customer = c.findAll("label", "Customer").find((l) => l.closest('[data-testid="filter-editor"]'))!;
+    c.click(customer.querySelector("input"));
+    const expected = records(c, "people").filter((r) => r.fields.lifecycleStage === "customer").length;
+    await c.waitFor(() => c.find('[data-testid="record-count"]').textContent === `${expected} of ${total}`);
+    // Written to the user's own prefs (debounced), the shared view untouched.
+    const prefsOf = () => (c.store.get("users", "u-member") as unknown as { prefs?: { views?: Record<string, { filters?: unknown[] }> } }).prefs;
+    await c.waitFor(() => prefsOf()?.views?.["people-all"]?.filters?.length === 1, 4000);
+    expect((c.store.get("views", "people-all") as unknown as ViewDef).filters).toEqual([]);
+    c.unmount();
+
+    // Another device: no browser copy, the CRM copy restores the filter.
+    localStorage.clear();
+    const again = (current = await renderCrm(<ObjectListPage />, { ...listRoute, route: "/objects/people", role: "member", crm }));
+    await again.waitFor(() => again.find('[data-testid="record-count"]').textContent === `${expected} of ${total}`);
+    expect(document.querySelector('[data-testid="view-dirty"]')).not.toBeNull();
+    // Reset: back to the saved view, remembered too.
+    again.click(again.find("button", "Reset"));
+    await again.waitFor(() => !again.find('[data-testid="record-count"]').textContent!.includes(" of "));
+    await again.waitFor(() => !prefsOf()?.views?.["people-all"]?.filters, 4000);
+    // Another user keeps the saved view.
+    again.unmount();
+    const admin = (current = await renderCrm(<ObjectListPage />, { ...listRoute, route: "/objects/people", crm }));
+    await admin.waitFor(() => !!document.querySelector('[data-testid="data-grid"]'));
+    expect(document.querySelector('[data-testid="view-dirty"]')).toBeNull();
+  });
+
+  it("reopens the last view of an object", async () => {
+    const c = (current = await renderCrm(<ObjectListPage />, { ...listRoute, route: "/objects/deals?view=deals-pipeline" }));
+    const crm = c.crm;
+    await c.waitFor(() => !!document.querySelector('[data-testid="kanban"]'));
+    await c.waitFor(() => (c.store.get("users", "owner") as unknown as { prefs?: { lastView?: Record<string, { id: string }> } }).prefs?.lastView?.deals?.id === "deals-pipeline", 4000);
+    c.unmount();
+    localStorage.clear();
+    const again = (current = await renderCrm(<ObjectListPage />, { ...listRoute, route: "/objects/deals", crm }));
+    await again.waitFor(() => !!document.querySelector('[data-testid="kanban"]'));
+  });
+
   it("bulk-updates selected rows and quick-creates a record", async () => {
     const c = (current = await renderCrm(<ListWithOverlays />, { ...listRoute, route: "/objects/companies" }));
     await c.waitFor(() => c.text().includes("Hooli"));

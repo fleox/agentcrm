@@ -1,7 +1,7 @@
-import { recordOf } from "./store";
+import { recordOf, userOf } from "./store";
 import { describe, expect, it } from "vitest";
 import { setupTestCrm } from "./testing";
-import { createUser, deleteUser, listUsers, setUserRole, updateUser } from "./users";
+import { createUser, deleteUser, listUsers, PREFS_MAX_BYTES, setUserPrefs, setUserRole, updateUser } from "./users";
 import { getConfigDoc, getSettings, setConfigDoc, updateSettings } from "./settings";
 import { createRecord } from "./records";
 
@@ -27,6 +27,31 @@ describe("users ops", () => {
     const res = await deleteUser(crm.admin, "u-member", { reassignTo: "owner" });
     expect(res.reassigned).toBe(1);
     expect(recordOf(crm.store, c.id)!.ownerId).toBe("owner");
+  });
+});
+
+describe("user prefs", () => {
+  it("each user writes their own, merged per view, capped", async () => {
+    const crm = await setupTestCrm();
+    const viewer = crm.as("viewer");
+    await setUserPrefs(viewer, { views: { "people-all": { columns: ["email"], at: 1 } }, lastView: { people: { id: "people-all", at: 1 } } });
+    await setUserPrefs(viewer, { views: { "companies-all": { sorts: [{ field: "name", dir: "desc" }], at: 2 } } });
+    expect(userOf(crm.store, "u-viewer")!.prefs).toEqual({
+      views: { "people-all": { columns: ["email"], at: 1 }, "companies-all": { sorts: [{ field: "name", dir: "desc" }], at: 2 } },
+      lastView: { people: { id: "people-all", at: 1 } },
+    });
+    await setUserPrefs(viewer, { views: { "people-all": null } });
+    expect(Object.keys(userOf(crm.store, "u-viewer")!.prefs!.views!)).toEqual(["companies-all"]);
+    // Nobody else's prefs change, ids can't be dot paths.
+    expect(userOf(crm.store, "owner")!.prefs).toBeUndefined();
+    await expect(setUserPrefs(viewer, { views: { "a.b": { at: 3 } } })).rejects.toMatchObject({ code: "validation" });
+    // Over the cap, the oldest layouts go.
+    const big = "x".repeat(PREFS_MAX_BYTES / 4);
+    for (let i = 0; i < 5; i++) await setUserPrefs(viewer, { views: { [`v${i}`]: { columns: [big], at: 10 + i } } });
+    const kept = Object.keys(userOf(crm.store, "u-viewer")!.prefs!.views!);
+    expect(kept).not.toContain("companies-all");
+    expect(kept).toContain("v4");
+    expect(JSON.stringify(userOf(crm.store, "u-viewer")!.prefs).length).toBeLessThanOrEqual(PREFS_MAX_BYTES);
   });
 });
 

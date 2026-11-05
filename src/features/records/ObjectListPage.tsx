@@ -15,7 +15,8 @@ import { createRecord, updateRecord } from "../../ops/records";
 import { createView, updateView } from "../../ops/views";
 import { exportCsv } from "../../ops/exportCsv";
 import { toast } from "../../shared/lib/toast";
-import { useLocalState, useQueryCtx, useRun, useViewDraft } from "./lib/hooks";
+import { useLocalState, useQueryCtx, useRun, useViewDraft, type ViewLayoutStore } from "./lib/hooks";
+import { useUserPrefs } from "./lib/userPrefs";
 import { computeRows, defaultsFromFilters, isFilterComplete, scopeRollups, visibleColumns } from "./lib/viewModel";
 import { FilterBar } from "./views/FilterBar";
 import { FieldsMenu, SortMenu, ViewOptionsMenu } from "./views/ViewMenus";
@@ -67,12 +68,37 @@ export function ObjectListPage() {
     next.delete("filter");
     setParams(next, { replace: true });
   }, [params, setParams]);
-  const saved = views.find((v) => v.id === viewId) ?? views[0];
-  const view = useViewDraft(object, saved);
+  // The user's own layout of each view and last view per object (kept
+  // across reloads and devices, see lib/userPrefs).
+  const { prefs, update: updatePrefs } = useUserPrefs();
+  const layouts = useMemo<ViewLayoutStore>(
+    () => ({ get: (id) => prefs.views?.[id], put: (id, value) => updatePrefs({ views: { [id]: value } }) }),
+    [prefs, updatePrefs],
+  );
+  const remembered = prefs.lastView?.[objectId]?.id;
+  const saved = views.find((v) => v.id === viewId) ?? views.find((v) => v.id === remembered) ?? views[0];
+  const view = useViewDraft(object, saved, layouts);
   const draft = view.draft;
   const [search, setSearch] = useState("");
   const [selection, setSelection] = useState<Set<string>>(new Set());
-  const [widths, setWidths] = useLocalState<Record<string, number>>(`agentcrm.colWidths.${draft?.id ?? objectId}`, {});
+  // Widths used to live in this browser only: read as the default.
+  const [legacyWidths] = useLocalState<Record<string, number>>(`agentcrm.colWidths.${draft?.id ?? objectId}`, {});
+  const viewKey = draft?.id ?? objectId;
+  const widths = prefs.views?.[viewKey]?.widths ?? legacyWidths;
+  const setWidth = useCallback(
+    (col: string, w: number) => {
+      const current = prefs.views?.[viewKey];
+      updatePrefs({ views: { [viewKey]: { ...(current ?? {}), widths: { ...widths, [col]: w }, at: Date.now() } } });
+    },
+    [prefs, viewKey, widths, updatePrefs],
+  );
+
+  // Remember the view opened on this object.
+  const openedId = saved?.id;
+  useEffect(() => {
+    if (openedId && remembered !== openedId) updatePrefs({ lastView: { [objectId]: { id: openedId, at: Date.now() } } });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openedId, objectId]);
 
   // Selection is per view; drop ids that disappeared.
   useEffect(() => setSelection(new Set()), [draft?.id, objectId]);
@@ -281,7 +307,7 @@ export function ObjectListPage() {
           rows={rows}
           columns={columns}
           widths={widths}
-          onResize={(c, w) => setWidths((p) => ({ ...p, [c]: w }))}
+          onResize={setWidth}
           sorts={draft.sorts}
           onSort={onSort}
           onHideColumn={(c) => view.set({ columns: draft.columns.filter((x) => x !== c) })}

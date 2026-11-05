@@ -299,6 +299,28 @@ export interface ViewDef {
   ownerId?: string;
 }
 
+// One user's own layout of a view (filters, sorts, columns… changed
+// without saving the view, column widths), kept across reloads and
+// devices. A missing key = the view's own value; `at` (epoch ms) orders
+// the copies of two devices. Only `at` = back to the saved view.
+export interface ViewPrefs {
+  type?: ViewDef["type"];
+  columns?: string[];
+  filters?: Filter[];
+  sorts?: Sort[];
+  groupBy?: string | null;
+  pipelineId?: string | null;
+  widths?: Record<string, number>;
+  at: number;
+}
+
+// Per-user interface preferences (users/<id>.prefs), written by the user.
+export interface UserPrefs {
+  views?: Record<string, ViewPrefs>;
+  // Last view opened per object.
+  lastView?: Record<string, { id: string; at: number }>;
+}
+
 export type UserRole = "admin" | "member" | "viewer";
 
 export const USER_ROLES: readonly UserRole[] = ["admin", "member", "viewer"];
@@ -310,6 +332,7 @@ export interface CrmUser {
   role: UserRole;
   avatarUrl?: string;
   disabled?: boolean;
+  prefs?: UserPrefs;
 }
 
 export type AutomationTriggerType = "record.created" | "record.updated" | "field.changed" | "stage.changed" | "schedule" | "inactivity";

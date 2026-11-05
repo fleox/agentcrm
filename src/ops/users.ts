@@ -3,7 +3,7 @@
 // CLI; Firebase and git-json map their signed-in identity onto these.
 
 import { newId } from "../core/ids";
-import { USER_ROLES, type CrmUser, type UserRole } from "../core/types";
+import { USER_ROLES, type CrmUser, type UserPrefs, type UserRole, type ViewPrefs } from "../core/types";
 import { normalizeEmail } from "../core/fields";
 import { assertCan, OpsError, type OpsContext } from "./context";
 import { asDoc, userOf, usersOf } from "./store";
@@ -80,6 +80,55 @@ export async function updateUser(ctx: OpsContext, id: string, patch: Partial<Omi
   if (losesAdmin && activeAdmins(ctx).length <= 1) throw new OpsError("invalid", "The CRM needs at least one active admin.");
   await ctx.store.write([{ op: "patch", collection: "users", id, fields }], { message: `Update user ${before.email}` });
   return getUser(ctx, id);
+}
+
+// Size cap of a user's prefs (one Firestore document holds 1 MiB): the
+// oldest view layouts are dropped beyond it.
+export const PREFS_MAX_BYTES = 64 * 1024;
+const PREF_KEY = /^[A-Za-z0-9_-]{1,120}$/;
+
+export interface UserPrefsPatch {
+  // A view's layout; null removes it.
+  views?: Record<string, ViewPrefs | null>;
+  // Last view opened per object.
+  lastView?: Record<string, { id: string; at: number }>;
+}
+
+// The signed-in user's own interface preferences (any role: they only
+// change how the CRM looks to them). Merged per view / per object.
+export async function setUserPrefs(ctx: OpsContext, patch: UserPrefsPatch): Promise<UserPrefs> {
+  const id = ctx.user?.id;
+  const before = id ? userOf(ctx.store, id) : undefined;
+  if (!id || !before) throw new OpsError("notFound", "Preferences are kept for CRM users only.");
+  const fields: Record<string, unknown> = {};
+  const next: UserPrefs = { views: { ...(before.prefs?.views ?? {}) }, lastView: { ...(before.prefs?.lastView ?? {}) } };
+  for (const [viewId, value] of Object.entries(patch.views ?? {})) {
+    if (!PREF_KEY.test(viewId)) throw new OpsError("validation", `Invalid view id "${viewId}".`);
+    if (value && typeof value.at !== "number") throw new OpsError("validation", "A view layout needs `at`.");
+    fields[`prefs.views.${viewId}`] = value ?? undefined;
+    if (value) next.views![viewId] = value;
+    else delete next.views![viewId];
+  }
+  for (const [objectId, value] of Object.entries(patch.lastView ?? {})) {
+    if (!PREF_KEY.test(objectId) || !PREF_KEY.test(value?.id ?? "")) throw new OpsError("validation", `Invalid last view for "${objectId}".`);
+    fields[`prefs.lastView.${objectId}`] = value;
+    next.lastView![objectId] = value;
+  }
+  // Over the cap: drop the least recently changed view layouts.
+  const byAge = Object.entries(next.views!).sort((a, b) => a[1].at - b[1].at);
+  while (JSON.stringify(next).length > PREFS_MAX_BYTES && byAge.length) {
+    const [oldest] = byAge.shift()!;
+    delete next.views![oldest];
+    fields[`prefs.views.${oldest}`] = undefined;
+  }
+  if (!Object.keys(fields).length) return before.prefs ?? {};
+  if (!before.prefs) {
+    // Dot paths need the parent object on every backend: create it whole.
+    for (const k of Object.keys(fields)) delete fields[k];
+    fields.prefs = next;
+  }
+  await ctx.store.write([{ op: "patch", collection: "users", id, fields }], { message: `Update ${before.email}'s preferences` });
+  return next;
 }
 
 export function setUserRole(ctx: OpsContext, id: string, role: UserRole): Promise<CrmUser> {

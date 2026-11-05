@@ -1,6 +1,19 @@
 {
   "versions": [
     {
+      "version": "0.11.0",
+      "date": "2026-11-05",
+      "breaking": false,
+      "changes": [
+        "Each user's list layout is remembered per view: filters, sorts, visible columns and their order, table / kanban, column widths. A reload or another device shows the list as they left it; the saved view itself does not change (Save still updates it for everyone, Reset goes back to it).",
+        "The last view opened on each object is reopened next time.",
+        "Stored in the user's own users/<id>.prefs (any role, own document only), newest copy per view wins between devices; the browser keeps a copy too, the only one on git-json."
+      ],
+      "actions": [
+        "Firebase CRMs: re-generate and re-publish the Firestore rules (`agentcrm options --firebase-rules <admin email>`, or the setup wizard): users may now write their own `prefs`. Until then the layouts are kept in each browser only."
+      ]
+    },
+    {
       "version": "0.10.1",
       "date": "2026-11-05",
       "breaking": false,
