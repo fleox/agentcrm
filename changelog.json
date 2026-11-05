@@ -1,6 +1,15 @@
 {
   "versions": [
     {
+      "version": "0.10.1",
+      "date": "2026-11-05",
+      "breaking": false,
+      "changes": [
+        "The CLI exits only once stdout and stderr have flushed: a large --json result read through a pipe (a records list page of 500 records with their fieldUpdates) was cut short at exit, and the caller got no JSON."
+      ],
+      "actions": []
+    },
+    {
       "version": "0.10.0",
       "date": "2026-11-05",
       "breaking": false,
