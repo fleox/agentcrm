@@ -4,7 +4,7 @@ description: Check, repair and update existing AgentCRM CRMs - list the CRMs thi
 license: PolyForm-Noncommercial-1.0.0
 compatibility: Requires Node.js 20+.
 metadata:
-  version: "0.10.0"
+  version: "0.10.1"
   repository: "https://github.com/fleox/agentcrm"
 allowed-tools: Bash Read Write
 ---
@@ -15,12 +15,12 @@ This skill covers the CRMs themselves (registry, health, updates, maintenance). 
 
 **Language:** talk to the user in their language; keep commands and files in English.
 
-Every command is `npx -y @fleox-agent-crm/agentcrm@0.10.0 <command> --json` (Node.js 20+); read `error.hint` whenever `ok` is false.
+Every command is `npx -y @fleox-agent-crm/agentcrm@0.10.1 <command> --json` (Node.js 20+); read `error.hint` whenever `ok` is false.
 
 ## Always start with status
 
 ```bash
-npx -y @fleox-agent-crm/agentcrm@0.10.0 status --json
+npx -y @fleox-agent-crm/agentcrm@0.10.1 status --json
 ```
 
 - `data.tool.updateAvailable: true` -> tell the user AgentCRM `data.tool.latest` exists and offer to update the skills first (Claude Code: `/plugin marketplace update agentcrm`, then `/reload-plugins`).
@@ -32,8 +32,8 @@ npx -y @fleox-agent-crm/agentcrm@0.10.0 status --json
 ## Which CRM?
 
 ```bash
-npx -y @fleox-agent-crm/agentcrm@0.10.0 site list --json
-npx -y @fleox-agent-crm/agentcrm@0.10.0 site show <alias> --json
+npx -y @fleox-agent-crm/agentcrm@0.10.1 site list --json
+npx -y @fleox-agent-crm/agentcrm@0.10.1 site show <alias> --json
 ```
 
 Commands take `--site <alias>`; always pass it. Without it the tool uses `AGENTCRM_SITE`, the folder's `agentcrm.json` (`{ "site": "<alias>" }`), the only site, or the default chosen with `site use <alias>` - otherwise it fails with `site-required`: ask the user which CRM. Say which CRM you are working on before changing anything.
@@ -43,12 +43,12 @@ Registry commands: `site use <alias>`, `site rename <from> <to>`, `site forget <
 ## Register a CRM installed elsewhere
 
 ```bash
-npx -y @fleox-agent-crm/agentcrm@0.10.0 site add <alias> --admin-url https://crm.acme.com/admin/ --data-credential s3:main --passphrase-credential passphrase:acme --hosting-credential s3:main --json
+npx -y @fleox-agent-crm/agentcrm@0.10.1 site add <alias> --admin-url https://crm.acme.com/admin/ --data-credential s3:main --passphrase-credential passphrase:acme --hosting-credential s3:main --json
 ```
 
 - It reads the admin's public `config.js`, opens the data (proving the credentials) and reads the hosting from the dataset.
 - `--data-credential`: the data location key (journal), the git token (git-json) or the Firebase login.
-- `--passphrase-credential`: encrypted journals. The user stores the passphrase from their password manager: `! npx -y @fleox-agent-crm/agentcrm@0.10.0 credentials set passphrase:<alias>`.
+- `--passphrase-credential`: encrypted journals. The user stores the passphrase from their password manager: `! npx -y @fleox-agent-crm/agentcrm@0.10.1 credentials set passphrase:<alias>`.
 - `--user <email>`: the CRM user the CLI acts as (default: the first admin).
 - A CRM in a local folder without a hosted admin: `site add <alias> --runtime @config.json --data-path /path/to/folder`.
 - `warnings` lists what is still missing; fix later with `site credentials <alias> --hosting-credential <account>` (`""` removes one).
@@ -57,7 +57,7 @@ npx -y @fleox-agent-crm/agentcrm@0.10.0 site add <alias> --admin-url https://crm
 ## Health check
 
 ```bash
-npx -y @fleox-agent-crm/agentcrm@0.10.0 doctor --site <alias> --json
+npx -y @fleox-agent-crm/agentcrm@0.10.1 doctor --site <alias> --json
 ```
 
 `data.checks[]` has `id`, `status` (ok / warn / fail / skip), `message` and, for problems, `fix`. Exit code 1 when a check fails. Walk the user through each fix, most important first:
@@ -75,8 +75,8 @@ Details of every check: references/doctor.md.
 ## Update a hosted admin
 
 ```bash
-npx -y @fleox-agent-crm/agentcrm@0.10.0 deploy-admin --site <alias> --json
-npx -y @fleox-agent-crm/agentcrm@0.10.0 deploy-admin --site <alias> --yes --json
+npx -y @fleox-agent-crm/agentcrm@0.10.1 deploy-admin --site <alias> --json
+npx -y @fleox-agent-crm/agentcrm@0.10.1 deploy-admin --site <alias> --yes --json
 ```
 
 Without `--yes` it prints the plan (`needsConfirmation: true`, versions, file count): show it, ask, then re-run with `--yes`. `--all` covers every CRM with a hosting. It refuses downgrades and admins that store a newer data format. GitHub / GitLab Pages need a minute before `doctor` sees the new version.
@@ -86,8 +86,8 @@ Without `--yes` it prints the plan (`needsConfirmation: true`, versions, file co
 Deleted records stay restorable until compaction. To erase them physically and shrink the journal:
 
 ```bash
-npx -y @fleox-agent-crm/agentcrm@0.10.0 compact --site <alias> --json
-npx -y @fleox-agent-crm/agentcrm@0.10.0 compact --site <alias> --yes --json
+npx -y @fleox-agent-crm/agentcrm@0.10.1 compact --site <alias> --json
+npx -y @fleox-agent-crm/agentcrm@0.10.1 compact --site <alias> --yes --json
 ```
 
 Show the plan (records purged) and confirm first: it can't be undone. Run it from one place at a time.
@@ -97,12 +97,12 @@ Show the plan (records purged) and confirm first: it can't be undone. Run it fro
 Scheduled / inactivity automations and lead form ingestion run when the admin is open, or from a cron. The recommended cron is a GitHub Actions workflow in a private repo: references/cron.md. Locally:
 
 ```bash
-npx -y @fleox-agent-crm/agentcrm@0.10.0 automations run --site <alias> --yes --json
-npx -y @fleox-agent-crm/agentcrm@0.10.0 forms ingest --site <alias> --yes --json
+npx -y @fleox-agent-crm/agentcrm@0.10.1 automations run --site <alias> --yes --json
+npx -y @fleox-agent-crm/agentcrm@0.10.1 forms ingest --site <alias> --yes --json
 ```
 
 ## Overview of one CRM
 
 ```bash
-npx -y @fleox-agent-crm/agentcrm@0.10.0 stats --site <alias> --json
+npx -y @fleox-agent-crm/agentcrm@0.10.1 stats --site <alias> --json
 ```

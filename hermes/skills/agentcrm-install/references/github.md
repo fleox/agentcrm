@@ -7,7 +7,7 @@ Fine-grained personal access token: https://github.com/settings/personal-access-
 - Repository access: only the data repository (PRIVATE) and, if used, the admin hosting repository.
 - Permissions: Contents read and write; Metadata read-only; Pages read and write (optional, lets the CLI enable Pages).
 
-The user stores it: `! npx -y @fleox-agent-crm/agentcrm@0.10.0 credentials set github:<login>`, or reuses the GitHub CLI login: `npx -y @fleox-agent-crm/agentcrm@0.10.0 credentials set github:<login> --from-gh --json`.
+The user stores it: `! npx -y @fleox-agent-crm/agentcrm@0.10.1 credentials set github:<login>`, or reuses the GitHub CLI login: `npx -y @fleox-agent-crm/agentcrm@0.10.1 credentials set github:<login> --from-gh --json`.
 
 GitLab: project → Settings → Access tokens, scope `api`, role Developer; store as `gitlab:<name>`.
 

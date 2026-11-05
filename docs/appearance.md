@@ -42,16 +42,16 @@ Installed theme extensions are listed after the built-ins ([creating-a-theme.md]
 ## CLI
 
 ```bash
-npx -y @fleox-agent-crm/agentcrm@0.10.0 appearance get --site acme
-npx -y @fleox-agent-crm/agentcrm@0.10.0 appearance presets --site acme
-npx -y @fleox-agent-crm/agentcrm@0.10.0 appearance set --site acme --accent "#0f766e" --neutral stone --radius lg --buttons accent        # plan
-npx -y @fleox-agent-crm/agentcrm@0.10.0 appearance set --site acme --accent "#0f766e" --neutral stone --radius lg --buttons accent --yes
-npx -y @fleox-agent-crm/agentcrm@0.10.0 appearance set --site acme --radius null --yes                     # back to the default radius
-npx -y @fleox-agent-crm/agentcrm@0.10.0 appearance preset ocean --site acme --yes
-npx -y @fleox-agent-crm/agentcrm@0.10.0 appearance logo ./logo.svg --site acme --yes
-npx -y @fleox-agent-crm/agentcrm@0.10.0 appearance favicon ./favicon.png --site acme --yes
-npx -y @fleox-agent-crm/agentcrm@0.10.0 appearance css ./brand.css --site acme --yes
-npx -y @fleox-agent-crm/agentcrm@0.10.0 appearance reset --site acme --yes
+npx -y @fleox-agent-crm/agentcrm@0.10.1 appearance get --site acme
+npx -y @fleox-agent-crm/agentcrm@0.10.1 appearance presets --site acme
+npx -y @fleox-agent-crm/agentcrm@0.10.1 appearance set --site acme --accent "#0f766e" --neutral stone --radius lg --buttons accent        # plan
+npx -y @fleox-agent-crm/agentcrm@0.10.1 appearance set --site acme --accent "#0f766e" --neutral stone --radius lg --buttons accent --yes
+npx -y @fleox-agent-crm/agentcrm@0.10.1 appearance set --site acme --radius null --yes                     # back to the default radius
+npx -y @fleox-agent-crm/agentcrm@0.10.1 appearance preset ocean --site acme --yes
+npx -y @fleox-agent-crm/agentcrm@0.10.1 appearance logo ./logo.svg --site acme --yes
+npx -y @fleox-agent-crm/agentcrm@0.10.1 appearance favicon ./favicon.png --site acme --yes
+npx -y @fleox-agent-crm/agentcrm@0.10.1 appearance css ./brand.css --site acme --yes
+npx -y @fleox-agent-crm/agentcrm@0.10.1 appearance reset --site acme --yes
 ```
 
 Options of `set`: `--accent`, `--neutral`, `--radius`, `--density`, `--font`, `--sidebar`, `--mode` (default mode), `--buttons`, `--contrast`, `--theme`. Without `--yes`, every change prints the plan: `data.plan.changes` = `{ key: { from, to } }`.
