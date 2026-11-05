@@ -1,6 +1,16 @@
 {
   "versions": [
     {
+      "version": "0.10.0",
+      "date": "2026-11-05",
+      "breaking": false,
+      "changes": [
+        "Records keep who last wrote each field and when (fieldUpdates.<fieldId> = { by, at }), stamped by every write with a known actor: admin edits, the CLI, sync, merges and inverse relations. updatedBy alone named the last writer of the whole record, so a later write to another field hid who changed this one.",
+        "records list / get print createdBy, updatedBy and fieldUpdates (restricted to --columns)."
+      ],
+      "actions": []
+    },
+    {
       "version": "0.9.3",
       "date": "2026-11-04",
       "breaking": false,

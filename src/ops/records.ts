@@ -240,7 +240,7 @@ export async function createRecord(
     ...(ownerId ? { ownerId } : {}),
     createdAt: now,
     updatedAt: now,
-    ...(actorId(ctx) ? { createdBy: actorId(ctx), updatedBy: actorId(ctx) } : {}),
+    ...(actorId(ctx) ? { createdBy: actorId(ctx), updatedBy: actorId(ctx), fieldUpdates: fieldStamps(Object.keys(prepared.fields), actorId(ctx)!, now) } : {}),
   };
   await ctx.store.write([{ op: "set", collection: "records", doc: asDoc(record) }], { message: opts.message ?? `Create ${object.labelSingular}` });
   const stored = requireRecord(ctx.store, id);
@@ -252,10 +252,19 @@ export async function createRecord(
 }
 
 // Mutation patching only the changed fields (per-field LWW on the journal).
+function fieldStamps(ids: string[], by: string, at: number): Record<string, { by: string; at: number }> {
+  return Object.fromEntries(ids.map((k) => [k, { by, at }]));
+}
+
 export function recordPatchMutation(ctx: OpsContext, previous: CrmRecord, fields: Record<string, unknown>, changed: string[], extra: Record<string, unknown> = {}): DocMutation {
-  const patch: Record<string, unknown> = { updatedAt: ctx.now(), ...extra };
-  if (actorId(ctx)) patch.updatedBy = actorId(ctx);
-  for (const k of changed) patch[`fields.${k}`] = fields[k];
+  const now = ctx.now();
+  const actor = actorId(ctx);
+  const patch: Record<string, unknown> = { updatedAt: now, ...extra };
+  if (actor) patch.updatedBy = actor;
+  for (const k of changed) {
+    patch[`fields.${k}`] = fields[k];
+    if (actor) patch[`fieldUpdates.${k}`] = { by: actor, at: now };
+  }
   return { op: "patch", collection: "records", id: previous.id, fields: patch };
 }
 

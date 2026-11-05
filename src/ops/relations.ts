@@ -92,7 +92,12 @@ function patchFieldMutation(ctx: OpsContext, record: CrmRecord, fieldId: string,
     op: "patch",
     collection: "records",
     id: record.id,
-    fields: { [`fields.${fieldId}`]: value, updatedAt: ctx.now(), updatedBy: actorId(ctx) },
+    fields: {
+      [`fields.${fieldId}`]: value,
+      updatedAt: ctx.now(),
+      updatedBy: actorId(ctx),
+      ...(actorId(ctx) ? { [`fieldUpdates.${fieldId}`]: { by: actorId(ctx), at: ctx.now() } } : {}),
+    },
   };
 }
 

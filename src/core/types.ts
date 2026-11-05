@@ -133,6 +133,11 @@ export interface ObjectDef {
   updatedAt: number;
 }
 
+export interface FieldUpdate {
+  by: string;
+  at: number;
+}
+
 export interface CrmRecord {
   id: string;
   object: string;
@@ -142,6 +147,10 @@ export interface CrmRecord {
   updatedAt: number;
   createdBy?: string;
   updatedBy?: string;
+  // Who last wrote each field, and when (every write by a known actor stamps
+  // the fields it changed). `updatedBy` alone names the last writer of the
+  // whole record: a later write to another field would hide who changed this one.
+  fieldUpdates?: Record<string, FieldUpdate>;
   // Soft delete (restorable). Physical purge: ops/compact.ts.
   deletedAt?: number;
 }

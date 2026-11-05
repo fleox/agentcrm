@@ -37,7 +37,7 @@ Default pipeline **Sales**: New → Qualified → Proposal → Negotiation → W
 
 | Collection | Content |
 |---|---|
-| `records` | `{ id, object, fields, ownerId?, createdAt, updatedAt, createdBy?, updatedBy?, deletedAt? }` |
+| `records` | `{ id, object, fields, ownerId?, createdAt, updatedAt, createdBy?, updatedBy?, fieldUpdates?, deletedAt? }` — `fieldUpdates.<fieldId>` = `{ by: userId, at }`, who last wrote that field (`updatedBy` names the last writer of the whole record); `records list / get --json` print `createdBy`, `updatedBy` and `fieldUpdates` |
 | `activities` | notes, tasks, calls, emails, meetings: `{ type, title, body?, targets[], dueAt?, doneAt?, assigneeId?, meta?, attachments?: fileId[] }` |
 | `files` | file metadata `{ name, mime, size, width?, height?, thumbId?, sha256, targets: { kind: record / activity, object?, id }[], deletedAt? }` — bytes in the backend's file storage ([files.md](files.md)) |
 | `pipelines` | `{ object, name, stageField, stages[] }` |

@@ -57,6 +57,20 @@ describe("records ops", () => {
     expect(recordOf(store, c.id)!.fields).not.toHaveProperty("tags");
   });
 
+  it("stamps who last wrote each field, so a later write to another field keeps that author", async () => {
+    const crm = await setupTestCrm({ now: 1000 });
+    const member = crm.as("member");
+    const c = await createRecord(crm.admin, "companies", { name: "Acme", industry: "Software" });
+    expect(c.fieldUpdates).toMatchObject({ name: { by: "owner", at: 1000 }, industry: { by: "owner", at: 1000 } });
+    crm.clock.now = 2000;
+    await updateRecord(member, c.id, { industry: "Finance" });
+    crm.clock.now = 3000;
+    await updateRecord(crm.admin, c.id, { domain: "acme.com" });
+    const r = recordOf(crm.store, c.id)!;
+    expect(r.updatedBy).toBe("owner");
+    expect(r.fieldUpdates).toMatchObject({ name: { by: "owner", at: 1000 }, industry: { by: "u-member", at: 2000 }, domain: { by: "owner", at: 3000 } });
+  });
+
   it("seeds demo companies whose country and phone match their city", async () => {
     const { admin } = await setupTestCrm({ demo: true });
     for (const c of listRecords(admin, "companies", { limit: 100 }).items) {

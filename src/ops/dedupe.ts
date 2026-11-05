@@ -138,6 +138,12 @@ export async function mergeRecords(ctx: OpsContext, primaryId: string, duplicate
     updatedAt: now,
     ...(actorId(ctx) ? { updatedBy: actorId(ctx) } : {}),
   };
+  const actor = actorId(ctx);
+  if (actor) {
+    // The fields the merge filled or changed on the primary are the merger's.
+    const touched = Object.keys(fields).filter((k) => JSON.stringify(fields[k]) !== JSON.stringify(primary.fields[k]));
+    if (touched.length) record.fieldUpdates = { ...primary.fieldUpdates, ...Object.fromEntries(touched.map((k) => [k, { by: actor, at: now }])) };
+  }
   if (!record.ownerId) delete record.ownerId;
   const refs = rewriteReferences(ctx, ids, primaryId);
   const mutations: DocMutation[] = [{ op: "set", collection: "records", doc: asDoc(record) }, ...refs];

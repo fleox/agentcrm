@@ -11,6 +11,9 @@ export async function recordOut(ctx: OpsContext, r: CrmRecord, columns?: string[
   const { recordLabel } = await import("../../src/core/fields");
   const { objectOf } = await import("../../src/ops/store");
   const fields = columns ? Object.fromEntries(columns.filter((c) => c in r.fields).map((c) => [c, r.fields[c]])) : r.fields;
+  const updates = r.fieldUpdates
+    ? Object.fromEntries(Object.entries(r.fieldUpdates).filter(([k]) => !columns || columns.includes(k)).map(([k, u]) => [k, { by: u.by, at: new Date(u.at).toISOString() }]))
+    : undefined;
   return {
     id: r.id,
     object: r.object,
@@ -19,6 +22,9 @@ export async function recordOut(ctx: OpsContext, r: CrmRecord, columns?: string[
     ...(r.ownerId ? { ownerId: r.ownerId } : {}),
     createdAt: new Date(r.createdAt).toISOString(),
     updatedAt: new Date(r.updatedAt).toISOString(),
+    ...(r.createdBy ? { createdBy: r.createdBy } : {}),
+    ...(r.updatedBy ? { updatedBy: r.updatedBy } : {}),
+    ...(updates && Object.keys(updates).length ? { fieldUpdates: updates } : {}),
     ...(r.deletedAt ? { deletedAt: new Date(r.deletedAt).toISOString() } : {}),
   };
 }
