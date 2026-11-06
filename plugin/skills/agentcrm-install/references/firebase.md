@@ -2,8 +2,8 @@
 
 1. Create a Firebase project (console.firebase.google.com), add a Web app and copy its config (apiKey, authDomain, projectId, appId...). The web apiKey is public by design.
 2. Enable Authentication → Sign-in method → Email/Password (and Google if wanted).
-3. Create Firestore (production mode) and publish the AgentCRM security rules: `npx -y @fleox-agent-crm/agentcrm@0.12.1 options --firebase-rules <admin email> --json` prints them (paste into Firestore → Rules → Publish). Re-publish them after an update whose changelog asks for it.
-4. Create the first admin account (Authentication → Users → Add user) and **verify its email address** (an unverified address is refused). The user stores its login: `! npx -y @fleox-agent-crm/agentcrm@0.12.1 credentials set firebase:<name>` (email + password at hidden prompts).
+3. Create Firestore (production mode) and publish the AgentCRM security rules: `npx -y @fleox-agent-crm/agentcrm@0.12.2 options --firebase-rules <admin email> --json` prints them (paste into Firestore → Rules → Publish). Re-publish them after an update whose changelog asks for it.
+4. Create the first admin account (Authentication → Users → Add user) and **verify its email address** (an unverified address is refused). The user stores its login: `! npx -y @fleox-agent-crm/agentcrm@0.12.2 credentials set firebase:<name>` (email + password at hidden prompts).
 5. Files (images, attachments): either enable **Firebase Storage** (add `storageBucket` to the web config, publish the generated storage.rules, set the bucket CORS), or keep the bytes outside Firebase with an **HTTP files endpoint** the user runs (below).
 6. Plan:
 
@@ -33,8 +33,8 @@ For users who want the file bytes on their own storage (e.g. encrypted on their 
 - For the CLI, give an **absolute** URL (a relative one can't be resolved outside the browser) and update the site's runtime config — same project only:
 
 ```bash
-npx -y @fleox-agent-crm/agentcrm@0.12.1 site show team-crm --json
-npx -y @fleox-agent-crm/agentcrm@0.12.1 site runtime team-crm --runtime @runtime.json --json
+npx -y @fleox-agent-crm/agentcrm@0.12.2 site show team-crm --json
+npx -y @fleox-agent-crm/agentcrm@0.12.2 site runtime team-crm --runtime @runtime.json --json
 ```
 
 `runtime.json` = the `runtime` object of `site show` plus `"files": { "endpoint": "https://crm.acme.com/crm/files" }`. Then download one existing file (`files list --record <id>`, then `files get <fileId> --out /tmp/check.bin`) to prove the endpoint answers the CLI.

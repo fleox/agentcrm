@@ -3,8 +3,8 @@
 `records sync` keeps one object of the CRM in line with another system: a back office, a product database, a public registry, a spreadsheet export. Each run sends the current rows of the source; AgentCRM creates the new ones, patches only the values that changed, links records to each other by their source ids, and flags (never deletes) the records that left the source. A second run with the same rows writes nothing.
 
 ```bash
-npx -y @fleox-agent-crm/agentcrm@0.12.1 records sync --object operators --key sourceId --rows @operators.json --archive-field archived --site acme         # plan
-npx -y @fleox-agent-crm/agentcrm@0.12.1 records sync --object operators --key sourceId --rows @operators.json --archive-field archived --site acme --yes   # apply
+npx -y @fleox-agent-crm/agentcrm@0.12.2 records sync --object operators --key sourceId --rows @operators.json --archive-field archived --site acme         # plan
+npx -y @fleox-agent-crm/agentcrm@0.12.2 records sync --object operators --key sourceId --rows @operators.json --archive-field archived --site acme --yes   # apply
 ```
 
 Engine: `src/ops/syncRecords.ts` (`syncRecords(ctx, spec)`); needs `records.write` (member or admin).
@@ -131,7 +131,7 @@ jobs:
       AGENTCRM_S3_SECRET: ${{ secrets.AGENTCRM_S3_SECRET }}
       AGENTCRM_PASSPHRASE: ${{ secrets.AGENTCRM_PASSPHRASE }}
       SOURCE_TOKEN: ${{ secrets.SOURCE_TOKEN }}
-      CLI: npx -y @fleox-agent-crm/agentcrm@0.12.1
+      CLI: npx -y @fleox-agent-crm/agentcrm@0.12.2
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

@@ -107,7 +107,7 @@ Once it is installed, the CRM is a conversation:
 ### Without an agent
 
 ```bash
-npx -y @fleox-agent-crm/agentcrm@0.12.1 serve
+npx -y @fleox-agent-crm/agentcrm@0.12.2 serve
 ```
 
 This starts the admin on your computer (Node.js 20+). Open the printed URL and follow the setup wizard: **data → where → install**. To look around first, pick **This browser** with demo data: nothing leaves your machine. The wizard can also put the admin on GitHub / GitLab / Cloudflare Pages or a bucket, so your team only needs a browser.
@@ -213,10 +213,10 @@ Everything below is in **Settings**, and an agent can do all of it too (CLI, MCP
 **Extensions.** Modules (pages, record tabs, dashboard widgets, settings pages, AI tools, automation actions, hooks) and themes are ZIP files installed at runtime, with no rebuild. They are stored in the CRM's own data, so every admin, the CLI and the MCP server load them. Installing shows who made it and what it adds, and safe mode starts without any. [Extensions guide](https://github.com/fleox/agentcrm/blob/master/docs/extensions.md)
 
 ```bash
-npx -y @fleox-agent-crm/agentcrm@0.12.1 ext new module deal-radar   # Vite project, typings, en / fr
+npx -y @fleox-agent-crm/agentcrm@0.12.2 ext new module deal-radar   # Vite project, typings, en / fr
 cd deal-radar && npm install && npm run build
-npx -y @fleox-agent-crm/agentcrm@0.12.1 ext check .                 # validates it and loads it like the admin
-npx -y @fleox-agent-crm/agentcrm@0.12.1 ext install . --site acme   # plan; add --yes to install
+npx -y @fleox-agent-crm/agentcrm@0.12.2 ext check .                 # validates it and loads it like the admin
+npx -y @fleox-agent-crm/agentcrm@0.12.2 ext install . --site acme   # plan; add --yes to install
 ```
 
 <p align="center">
@@ -259,7 +259,7 @@ The journal appends one encrypted segment per write, with no lock, and merges th
 
 ## The `agentcrm` CLI
 
-The same engine the agents use, by hand: `npx -y @fleox-agent-crm/agentcrm@0.12.1 help`. Every command accepts `--json` and prints exactly one `{ ok, data }` or `{ ok: false, error }` object, and commands that change the workspace print a plan until you add `--yes`.
+The same engine the agents use, by hand: `npx -y @fleox-agent-crm/agentcrm@0.12.2 help`. Every command accepts `--json` and prints exactly one `{ ok, data }` or `{ ok: false, error }` object, and commands that change the workspace print a plan until you add `--yes`.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/fleox/agentcrm/master/.github/assets/demo-cli.gif" width="820" alt="Terminal running the agentcrm CLI: a filtered deals list, creating a person, moving a deal to Won, adding a task and a pipeline report">
@@ -295,7 +295,7 @@ Full reference: [docs/cli.md](https://github.com/fleox/agentcrm/blob/master/docs
 ## MCP server
 
 ```bash
-claude mcp add agentcrm -- npx -y @fleox-agent-crm/agentcrm@0.12.1 mcp --site acme
+claude mcp add agentcrm -- npx -y @fleox-agent-crm/agentcrm@0.12.2 mcp --site acme
 ```
 
 <p align="center">
