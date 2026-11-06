@@ -6,7 +6,7 @@
 # No cloud account: an encrypted journal dataset in a local folder, demo data,
 # the generated passphrase stored in the demo's own AGENTCRM_HOME.
 set -euo pipefail
-VERSION="${AGENTCRM_DEMO_VERSION:-0.12.1}"
+VERSION="${AGENTCRM_DEMO_VERSION:-0.12.2}"
 PKG="@fleox-agent-crm/agentcrm@$VERSION"
 DEMO=/tmp/acrm-cli-demo
 export AGENTCRM_HOME="$DEMO/home"

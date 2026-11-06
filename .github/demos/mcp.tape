@@ -19,7 +19,7 @@ Enter
 Sleep 500ms
 Show
 
-Type "claude mcp add agentcrm -- npx -y @fleox-agent-crm/agentcrm@0.12.1 mcp --site demo"
+Type "claude mcp add agentcrm -- npx -y @fleox-agent-crm/agentcrm@0.12.2 mcp --site demo"
 Sleep 400ms
 Enter
 Sleep 3s
@@ -32,7 +32,7 @@ Sleep 6s
 Type "clear"
 Enter
 Set TypingSpeed 20ms
-Type "alias agentcrm='npx -y @fleox-agent-crm/agentcrm@0.12.1'   # the same tools, from a shell"
+Type "alias agentcrm='npx -y @fleox-agent-crm/agentcrm@0.12.2'   # the same tools, from a shell"
 Set TypingSpeed 35ms
 Sleep 300ms
 Enter

@@ -1,7 +1,7 @@
 # "Run the CRM from the terminal" demo for the README: the published
 # agentcrm CLI on a throw-away CRM (encrypted journal in a local folder,
 # demo data) prepared by setup.sh.
-#   .github/demos/render.sh cli   (from the repository root; needs vhs, ttyd, ffmpeg, jq)
+#   .github/demos/render.sh cli   (from the repository root; needs vhs, ttyd, ffmpeg)
 Output .github/assets/demo-cli.gif
 
 Set Shell "bash"
@@ -19,13 +19,13 @@ Enter
 Sleep 500ms
 Show
 
-Type "npx -y @fleox-agent-crm/agentcrm@0.12.1 stats"
+Type "npx -y @fleox-agent-crm/agentcrm@0.12.2 stats"
 Sleep 400ms
 Enter
 Sleep 3s
 
 Set TypingSpeed 20ms
-Type "alias agentcrm='npx -y @fleox-agent-crm/agentcrm@0.12.1'"
+Type "alias agentcrm='npx -y @fleox-agent-crm/agentcrm@0.12.2'"
 Set TypingSpeed 35ms
 Sleep 300ms
 Enter
@@ -43,7 +43,7 @@ Sleep 400ms
 Enter
 Sleep 2500ms
 
-Type "agentcrm pipelines move 0fx394r1cltirl Won --json | jq .data.fields"
+Type "agentcrm pipelines move 0fx394r1cltirl Won"
 Sleep 400ms
 Enter
 Sleep 4s
@@ -55,7 +55,7 @@ Sleep 400ms
 Enter
 Sleep 3500ms
 
-Type "agentcrm report pipeline --json | jq -c '.data.data.stages[] | {label, count, amount}'"
+Type "agentcrm report pipeline"
 Sleep 400ms
 Enter
 Sleep 6s

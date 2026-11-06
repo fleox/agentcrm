@@ -20,7 +20,7 @@ Sleep 500ms
 Show
 
 Set TypingSpeed 20ms
-Type "alias agentcrm='npx -y @fleox-agent-crm/agentcrm@0.12.1'"
+Type "alias agentcrm='npx -y @fleox-agent-crm/agentcrm@0.12.2'"
 Set TypingSpeed 35ms
 Sleep 300ms
 Enter
