@@ -230,6 +230,10 @@ export function createSdkFirebaseApi(options: FirebaseOptions): FirebaseApi {
         await u.getIdToken(true);
         return toUser(auth.currentUser);
       },
+      async idToken() {
+        await restored;
+        return auth.currentUser ? auth.currentUser.getIdToken() : null;
+      },
       async signOut() {
         await fbSignOut(auth);
       },

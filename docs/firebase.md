@@ -150,6 +150,10 @@ members create / update, admins delete — compaction). To use them:
 Without Storage the CRM works normally; uploads fail with "Firebase Storage
 isn't enabled for this project…". Details: [files.md](files.md).
 
+Firebase Storage is optional: with `files: { endpoint }` in the runtime config
+the files go to an HTTP endpoint you run instead (your own bucket, encrypted
+on your side) — see [files.md](files.md#http-files-endpoint-firebase-without-firebase-storage).
+
 ## 4. Run the setup wizard
 
 Open the admin, pick **Firebase**, paste the config snippet, then enter the

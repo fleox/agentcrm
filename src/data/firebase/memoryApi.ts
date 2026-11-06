@@ -215,6 +215,9 @@ export function createMemoryFirebaseApi(opts: { rules?: MemoryFirestoreRules; us
       async reload() {
         return user;
       },
+      async idToken() {
+        return user ? `memory-token:${user.uid}` : null;
+      },
       async signOut() {
         api.signInAs(null);
       },

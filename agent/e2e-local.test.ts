@@ -166,4 +166,14 @@ describe("journal CRM in a local folder", () => {
     writeFileSync(notJson, "{ not json");
     expect((await cli(["install", "--plan", notJson])).body.error?.hint).toBeTruthy();
   }, 120_000);
+  it("site runtime: replaces the runtime config of the same dataset only", async () => {
+    const shown = await cli(["site", "show", "local"]);
+    const runtime = shown.body.data.runtime;
+    const renamed = await cli(["site", "runtime", "local", "--runtime", JSON.stringify({ ...runtime, name: "Local CRM" })]);
+    expect(renamed.code).toBe(0);
+    expect((await cli(["site", "show", "local"])).body.data.runtime.name).toBe("Local CRM");
+    const other = await cli(["site", "runtime", "local", "--runtime", JSON.stringify({ backend: "firebase", firebase: { apiKey: "k", projectId: "p" } })]);
+    expect(other.code).not.toBe(0);
+    expect(other.body.error?.code).toBe("config-mismatch");
+  });
 });

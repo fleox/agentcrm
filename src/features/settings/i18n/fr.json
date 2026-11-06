@@ -73,7 +73,8 @@
       "local": "Les fichiers sont conservés dans ce navigateur (IndexedDB) — sauvegardez-les avec Paramètres → Export → ZIP.",
       "git-json": "Les fichiers sont commités dans le dépôt de données (dossier files/).",
       "firebase": "Les fichiers sont stockés dans votre bucket Firebase Storage (files/).",
-      "memory": "Les fichiers sont gardés en mémoire (perdus au rechargement)."
+      "memory": "Les fichiers sont gardés en mémoire (perdus au rechargement).",
+      "http": "Les fichiers sont stockés par le point d'accès fichiers de ce déploiement (config `files`), pas dans Firebase Storage."
     },
     "firebaseStorageHint": "Firebase Storage doit être activé (Build → Storage), `storageBucket` présent dans la config web, le fichier storage.rules généré déployé et le CORS du bucket autorisé pour cet admin (voir docs/files.md).",
     "gitFilesHint": "L’historique git garde chaque fichier envoyé pour toujours, même supprimé, et les gros fichiers ralentissent le dépôt. Préférez le stockage journal chiffré pour de nombreux fichiers ou des fichiers personnels."

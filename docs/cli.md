@@ -132,6 +132,7 @@ agentcrm site <list|show|add|use|rename|forget|credentials> [args] [--admin-url 
 | `rename` | `agentcrm site rename <from> <to>` | Rename an alias. |
 | `forget` | `agentcrm site forget <alias>` | Remove from this computer's registry (nothing is deleted online). |
 | `credentials` | `agentcrm site credentials <alias> [--data-credential <acct>] [--hosting-credential <acct>] [--passphrase-credential <acct>] [--user <email>]` | Attach / change the accounts a site uses ("" removes one). |
+| `runtime` | `agentcrm site runtime <alias> --runtime <json\|@file>` | Replace the runtime config this computer uses for a site (same backend and project only), e.g. to add a files endpoint. |
 
 | Option | Description |
 |---|---|

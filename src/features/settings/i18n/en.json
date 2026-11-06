@@ -73,7 +73,8 @@
       "local": "Files are kept in this browser (IndexedDB) — back them up with Settings → Export → ZIP.",
       "git-json": "Files are committed to the data repository (files/ folder).",
       "firebase": "Files are stored in your Firebase Storage bucket (files/).",
-      "memory": "Files are kept in memory (lost on reload)."
+      "memory": "Files are kept in memory (lost on reload).",
+      "http": "Files are stored by the files endpoint of this deployment (runtime config `files`), not in Firebase Storage."
     },
     "firebaseStorageHint": "Firebase Storage must be enabled (Build → Storage), `storageBucket` present in the web config, the generated storage.rules deployed and the bucket CORS set for this admin (see docs/files.md).",
     "gitFilesHint": "Git history keeps every uploaded file forever, even after deletion, and large files slow the repository down. Prefer the encrypted journal backend for many or personal files."

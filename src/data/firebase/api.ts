@@ -131,6 +131,9 @@ export interface FirebaseApi {
     sendVerificationEmail(): Promise<void>;
     // Reloads the user + refreshes the ID token (email_verified).
     reload(): Promise<FirebaseAuthUser | null>;
+    // The signed-in user's ID token (refreshed when close to expiry), for
+    // services that check it themselves (the HTTP files endpoint).
+    idToken(): Promise<string | null>;
     signOut(): Promise<void>;
   };
 }

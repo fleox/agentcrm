@@ -31,7 +31,7 @@ function checkAccount(v: string): string {
 
 export const siteCommand: Command = {
   name: "site",
-  usage: "site <list|show|add|use|rename|forget|credentials> [args] [--admin-url <url>] [--data-credential <acct>] [--hosting-credential <acct>] [--passphrase-credential <acct>] [--user <email>]",
+  usage: "site <list|show|add|use|rename|forget|credentials|runtime> [args] [--admin-url <url>] [--data-credential <acct>] [--hosting-credential <acct>] [--passphrase-credential <acct>] [--user <email>]",
   summary: "The registry of CRMs this computer drives (~/.agentcrm/sites.json, no secrets): list, show, add an existing CRM, choose the default, rename, forget (local only — nothing is deleted online), attach credentials.",
   subcommands: [
     { name: "list", usage: "site list", summary: "Registered CRMs (* = default)." },
@@ -41,11 +41,12 @@ export const siteCommand: Command = {
     { name: "rename", usage: "site rename <from> <to>", summary: "Rename an alias.", writes: true },
     { name: "forget", usage: "site forget <alias>", summary: "Remove from this computer's registry (nothing is deleted online).", writes: true },
     { name: "credentials", usage: "site credentials <alias> [--data-credential <acct>] [--hosting-credential <acct>] [--passphrase-credential <acct>] [--user <email>]", summary: "Attach / change the accounts a site uses (\"\" removes one).", writes: true },
+    { name: "runtime", usage: "site runtime <alias> --runtime <json|@file>", summary: "Replace the runtime config this computer uses for a site (same backend and project only; e.g. add a files endpoint).", writes: true },
   ],
   options: [
     { name: "site", type: "string", description: "Site alias (show / credentials)." },
     { name: "admin-url", type: "string", description: "add: URL of the hosted admin, e.g. https://crm.acme.com/admin/." },
-    { name: "runtime", type: "string", description: "add: the runtime config (config.js object) as JSON or @file, when the admin isn't hosted." },
+    { name: "runtime", type: "string", description: "add / runtime: the runtime config (config.js object) as JSON or @file, when the admin isn't hosted." },
     { name: "data-credential", type: "string", description: "Account of the data location / git token / Firebase login." },
     { name: "hosting-credential", type: "string", description: "Account used to write to the admin hosting." },
     { name: "passphrase-credential", type: "string", description: "Passphrase account of an encrypted dataset." },
@@ -114,6 +115,23 @@ export const siteCommand: Command = {
         putSite(updated);
         const warnings = missingCredentials(updated);
         printResult(io, { alias: site.alias, credentials: next, user: updated.user ?? null, warnings }, () => [`${site.alias}: ${JSON.stringify(next)}`, ...warnings.map((w) => `  warning: ${w}`)].join("\n"));
+        return;
+      }
+      case "runtime": {
+        const site = resolveSite(a ?? strOpt(options, "site"));
+        const raw = jsonObjectOpt(options, "runtime");
+        if (!raw) usage("site runtime needs --runtime <json|@file>.");
+        installBrowserEnv();
+        const { parseRuntimeConfig, datasetId } = await import("../../src/lib/runtimeConfig");
+        const runtime = parseRuntimeConfig(raw);
+        if (!runtime) throw new CliError("config-invalid", "The runtime config is not a valid AgentCRM config.", "It is the object config.js assigns to window.__AGENTCRM_CONFIG__.");
+        // Same dataset only: pointing an alias at other data is `site forget` + `site add`.
+        if (datasetId(runtime) !== datasetId(site.runtime)) {
+          throw new CliError("config-mismatch", `This runtime config points at other data (${datasetId(runtime)}, not ${datasetId(site.runtime)}).`, "Register it under another alias with `site add`.");
+        }
+        const updated: SiteRecord = { ...site, name: runtime.name ?? site.name, runtime, updatedAt: new Date().toISOString() };
+        putSite(updated);
+        printResult(io, { alias: site.alias, runtime }, () => `${site.alias}: runtime config updated.`);
         return;
       }
       case "add": {

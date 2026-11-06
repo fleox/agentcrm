@@ -70,6 +70,10 @@ export interface FirebaseRuntimeConfig {
   name?: string;
   firebase: FirebaseOptions;
   signInMethods?: FirebaseSignInMethod[];
+  // Files (images, attachments) through an HTTP endpoint instead of
+  // Firebase Storage (src/data/files/http.ts): absolute URL, or relative
+  // to the admin page.
+  files?: { endpoint: string };
 }
 
 export type RuntimeConfig = LocalRuntimeConfig | JournalRuntimeConfig | GitJsonRuntimeConfig | FirebaseRuntimeConfig;
@@ -131,10 +135,12 @@ export function parseRuntimeConfig(raw: unknown): RuntimeConfig | null {
       const methods = Array.isArray(raw.signInMethods)
         ? (raw.signInMethods.filter((m) => FIREBASE_SIGN_IN_METHODS.includes(m as FirebaseSignInMethod)) as FirebaseSignInMethod[])
         : [];
+      const files = isObject(raw.files) && nonEmpty(raw.files.endpoint) ? { endpoint: raw.files.endpoint.trim() } : null;
       return withName({
         backend: "firebase" as const,
         firebase: fb as FirebaseOptions,
         ...(methods.length ? { signInMethods: methods } : {}),
+        ...(files ? { files } : {}),
       });
     }
     default:

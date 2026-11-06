@@ -37,6 +37,7 @@ import {
 } from "./firebase/api";
 import { FIREBASE_CACHE_VERSION, firebaseCacheKey, indexedDbFirebaseCache, isUsableCache, type FirebaseCache } from "./firebase/cache";
 import { assertFileId, FileStoreUnavailableError, withFileStore } from "./files";
+import { createHttpFileStore } from "./files/http";
 import { normalizeDoc, plainCopy } from "./patch";
 import type { BackendOptions } from "./registry";
 import { COLLECTIONS, type CollectionName, type DataStore, type DocMutation, type FileStore, type StoreIdentity, type StoredDoc } from "./types";
@@ -79,6 +80,8 @@ export interface FirebaseStoreOptions {
   cache?: FirebaseCache | null;
   // Project the cache entry belongs to (with the signed-in uid).
   projectId?: string;
+  // Where file bytes go (default: Firebase Storage of the project).
+  files?: FileStore;
 }
 
 export interface FirebaseDataStore extends DataStore {
@@ -629,7 +632,7 @@ export function createFirebaseStoreWith(opts: FirebaseStoreOptions): FirebaseDat
     closeCore?.();
   };
 
-  withFileStore(core, firebaseFileStore(api));
+  withFileStore(core, opts.files ?? firebaseFileStore(api));
   activeCacheClear = async () => {
     if (opts.cache && cacheKey) await opts.cache.clear(cacheKey);
   };
@@ -734,5 +737,7 @@ export async function createFirebaseStore(config: RuntimeConfig, opts: BackendOp
   activeApi = api;
   await signInWithSecrets(api, opts.secrets);
   const cache = opts.firebaseCache === undefined ? indexedDbFirebaseCache() : opts.firebaseCache;
-  return createFirebaseStoreWith({ api, cache, projectId: cfg.firebase.projectId });
+  // An HTTP files endpoint (runtime config `files`) replaces Firebase Storage.
+  const files = cfg.files?.endpoint ? createHttpFileStore({ endpoint: cfg.files.endpoint, token: () => api.auth.idToken() }) : undefined;
+  return createFirebaseStoreWith({ api, cache, projectId: cfg.firebase.projectId, files });
 }

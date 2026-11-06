@@ -16,7 +16,7 @@ AgentCRM stores **record images** (a person's photo, a company's logo, the image
 | **Journal** (S3 / R2 / OVH bucket, git repo, local folder) | `<root>/files/<id>.bin` on the same connector, **encrypted with the dataset key** (AES-256-GCM, same format as the journal: `ACRMENC1 \| iterations \| salt \| iv \| ciphertext`); plain bytes only when the dataset itself is unencrypted | `files/<id>` documents, inside the encrypted journal like every other document |
 | **This browser** (local) | IndexedDB database `agentcrm-local-files` | IndexedDB, with the rest |
 | **git-json** | `files/<id>.bin` in the data folder of the repo — one commit per upload batch | `files/<id>.json` |
-| **Firebase** | Firebase Storage, `files/<id>` of your project | Firestore collection `files` |
+| **Firebase** | Firebase Storage, `files/<id>` of your project — or, with `files.endpoint` in the runtime config, an HTTP files endpoint you run (see below) | Firestore collection `files` |
 
 Thumbnails are stored the same way as `<id>_t`. Metadata (`FileMeta`, `src/core/types.ts`): `{ id, name, mime, size, width?, height?, thumbId?, sha256, createdAt, createdBy?, targets: { kind: "record" | "activity", object?, id }[], deletedAt? }`. Activities list their files in `attachments` (file ids); `image` / `files` fields hold file ids.
 
@@ -53,6 +53,29 @@ Every upload is a commit (base64 blob). Git history keeps every file **forever**
    ```
 
 Without Storage, uploads fail with a clear message ("Firebase Storage isn't enabled for this project…"); everything else keeps working (demo data is installed without images).
+
+### HTTP files endpoint (Firebase without Firebase Storage)
+
+To keep Firestore and Firebase Auth but store the bytes elsewhere (your own S3 bucket, encrypted on your side), add a files endpoint to the runtime config:
+
+```js
+window.__AGENTCRM_CONFIG__ = { backend: "firebase", firebase: { … }, files: { endpoint: "files" } };
+```
+
+`endpoint` is an absolute URL, or a path relative to the admin page (`"files"` next to `/crm/` → `/crm/files`). The admin and the CLI then send every file to it (`src/data/files/http.ts`) instead of Firebase Storage; no `storageBucket`, storage rules or bucket CORS are needed. Every request carries `Authorization: Bearer <Firebase ID token>` of the signed-in user (the CLI: its `firebase:<name>` login):
+
+| Request | Answer |
+|---|---|
+| `PUT <endpoint>/<id>` (body = bytes, `Content-Type` = MIME, `X-File-Name` = URI-encoded name) | `2xx` |
+| `GET <endpoint>/<id>` | `200` + bytes, or `404` |
+| `DELETE <endpoint>/<id>` | `2xx`, also when already gone (`404` accepted) |
+| `GET <endpoint>/` | `200 {"ids": [...]}` — every stored id, for the purge of orphans (admins) |
+
+Ids match `^[A-Za-z0-9_-]{1,80}$` (thumbnails are `<id>_t`). `503` means the endpoint has no storage configured (shown as "storage unavailable"); other errors are shown with the endpoint's `{"error": "…"}` message.
+
+**The endpoint is responsible for access control**: verify the ID token (signature with Google's public keys, `aud` = the project id, `iss` = `https://securetoken.google.com/<project>`, not expired), then read the caller's `users/<uid>` from Firestore — with their own token, which the rules allow — and apply the same roles as the storage rules: active users read, members and admins write and delete, admins list; disabled or unknown users get `403`. Keep the bucket keys and any encryption key on the server: the browser only ever holds the user's ID token.
+
+For a CLI registered before the endpoint existed: `agentcrm site runtime <alias> --runtime <json|@file>` replaces its runtime config (same project only).
 
 ## Limits & processing
 

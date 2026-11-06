@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Database, HardDrive, Save } from "lucide-react";
 import { Badge, Button, Card, FormField, Input, Select } from "../../../components/ui";
-import { useCan, useFiles, useOps, useSettings } from "../../../app/CrmDataContext";
+import { useCan, useCrm, useFiles, useOps, useSettings } from "../../../app/CrmDataContext";
 import { DEFAULT_MAX_UPLOAD_MB, formatBytes } from "../../../core/files";
 import { fileUsage } from "../../../ops/files";
 import { useAuth } from "../../../app/AuthContext";
@@ -58,6 +58,8 @@ export function GeneralSection() {
   const settings = useSettings();
   const canEdit = useCan("settings.write");
   const { backend } = useAuth();
+  // Firebase with a files endpoint (runtime config `files`): no Firebase Storage.
+  const filesVia = useCrm().store.files?.kind === "http" ? "http" : backend;
   const [name, setName] = useState(settings.name);
   const [currency, setCurrency] = useState(settings.defaultCurrency);
   const [locale, setLocale] = useState(settings.locale);
@@ -209,8 +211,8 @@ export function GeneralSection() {
               {usage.deleted > 0 && <p className="mt-1 text-xs text-surface-500">{t("general.deletedFiles", { count: usage.deleted, size: formatBytes(usage.deletedBytes) })}</p>}
             </div>
           </div>
-          <p className="mt-3 text-xs text-surface-500">{t(`general.filesWhere.${backend}`, { defaultValue: "" })}</p>
-          {backend === "firebase" && <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">{t("general.firebaseStorageHint")}</p>}
+          <p className="mt-3 text-xs text-surface-500">{t(`general.filesWhere.${filesVia}`, { defaultValue: "" })}</p>
+          {filesVia === "firebase" && <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">{t("general.firebaseStorageHint")}</p>}
           {backend === "git-json" && <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">{t("general.gitFilesHint")}</p>}
         </Card>
 
