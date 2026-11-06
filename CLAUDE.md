@@ -119,7 +119,8 @@ Relations are stored on the record field holding the id (`one`) or id array (`ma
   required / unique / hidden, currency, new select options, option colours given as `{ label, color }`, `labelField`, `imageField`,
   drilldown / rollup, pipeline stages added / edited, views matched by object + name); **never** deletes, never changes a field type
   (→ `conflicts`), never removes an option or a stage; custom fields missing from the spec → `extraFields`. Objects first, then fields
-  (relations may target objects of the same spec), drilldowns / rollups last. Comparisons ignore key order (Firestore).
+  (relations may target objects of the same spec), drilldowns / rollups last. Comparisons ignore key order (Firestore). Atomic: the
+  phases run on an in-memory copy (`runStaged`, `src/ops/staged.ts`) and land in one `store.write()`; any error writes nothing.
 - **Records sync** — `src/ops/syncRecords.ts` (`syncRecords(ctx, { object, key, rows: [{ key, fields }], archiveField?, refKey? })`,
   CLI `records sync`). Mirrors an external source by a key field: diff-only patches (`recordPatchMutation`), relations by the related
   record's key (`{ "$key": "12" }` / `{ "$key": [...] }`; an unresolved key leaves that relation untouched and is listed in

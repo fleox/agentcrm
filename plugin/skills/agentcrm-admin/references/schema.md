@@ -53,7 +53,7 @@ An object's avatar / logo (`imageField`) can be an `image` field (uploaded file)
 
 ## Schema as code (`schema apply`)
 
-The best way to set up or evolve a whole data model: write it as one JSON file (keep it in the user's repository), show the plan, apply. It is **additive and idempotent**: it creates what is missing and updates what differs (labels, icons, colors, required / unique / hidden, new select options, option colors given as `{ label, color }`, `imageField`, drilldowns, rollups, pipeline stages, views); it never deletes anything, never changes a field type (reported in `conflicts`; use `fields update --type`) and never removes a select option or a stage. Custom fields the file doesn't list are reported in `extraFields` and left alone. It is also the CLI's way to **create pipelines and add stages**.
+The best way to set up or evolve a whole data model: write it as one JSON file (keep it in the user's repository), show the plan, apply. It is **additive, idempotent and atomic** (one write: if any item fails validation, nothing is applied): it creates what is missing and updates what differs (labels, icons, colors, required / unique / hidden, new select options, option colors given as `{ label, color }`, `imageField`, drilldowns, rollups, pipeline stages, views); it never deletes anything, never changes a field type (reported in `conflicts`; use `fields update --type`) and never removes a select option or a stage. Custom fields the file doesn't list are reported in `extraFields` and left alone. It is also the CLI's way to **create pipelines and add stages**.
 
 `crm-schema.json`:
 

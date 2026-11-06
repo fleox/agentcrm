@@ -5,11 +5,15 @@
 // changes a field type (reported as a conflict) and never removes a select
 // option (existing values point at option ids). Fields the CRM has but the
 // description doesn't are reported, not touched.
+// Atomic: the phases (objects, fields, labelField / imageField, drilldowns /
+// rollups, pipelines, views) run on an in-memory copy and the result is
+// written in one store write; an error in any phase writes nothing.
 
 import type { FieldDef, Filter, Sort, StageKind, ViewDef } from "../core/types";
 import { assertCan, OpsError, type OpsContext } from "./context";
 import { createPipeline, listPipelines, updatePipeline, type StageInput } from "./pipelines";
 import { createField, createObject, listObjects, updateField, updateObject, type FieldInput, type FieldPatch } from "./schema";
+import { runStaged } from "./staged";
 import { createView, listViews, updateView } from "./views";
 
 export interface ObjectSpec {
@@ -124,6 +128,10 @@ function fieldPatch(field: FieldDef, spec: FieldInput): { patch: FieldPatch; cha
 
 export async function applySchema(ctx: OpsContext, spec: SchemaSpec): Promise<SchemaApplyReport> {
   assertCan(ctx, "schema.write");
+  return runStaged(ctx, (staged) => applyPhases(staged, spec), (report) => `Apply schema: ${report.changes.length} change${report.changes.length === 1 ? "" : "s"}`);
+}
+
+async function applyPhases(ctx: OpsContext, spec: SchemaSpec): Promise<SchemaApplyReport> {
   const report: SchemaApplyReport = { changes: [], conflicts: [], extraFields: [] };
 
   for (const o of spec.objects ?? []) {

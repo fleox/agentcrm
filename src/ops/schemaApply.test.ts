@@ -168,4 +168,36 @@ describe("schema apply", () => {
   it("rejects an object without id", () => {
     expect(() => parseSchemaSpec({ objects: [{ labelSingular: "X", labelPlural: "Xs" }] })).toThrow(/needs id/);
   });
+
+  it("is atomic: an error in a late phase writes nothing, a success is one store write", async () => {
+    const { admin, store } = await setupTestCrm();
+    const before = { objects: store.list("objects"), pipelines: store.list("pipelines"), views: store.list("views"), records: store.list("records") };
+    const broken: SchemaSpec = {
+      objects: [
+        { id: "projects", labelSingular: "Project", labelPlural: "Projects", fields: [{ id: "budget", label: "Budget", type: "currency" }] },
+        // Drilldown pass (after objects + fields): points at a missing relation.
+        { id: "markets", labelSingular: "Market", labelPlural: "Markets", fields: [{ id: "count", label: "Count", type: "number", drilldown: { object: "companies", field: "nope" } }] },
+      ],
+      pipelines: [{ id: "renewals", name: "Renewals", object: "deals", stages: [{ id: "r-open", label: "Open" }, { id: "r-won", label: "Renewed", kind: "won" }] }],
+    };
+    await expect(applySchema(admin, broken)).rejects.toMatchObject({ code: "validation" });
+    expect(store.list("objects")).toEqual(before.objects);
+    expect(store.list("pipelines")).toEqual(before.pipelines);
+    expect(store.list("views")).toEqual(before.views);
+    expect(store.list("records")).toEqual(before.records);
+
+    // Fixed: everything lands, in a single write, and re-applying is a no-op.
+    broken.objects![1].fields![0].drilldown = undefined;
+    const writes: unknown[] = [];
+    const real = store.write.bind(store);
+    store.write = (m, o) => (writes.push(m), real(m, o));
+    const report = await applySchema(admin, broken);
+    expect(writes).toHaveLength(1);
+    expect(report.changes.map((c) => `${c.kind}:${c.action}:${c.target}`)).toEqual(["object:create:projects", "object:create:markets", "pipeline:create:renewals"]);
+    expect(listObjects(admin).map((o) => o.id)).toEqual(expect.arrayContaining(["projects", "markets"]));
+    expect(listPipelines(admin).map((p) => p.id)).toContain("renewals");
+    expect(listViews(admin, "projects").length).toBeGreaterThan(0);
+    expect((await applySchema(admin, broken)).changes).toEqual([]);
+    expect(writes).toHaveLength(1);
+  });
 });

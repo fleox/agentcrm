@@ -42,6 +42,8 @@ The file is applied in passes, so references may point forwards:
 4. pipelines;
 5. views.
 
+The apply is **atomic**: the passes run on an in-memory copy of the dataset and the result is saved in one write (one journal segment, one git commit; on Firebase, consecutive batches of up to 500 documents). If any item fails validation, whatever its pass, nothing is written.
+
 ## A complete, annotated file
 
 The example below models gambling operators, the markets they hold a licence in, and the licences themselves. JSON has no comments: the notes follow the file.
@@ -145,7 +147,7 @@ Plan (`--json`, nothing written):
 } } }
 ```
 
-With `--yes`: the same report without `needsConfirmation` (`data.changes`, `data.conflicts`, `data.extraFields`). When the CRM already matches: `{ "changes": [], "conflicts": [], "extraFields": [], "upToDate": true }`. Conflicts and extra fields don't fail the command (exit 0): read them. An invalid file (missing ids, not JSON) is a usage error (exit 2); a definition that doesn't validate (a drilldown or rollup without the matching relation, an unknown filter operator, a kanban view without a select / user / boolean `groupBy`) is a validation error and, with `--yes`, stops the apply at that item — changes made before it stay.
+With `--yes`: the same report without `needsConfirmation` (`data.changes`, `data.conflicts`, `data.extraFields`). When the CRM already matches: `{ "changes": [], "conflicts": [], "extraFields": [], "upToDate": true }`. Conflicts and extra fields don't fail the command (exit 0): read them. An invalid file (missing ids, not JSON) is a usage error (exit 2); a definition that doesn't validate (a drilldown or rollup without the matching relation, an unknown filter operator, a kanban view without a select / user / boolean `groupBy`) is a validation error and, with `--yes`, nothing is written: the apply is all or nothing (see [Order of application](#order-of-application)).
 
 Without `--json` the plan reads:
 
