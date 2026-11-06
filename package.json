@@ -35,7 +35,7 @@
     "check:skills": "node scripts/check-skills.mjs",
     "hermes:build": "node scripts/build-hermes.mjs",
     "check:hermes": "node scripts/build-hermes.mjs --check && python3 -m unittest discover -s hermes/tests",
-    "version": "node scripts/sync-version.mjs && npm run build && node scripts/build-hermes.mjs && git add -A plugin hermes .claude-plugin",
+    "version": "node scripts/sync-version.mjs && npm run build && node scripts/build-hermes.mjs && git add -A plugin hermes .claude-plugin README.md docs",
     "gen:runtime-stubs": "node scripts/gen-runtime-stubs.mjs",
     "prepublishOnly": "npm run typecheck && npm test && npm run build && npm run check:skills"
   },

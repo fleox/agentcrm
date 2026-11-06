@@ -14,3 +14,5 @@
 - Re-importing an `export csv` file updates the same records (its first column is the id).
 
 Show the user the counts and the errors before applying; never apply an import with unexplained errors.
+
+A one-off file is an import. A source the CRM must keep following (re-run every day or week, rows removed upstream to flag) is a mirror: use `records sync` (references/sync.md).

@@ -25,6 +25,6 @@ npx -y @fleox-agent-crm/agentcrm@0.12.0 records list --site acme --object people
 npx -y @fleox-agent-crm/agentcrm@0.12.0 records update <id> --site acme --owner <userId> --json
 ```
 
-`records get` returns `relations` (records this one points to) and `related` (records pointing to it, e.g. a company's people and deals) plus `activityCount`.
+`records get` returns `relations` (records this one points to) and `related` (records pointing to it, e.g. a company's people and deals) plus `activityCount`, and `createdBy`, `updatedBy` and `fieldUpdates` (`{ "<fieldId>": { "by": "<userId>", "at": "<ISO time>" } }`, the last writer of each field; `--columns` restricts it on `records list`).
 
 Soft delete keeps the record restorable (`records restore`) until `compact`; `--hard` removes at once (also asks for `--yes`).

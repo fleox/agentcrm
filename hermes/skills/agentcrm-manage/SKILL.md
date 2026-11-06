@@ -65,7 +65,9 @@ npx -y @fleox-agent-crm/agentcrm@0.12.0 site add <alias> --admin-url https://crm
 - `--user <email>`: the CRM user the CLI acts as (default: the first admin).
 - A CRM in a local folder without a hosted admin: `site add <alias> --runtime @config.json --data-path /path/to/folder`.
 - `warnings` lists what is still missing; fix later with `site credentials <alias> --hosting-credential <account>` (`""` removes one).
+- The runtime config changed on the CRM's side (e.g. a Firebase CRM now sends files to an HTTP files endpoint): `site runtime <alias> --runtime @runtime.json` replaces the copy this computer uses (same backend and project only; otherwise `site forget` + `site add`). Start from the `runtime` object of `site show <alias>`; a files endpoint must be an absolute URL for the CLI (`agentcrm-install` skill, references/firebase.md).
 - Errors `passphrase-required` / `passphrase-wrong`: store the right passphrase and retry.
+- Firebase CRMs: `--data-credential firebase:<name>` is the user's own login (email verified); the CLI acts as that user through the Firestore rules, keeps its session in `~/.agentcrm/sessions/` and a local copy of the data in `~/.agentcrm/cache/` (only changes are read on later commands). After `credentials set` / `remove` of that login its session is forgotten and the next command signs in again.
 
 ## Health check
 
@@ -82,6 +84,8 @@ npx -y @fleox-agent-crm/agentcrm@0.12.0 doctor --site <alias> --json
 - `config-js` fail with secrets -> revoke those keys immediately, then `deploy-admin`.
 - `https` fail -> the admin needs HTTPS.
 - `purge` / `journal` warn -> compaction (below).
+- `firestore-reads` (Firebase, informational) -> the Firestore reads the load cost: a full read on the first command or once a week, then about 15 when nothing changed. A full read on every command means the local copy isn't kept: check that `~/.agentcrm/cache/` is writable.
+- Firebase, after an update: deletes or profile edits refused (`permission-denied`), or list layouts remembered in each browser only -> the Firestore rules are older than the release: re-publish them (`options --firebase-rules <bootstrap admin email>`, or Settings → Data backend in the admin).
 
 Details of every check: references/doctor.md.
 

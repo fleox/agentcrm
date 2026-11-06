@@ -1,7 +1,7 @@
 {
   "name": "agentcrm",
   "version": "0.12.0",
-  "description": "Skills to install AgentCRM (the static CRM your AI agent can run), manage its sites, run and customise the CRM (modules, appearance, extensions), drive sales workflows and build extension modules and themes.",
+  "description": "Skills to install AgentCRM (the static CRM your AI agent can run), manage its sites, run and customise the CRM (data model as code, mirrors of external sources, modules, appearance, extensions), drive sales workflows and build extension modules and themes.",
   "author": {
     "name": "fleox"
   },

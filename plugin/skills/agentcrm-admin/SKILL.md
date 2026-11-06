@@ -1,6 +1,6 @@
 ---
 name: agentcrm-admin
-description: Run an AgentCRM like its admin does - find, list, create, update, delete, restore and merge records (companies, people, deals, custom objects), log notes, calls, emails and meetings, manage tasks, set contact photos / company logos and attach files (images, PDFs, documents) to records, notes and tasks, move deals through pipeline stages, edit the data model (custom objects and fields), saved views, users and roles, settings, turn modules on and off, change the appearance (brand color, logo, favicon, presets, themes, custom CSS), enable / disable installed extensions, import and export CSV / JSON, reports, automations and lead forms, and call the AI tool catalog. Use when the user wants to read or change data, features or the look of one of their AgentCRM CRMs.
+description: Run an AgentCRM like its admin does - find, list, create, update, delete, restore and merge records (companies, people, deals, custom objects), log notes, calls, emails and meetings, manage tasks, set contact photos / company logos and attach files (images, PDFs, documents) to records, notes and tasks, move deals through pipeline stages, edit the data model (custom objects and fields, drilldown and rollup fields, schema as code with schema apply), mirror an external source (records sync), find who changed a field, saved views, users and roles, settings, turn modules on and off, change the appearance (brand color, logo, favicon, presets, themes, custom CSS), enable / disable installed extensions, import and export CSV / JSON, reports, automations and lead forms, and call the AI tool catalog. Use when the user wants to read or change data, features or the look of one of their AgentCRM CRMs.
 license: PolyForm-Noncommercial-1.0.0
 compatibility: Requires Node.js 20+.
 metadata:
@@ -21,7 +21,7 @@ Every command is `npx -y @fleox-agent-crm/agentcrm@0.12.0 <command> --json`; alw
 
 - **Learn the model first:** `objects list`, then `objects get <object>` for field ids, types, select options and relations. Never guess field ids.
 - **Search before creating** (`records search`) to avoid duplicates.
-- **Destructive commands print a plan** (`needsConfirmation: true`) unless `--yes`: show the plan, ask, then re-run with `--yes`. This covers `records delete`, `records merge`, `files delete`, `objects delete`, `fields delete`, `views delete`, `import csv` (dry run by default), `compact`, `automations run`, `forms publish`, `forms ingest`, and every workspace-wide change: `modules enable|disable|config set`, `appearance set|preset|logo|favicon|css|reset`, `ext install|enable|disable|uninstall`.
+- **Destructive commands print a plan** (`needsConfirmation: true`) unless `--yes`: show the plan, ask, then re-run with `--yes`. This covers `schema apply`, `records sync`, `records delete`, `records merge`, `files delete`, `objects delete`, `fields delete`, `views delete`, `import csv` (dry run by default), `compact`, `automations run`, `forms publish`, `forms ingest`, and every workspace-wide change: `modules enable|disable|config set`, `appearance set|preset|logo|favicon|css|reset`, `ext install|enable|disable|uninstall`.
 - Personal data: don't paste whole exports into the chat; summarise.
 
 ## Records
@@ -39,9 +39,19 @@ npx -y @fleox-agent-crm/agentcrm@0.12.0 records restore <id> --site acme --json
 - Filters: `--filter field:op:value`, repeatable. Ops: eq, neq, contains, notContains, empty, notEmpty, gt, gte, lt, lte, in, notIn, before, after, withinDays. Dates: `YYYY-MM-DD`, `today`, `+30d`. Also `id`, `ownerId`, `createdAt`, `updatedAt`.
 - Values: `--set key=value` (numbers, true / false, null and JSON arrays are parsed; phone numbers and zip codes stay text) or `--fields '{"...": ...}'` / `--fields @file.json`. Select fields take the option id or label; relations take record ids (arrays for "many"); `null` clears.
 - `--columns name,email` trims the output; `--view <id>` applies a saved view; `--deleted` lists the trash.
+- **Who changed what:** `records get` / `records list` print `createdBy`, `updatedBy` and `fieldUpdates.<fieldId> = { by, at }` (the user id and time of the last write to that field, from the admin, the CLI, merges or sync updates). To answer "who changed the stage of this deal?", read `fieldUpdates.stage`, then map `by` to a name with `users list`. `updatedBy` alone only names the last writer of the whole record. Only the last write per field is kept (no history of older values).
+- **Links to a filtered list:** list pages accept `?filter=field:op:value` (repeatable, same ops as `--filter`; `in` / `notIn` take comma-separated values; select values by option id or label). When giving the user a link to "the open deals of Globex", build `<adminUrl>#/objects/deals?filter=company:in:<companyId>&filter=stage:in:proposal,negotiation` (URL-encode each value; `adminUrl` from `site show`). The filter applies on top of the view, shows a "Show all" banner and is never saved.
 - Duplicates: `records duplicates --object people --by email,name`, then `records merge <primaryId> <dupId>...` (plan, then `--yes`). Merging fills empty fields and moves relations and activities.
 
 More examples per object: references/records.md.
+
+### Mirror an external source
+
+When the CRM must follow another system (product database, billing tool, nightly export), use `records sync` instead of `import csv`: rows `[{ key, fields }]` matched on a key field, diff-only writes (a second run writes nothing), relations by the other records' keys (`{ "$key": "12" }`), removed rows flagged in a boolean archive field, never deleted; plan unless `--yes`. Recipe: references/sync.md.
+
+```bash
+npx -y @fleox-agent-crm/agentcrm@0.12.0 records sync --site acme --object companies --key sourceId --rows @rows.json --archive-field archived --json
+```
 
 ## Timeline and tasks
 
@@ -76,7 +86,8 @@ npx -y @fleox-agent-crm/agentcrm@0.12.0 files delete <fileId> --site acme --json
 npx -y @fleox-agent-crm/agentcrm@0.12.0 files usage --site acme --json
 ```
 
-- Files live next to the data and are **encrypted with the same passphrase** on the journal backend; IndexedDB in local mode; the data repo (`files/`) for git-json (warn: history keeps them); Firebase Storage for Firebase (Storage must be enabled, see docs/files.md).
+- Files live next to the data and are **encrypted with the same passphrase** on the journal backend; IndexedDB in local mode; the data repo (`files/`) for git-json (warn: history keeps them); on Firebase, Firebase Storage (must be enabled) or the deployment's own HTTP files endpoint (`files.endpoint` in the runtime config; see the `agentcrm-install` skill, references/firebase.md, and https://github.com/fleox/agentcrm/blob/master/docs/files.md).
+- **Remote logos without uploads:** an object's image can be a `url` field (e.g. a logo CDN URL) instead of an uploaded image; set it as the object's `imageField` with `schema apply` (references/schema.md), then fill the URL like any field.
 - Limit: 25 MB per file by default (`settings set --set maxUploadMb=50`). The admin resizes photos (2560 px) and makes thumbnails; the CLI uploads files as they are — resize big photos before uploading when you can.
 - `files list` returns metadata only (name, type, size, what it is attached to); `files get` writes the decrypted bytes to a local file — never paste file contents into the chat.
 - `files delete` is a soft delete (plan, then `--yes`): the file disappears from records and activities; `compact --yes` physically erases the bytes (also of files whose record / activity was purged) — GDPR erasure.
@@ -91,11 +102,20 @@ npx -y @fleox-agent-crm/agentcrm@0.12.0 pipelines move <dealId> Negotiation --si
 npx -y @fleox-agent-crm/agentcrm@0.12.0 pipelines move <dealId> Lost --lost-reason "Budget" --site acme --json
 ```
 
-Moving sets the deal's probability to the stage's. Adding / renaming stages is done in the admin (Settings → Data model).
+Moving sets the deal's probability to the stage's. New pipelines, new stages and renamed stages: `schema apply` (references/schema.md) or the admin (Settings → Data model).
 
 ## Data model, views, users, settings (admin role)
 
-See references/schema.md for objects, fields (types, options, relations), views, users and roles, and settings.
+See references/schema.md for objects, fields (types, options, relations, drilldowns, scoped rollups, URL image fields), **schema as code**, views, users and roles, and settings.
+
+For more than one or two fields, or a model the user wants to keep in a repository, prefer **schema as code**: write a JSON file, show the plan, apply with `--yes` (additive and idempotent: never deletes, never changes a type).
+
+```bash
+npx -y @fleox-agent-crm/agentcrm@0.12.0 schema apply crm-schema.json --site acme --json
+npx -y @fleox-agent-crm/agentcrm@0.12.0 schema apply crm-schema.json --site acme --yes --json
+```
+
+Each user's list layout (filters, sorts, columns, widths, table / kanban) and last opened view are remembered per user across devices; that never changes the saved view. To change what everyone sees, update the view (`views create`, or `views` in `schema apply`).
 
 ## Modules: disable what you don't need
 

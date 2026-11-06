@@ -45,7 +45,7 @@ The CRM holds personal data (contacts, emails, phone numbers). Ask, in this orde
    - an **S3-compatible bucket** (AWS S3, Cloudflare R2, OVHcloud, Scaleway, Backblaze, MinIO) - best for teams and speed. Must be a PRIVATE bucket, separate from the hosting bucket.
    - a **private GitHub or GitLab repository** - simple if the user already lives on GitHub; one commit per write.
    - a **folder on this computer** - single computer, no account. Advise backing it up.
-2. **Firebase** (backend `firebase`) - real-time teams with logins and per-user roles. See references/firebase.md.
+2. **Firebase** (backend `firebase`) - real-time teams with logins and per-user roles; incremental loading keeps a team CRM of a few thousand records on the free Spark plan. Files go to Firebase Storage or to the user's own HTTP files endpoint. The CLI signs in with the stored login and keeps its session. See references/firebase.md.
 3. **A private git repo as readable JSON** (backend `git-json`) - readable history, but deleted records stay in the git history: warn the user.
 4. **This browser only** - for trying it: `npx -y @fleox-agent-crm/agentcrm@0.12.0 serve --json`, then "This browser" in the wizard. The CLI can't reach it.
 
@@ -123,5 +123,7 @@ npx -y @fleox-agent-crm/agentcrm@0.12.0 doctor --site <alias> --json
 ```
 
 Every failing check has a `fix`. The most common one on buckets is CORS: the result prints the exact JSON rule for the data bucket - help the user apply it (references/s3.md). Then give the user the admin URL (`data.adminUrl` of the install) and explain: each new browser asks once for the storage keys and the passphrase, which stay in that browser.
+
+If the user already has a data model in mind (custom objects, fields, extra pipelines), set it up right after the install with **schema as code** (`schema apply <file>`, plan then `--yes`; `agentcrm-admin` skill, references/schema.md) rather than field by field. Data that lives in another system is mirrored with `records sync` (same skill, references/sync.md).
 
 Next: run the CRM with the `agentcrm-admin` skill, sales workflows with `agentcrm-sales`, health and updates with `agentcrm-manage`. To let Claude Desktop / Claude Code / Cursor use the CRM directly, see references/mcp.md.

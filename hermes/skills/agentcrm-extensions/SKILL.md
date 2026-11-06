@@ -101,4 +101,4 @@ Every command is `npx -y @fleox-agent-crm/agentcrm@0.12.0 <command> … --json`.
 
 ## Without writing code
 
-Many requests need no extension at all: turning built-in modules off, changing the look, logo and colors, custom objects and fields. Use the `agentcrm-admin` skill (`modules`, `appearance`, `objects`, `fields`) first, and only build an extension when the CRM can't do it out of the box.
+Many requests need no extension at all: turning built-in modules off, changing the look, logo and colors, custom objects and fields, a whole data model as code (`schema apply`), counts that open a filtered list (drilldown fields), values rolled up from child records (scoped rollups), remote logos from a URL field, mirroring another system (`records sync`), links to filtered lists (`?filter=`). Use the `agentcrm-admin` skill (`modules`, `appearance`, `objects`, `fields`, `schema apply`, `records sync`) first, and only build an extension when the CRM can't do it out of the box.

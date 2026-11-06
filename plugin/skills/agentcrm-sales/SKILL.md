@@ -23,6 +23,7 @@ Every command is `npx -y @fleox-agent-crm/agentcrm@0.12.0 <command> --json` with
 - **Propose, then write.** Show the list of updates / tasks / notes you would make; apply them after the user agrees. Log what you did (notes, tasks) so the team sees it in the timeline.
 - **Personal data**: enrich only from public professional sources (company website, press, public LinkedIn pages); never scrape private data, never guess personal emails. Record the source in a note.
 - Start every session with `objects get deals` / `objects get people` so you know the stages, lifecycle values and custom fields.
+- Records mirrored from another system (`records sync`: they carry a source key and an archive field) are owned by that source: don't edit the mirrored fields by hand (the next sync puts the source value back); add notes, tasks and deals on them instead, and skip records flagged archived.
 
 ## Pipeline review
 
@@ -33,7 +34,10 @@ npx -y @fleox-agent-crm/agentcrm@0.12.0 report stale --site acme --json
 npx -y @fleox-agent-crm/agentcrm@0.12.0 records list --site acme --object deals --filter closeDate:before:today --filter stage:notIn:won,lost --json
 ```
 
-Answer with: open amount and weighted forecast (vs last review if known), deals per stage, the at-risk list (stale, close date passed, no open task, no contact), and ONE next best action per at-risk deal. Then offer to create the follow-up tasks (`tasks add … --record <dealId>`) and fix stale close dates (`records update <id> --set closeDate=…`). Playbook and next-best-action rules: references/playbooks.md.
+Answer with: open amount and weighted forecast (vs last review if known), deals per stage, the at-risk list (stale, close date passed, no open task, no contact), and ONE next best action per at-risk deal. Then offer to create the follow-up tasks (`tasks add … --record <dealId>`) and fix stale close dates (`records update <id> --set closeDate=…`).
+
+- **Who moved it?** `records get <dealId>` has `fieldUpdates.stage` / `fieldUpdates.amount` / `fieldUpdates.closeDate` = `{ by: <userId>, at }` (last write of that field); name the person with `users list`. Use it when a deal changed unexpectedly or to credit the rep who advanced it.
+- **Give clickable lists:** when you point the user at a set of records, link the admin list filtered with `?filter=` (same `field:op:value` as `--filter`, repeatable, values URL-encoded), e.g. `<adminUrl>#/objects/deals?filter=stage:in:proposal,negotiation&filter=closeDate:before:today` (`adminUrl` from `site show`). It filters on top of the view without saving anything. Playbook and next-best-action rules: references/playbooks.md.
 
 ## Meeting prep brief
 

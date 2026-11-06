@@ -6,7 +6,7 @@
     {
       "name": "agentcrm",
       "source": "./plugin",
-      "description": "Skills to install AgentCRM, manage its sites, run the CRM and drive sales workflows.",
+      "description": "Skills to install AgentCRM, manage its sites, run the CRM (schema as code, sync from external sources, customisation) and drive sales workflows.",
       "category": "productivity",
       "tags": ["crm", "sales", "pipeline", "static-site", "s3", "mcp"]
     }

@@ -10,6 +10,7 @@
 | cli-user | The CLI acts as an admin | `site credentials <alias> --user <admin email>` |
 | purge | Soft-deleted records still stored | `compact` (plan, then `--yes`) |
 | journal | Segments since the last snapshot (loading speed) | `compact --yes` |
+| firestore-reads | Firebase: Firestore reads of this load (full / incremental from `~/.agentcrm/cache/`) | Informational; a full read happens on the first command and once a week |
 | https | The admin is served over HTTPS | CDN / custom domain with TLS / Pages |
 | admin | The admin page is served | `deploy-admin --yes`; Pages: wait a minute |
 | admin-version | Hosted admin vs this release | `deploy-admin` (plan, then `--yes`) |
