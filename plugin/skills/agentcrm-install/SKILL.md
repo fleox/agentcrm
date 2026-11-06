@@ -4,7 +4,7 @@ description: Install a new AgentCRM (static, AI-drivable CRM) for the user - ask
 license: PolyForm-Noncommercial-1.0.0
 compatibility: Requires Node.js 20+ and network access to the chosen storage. Works in Claude Code and any agent that can run shell commands.
 metadata:
-  version: "0.11.0"
+  version: "0.12.0"
   repository: "https://github.com/fleox/agentcrm"
 allowed-tools: Bash Read Write
 ---
@@ -15,13 +15,13 @@ AgentCRM is a HubSpot / Twenty-style CRM (companies, people, deals, pipelines, a
 
 **Language:** talk to the user in their language; keep commands, files and plans in English.
 
-Every command is `npx -y @fleox-agent-crm/agentcrm@0.11.0 <command> --json` (Node.js 20+). Each prints ONE JSON object: `{"ok": true, "data": ...}` or `{"ok": false, "error": {"code", "message", "hint"}}`. When `ok` is false, read `error.hint` and act on it. Exit code 2 = a usage error in your command.
+Every command is `npx -y @fleox-agent-crm/agentcrm@0.12.0 <command> --json` (Node.js 20+). Each prints ONE JSON object: `{"ok": true, "data": ...}` or `{"ok": false, "error": {"code", "message", "hint"}}`. When `ok` is false, read `error.hint` and act on it. Exit code 2 = a usage error in your command.
 
 ## 1. Start with status and options
 
 ```bash
-npx -y @fleox-agent-crm/agentcrm@0.11.0 status --json
-npx -y @fleox-agent-crm/agentcrm@0.11.0 options --json
+npx -y @fleox-agent-crm/agentcrm@0.12.0 status --json
+npx -y @fleox-agent-crm/agentcrm@0.12.0 options --json
 ```
 
 `status` shows CRMs this computer already manages (maybe the user wants `agentcrm-manage` instead). `options` lists backends, data locations, hostings, credential types and the plan format.
@@ -36,7 +36,7 @@ The CRM holds personal data (contacts, emails, phone numbers). Ask, in this orde
    - a **folder on this computer** - single computer, no account. Advise backing it up.
 2. **Firebase** (backend `firebase`) - real-time teams with logins and per-user roles. See references/firebase.md.
 3. **A private git repo as readable JSON** (backend `git-json`) - readable history, but deleted records stay in the git history: warn the user.
-4. **This browser only** - for trying it: `npx -y @fleox-agent-crm/agentcrm@0.11.0 serve --json`, then "This browser" in the wizard. The CLI can't reach it.
+4. **This browser only** - for trying it: `npx -y @fleox-agent-crm/agentcrm@0.12.0 serve --json`, then "This browser" in the wizard. The CLI can't reach it.
 
 Encryption: the journal is encrypted with AES-256-GCM by default. A passphrase is generated at install and stored only on this computer. Never offer to turn it off unless the user insists and the location is strictly private.
 
@@ -54,15 +54,15 @@ HTTPS is required: browsers only allow the admin's request signing and encryptio
 
 ## 4. Credentials - never in the chat
 
-Secrets (keys, tokens, passwords, passphrases) are NEVER typed into the conversation and never written in a plan. The user stores each one in their own terminal; in Claude Code they type `! npx -y @fleox-agent-crm/agentcrm@0.11.0 credentials set s3:main` (hidden prompt). Alternatives that keep secrets out of the chat:
+Secrets (keys, tokens, passwords, passphrases) are NEVER typed into the conversation and never written in a plan. The user stores each one in their own terminal; in Claude Code they type `! npx -y @fleox-agent-crm/agentcrm@0.12.0 credentials set s3:main` (hidden prompt). Alternatives that keep secrets out of the chat:
 
 - `--from-env KEY_ID,SECRET` - variables the user already exported (CI, `.env`).
 - `--from-aws-profile <profile>` - an existing aws CLI profile (s3).
 - `--from-gh` - the token of the signed-in GitHub CLI (github).
 
 ```bash
-npx -y @fleox-agent-crm/agentcrm@0.11.0 credentials list --json
-npx -y @fleox-agent-crm/agentcrm@0.11.0 credentials types --json
+npx -y @fleox-agent-crm/agentcrm@0.12.0 credentials list --json
+npx -y @fleox-agent-crm/agentcrm@0.12.0 credentials types --json
 ```
 
 How to create each key with least privilege: references/s3.md, references/github.md, references/firebase.md. One account can serve several CRMs (`s3:main` for both the data bucket and the hosting bucket is fine).
@@ -89,8 +89,8 @@ Write `plan.json` (no secrets, only account ids):
 More examples (GitHub repo data + GitHub Pages, local folder, Firebase): references/plans.md. `owner` becomes the first CRM admin, and the CLI acts as that user. `demo: true` adds a realistic sample dataset - offer it for a first look, not for a production CRM.
 
 ```bash
-npx -y @fleox-agent-crm/agentcrm@0.11.0 install --plan plan.json --dry-run --json
-npx -y @fleox-agent-crm/agentcrm@0.11.0 install --plan plan.json --json
+npx -y @fleox-agent-crm/agentcrm@0.12.0 install --plan plan.json --dry-run --json
+npx -y @fleox-agent-crm/agentcrm@0.12.0 install --plan plan.json --json
 ```
 
 The dry run checks every access and writes nothing. Fix `check-failed` errors with their hint (permissions, names, CORS) before installing. An existing dataset in the same place is kept; only what's missing is seeded.
@@ -99,16 +99,16 @@ The dry run checks every access and writes nothing. Fix `check-failed` errors wi
 
 When the result has `savePassphrase`, stop and do it with the user before anything else:
 
-1. `npx -y @fleox-agent-crm/agentcrm@0.11.0 credentials copy passphrase:<alias> --json` puts it on the clipboard (never print it).
+1. `npx -y @fleox-agent-crm/agentcrm@0.12.0 credentials copy passphrase:<alias> --json` puts it on the clipboard (never print it).
 2. The user pastes it into their password manager now.
-3. The user proves it: in their own terminal, `! npx -y @fleox-agent-crm/agentcrm@0.11.0 credentials verify passphrase:<alias>`, pasting FROM the password manager. It must say "verified".
+3. The user proves it: in their own terminal, `! npx -y @fleox-agent-crm/agentcrm@0.12.0 credentials verify passphrase:<alias>`, pasting FROM the password manager. It must say "verified".
 
 Without the passphrase nobody can read the data, ever.
 
 ## 7. Verify
 
 ```bash
-npx -y @fleox-agent-crm/agentcrm@0.11.0 doctor --site <alias> --json
+npx -y @fleox-agent-crm/agentcrm@0.12.0 doctor --site <alias> --json
 ```
 
 Every failing check has a `fix`. The most common one on buckets is CORS: the result prints the exact JSON rule for the data bucket - help the user apply it (references/s3.md). Then give the user the admin URL (`data.adminUrl` of the install) and explain: each new browser asks once for the storage keys and the passphrase, which stay in that browser.
