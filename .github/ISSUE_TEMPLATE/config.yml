@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/fleox/agentcrm/security/advisories/new
+    about: Report it privately, not in a public issue.
+  - name: Documentation
+    url: https://github.com/fleox/agentcrm/tree/master/docs
+    about: Setup, data backends, hosting, Firebase, CLI, MCP, extensions.
+  - name: Commercial license
+    url: https://github.com/fleox/agentcrm/issues/new?title=Commercial%20license%20inquiry
+    about: Selling AgentCRM or hosting it as a paid service needs a commercial license.

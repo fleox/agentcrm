@@ -1,0 +1,65 @@
+name: Bug report
+description: Something doesn't work as documented.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a problem. **Never paste tokens, keys, passphrases, `credentials.json` or real contact data.** Security issues go through [SECURITY.md](https://github.com/fleox/agentcrm/blob/master/SECURITY.md).
+  - type: input
+    id: version
+    attributes:
+      label: AgentCRM version
+      description: "`npx -y @fleox-agent-crm/agentcrm version`, or the version shown in the admin (Settings)."
+      placeholder: "0.12.1"
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where does it happen?
+      options:
+        - Admin (browser)
+        - agentcrm CLI
+        - MCP server
+        - In-admin AI assistant
+        - An agent skill (Claude Code, Hermes, other)
+        - An extension (module or theme)
+    validations:
+      required: true
+  - type: dropdown
+    id: backend
+    attributes:
+      label: Data backend
+      options:
+        - Encrypted journal on an S3-compatible bucket
+        - Encrypted journal in a GitHub / GitLab repo
+        - Encrypted journal in a local folder
+        - Private git repo (JSON)
+        - Firebase
+        - This browser
+        - Not relevant
+  - type: dropdown
+    id: hosting
+    attributes:
+      label: Admin hosting
+      options:
+        - GitHub Pages
+        - GitLab Pages
+        - Cloudflare Pages
+        - S3-compatible bucket
+        - agentcrm serve / local folder
+        - ZIP uploaded elsewhere
+        - Not relevant
+  - type: textarea
+    id: steps
+    attributes:
+      label: What happened
+      description: Steps to reproduce, what you expected, what you got. Include the exact error, or the `--json` output of the command.
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Browser and OS, screenshots, enabled modules and extensions…
