@@ -19,7 +19,7 @@ Read [CLAUDE.md](../../../CLAUDE.md) ("Data model", "Data model additions", "Ops
 | fieldUpdates | `creationStamps` + `recordPatchMutation` in `src/ops/records.ts`, `patchFieldMutation` in `relations.ts`, `mergeRecords` in `dedupe.ts` | `recordOut` in `agent/commands/records.ts` prints `createdBy`, `updatedBy`, `fieldUpdates` (ISO dates, limited to `--columns`) | `src/ops/records.test.ts` |
 | View prefs | `setUserPrefs` + `PREFS_MAX_BYTES` (64 KB) in `src/ops/users.ts`; types `UserPrefs` / `ViewPrefs` | `src/features/records/lib/userPrefs.ts` (`mergePrefs`, `applyViewPrefs`, `layoutOverrides`, `applyPrefsPatch`; `localStorage` key `agentcrm.prefs.<userId>`, CRM write debounced 800 ms), `lib/hooks.ts`, `DataGrid` widths | `src/ops/users.test.ts`, `src/features/records/lib/userPrefs.test.ts`, `src/features/records/records.test.tsx` (layout + last view across reloads) |
 
-`schemaApply.ts` and `syncRecords.ts` are **not** re-exported by `src/ops/index.ts`: the CLI imports them directly, so they are not part of the extension runtime's `ops`. Neither has an AI tool; adding one goes in `src/ai/` (see `agent-cli-internals`).
+`schemaApply.ts` and `syncRecords.ts` are re-exported by `src/ops/index.ts` (since 0.12.1) and typed in the extension runtime's `RuntimeOps` (`types/agentcrm-runtime.d.ts`, API 1.1.0): a change to `SchemaSpec` / `SyncSpec` / `SyncReport` must be restated there (`runtime.test.ts` compares key sets). Neither has an AI tool; adding one goes in `src/ai/` (see `agent-cli-internals`).
 
 ## Invariants
 

@@ -25,3 +25,5 @@ export * from "./files";
 export * from "./fileRefs";
 export * from "./migrate";
 export * from "./backup";
+export * from "./schemaApply";
+export * from "./syncRecords";

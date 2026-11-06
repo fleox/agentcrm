@@ -14,7 +14,10 @@ import { installRuntime, runtimeApi, type RuntimeApi } from "./runtime";
 import type * as Curated from "../../types/agentcrm-runtime";
 import type { Appearance as RealAppearance, ThemeDefinition as RealTheme } from "../appearance/types";
 import type { ExtensionManifest as RealManifest, ModuleDefinition as RealModuleDefinition } from "./types";
-import type { CrmRecord, ObjectDef, FieldDef, Activity, Pipeline, CrmUser, ViewDef, CrmSettings } from "../core/types";
+import type { CrmRecord, ObjectDef, FieldDef, Activity, Pipeline, CrmUser, ViewDef, CrmSettings, DrilldownDef, RollupDef, FieldUpdate, UserPrefs, ViewPrefs } from "../core/types";
+import type { FieldValueProps as RealFieldValueProps } from "../components/ui/FieldValue";
+import type { ObjectSpec, PipelineSpec, SchemaApplyReport, SchemaChange, SchemaSpec, ViewSpec } from "../ops/schemaApply";
+import type { SyncReport, SyncRow, SyncSpec } from "../ops/syncRecords";
 import type { AutomationActionParam } from "../ops/automations/extensionActions";
 import type { ModuleInfo } from "../ops/modules";
 
@@ -89,21 +92,40 @@ export function _curatedFromReal(r: RuntimeApi): typeof Curated {
 
 type Mutual<R, C> = [R] extends [C] ? ([C] extends [R] ? true : { error: "curated → real fails"; curated: C }) : { error: "real → curated fails"; real: R };
 type Expect<T extends true> = T;
+// Optional keys pass `Mutual` when one side lacks them: a new optional
+// domain field must be restated in the .d.ts, so the key sets must match.
+type SameKeys<R, C> = [Exclude<keyof R, keyof C>, Exclude<keyof C, keyof R>] extends [never, never] ? true : { error: "key sets differ"; missingFromDts: Exclude<keyof R, keyof C>; notInReal: Exclude<keyof C, keyof R> };
+type Same<R, C> = Mutual<R, C> extends true ? SameKeys<R, C> : Mutual<R, C>;
 
 export type _MutualChecks = [
-  Expect<Mutual<RealAppearance, Curated.Appearance>>,
-  Expect<Mutual<RealTheme, Curated.ThemeDefinition>>,
-  Expect<Mutual<RealManifest, Curated.ExtensionManifest>>,
-  Expect<Mutual<CrmRecord, Curated.CrmRecord>>,
-  Expect<Mutual<ObjectDef, Curated.ObjectDef>>,
-  Expect<Mutual<FieldDef, Curated.FieldDef>>,
-  Expect<Mutual<Activity, Curated.Activity>>,
-  Expect<Mutual<Pipeline, Curated.Pipeline>>,
-  Expect<Mutual<CrmUser, Curated.CrmUser>>,
-  Expect<Mutual<ViewDef, Curated.ViewDef>>,
-  Expect<Mutual<CrmSettings, Curated.CrmSettings>>,
-  Expect<Mutual<AutomationActionParam, Curated.AutomationActionParam>>,
-  Expect<Mutual<ModuleInfo, Curated.ModuleInfo>>,
+  Expect<Same<RealAppearance, Curated.Appearance>>,
+  Expect<Same<RealTheme, Curated.ThemeDefinition>>,
+  Expect<Same<RealManifest, Curated.ExtensionManifest>>,
+  Expect<Same<CrmRecord, Curated.CrmRecord>>,
+  Expect<Same<FieldUpdate, Curated.FieldUpdate>>,
+  Expect<Same<ObjectDef, Curated.ObjectDef>>,
+  Expect<Same<FieldDef, Curated.FieldDef>>,
+  Expect<Same<DrilldownDef, Curated.DrilldownDef>>,
+  Expect<Same<RollupDef, Curated.RollupDef>>,
+  Expect<Same<Activity, Curated.Activity>>,
+  Expect<Same<Pipeline, Curated.Pipeline>>,
+  Expect<Same<CrmUser, Curated.CrmUser>>,
+  Expect<Same<UserPrefs, Curated.UserPrefs>>,
+  Expect<Same<ViewPrefs, Curated.ViewPrefs>>,
+  Expect<Same<ViewDef, Curated.ViewDef>>,
+  Expect<Same<CrmSettings, Curated.CrmSettings>>,
+  Expect<Same<AutomationActionParam, Curated.AutomationActionParam>>,
+  Expect<Same<ModuleInfo, Curated.ModuleInfo>>,
+  Expect<Same<RealFieldValueProps, Curated.FieldValueProps>>,
+  Expect<Same<SchemaSpec, Curated.SchemaSpec>>,
+  Expect<Same<ObjectSpec, Curated.ObjectSpec>>,
+  Expect<Same<PipelineSpec, Curated.PipelineSpec>>,
+  Expect<Same<ViewSpec, Curated.ViewSpec>>,
+  Expect<Same<SchemaChange, Curated.SchemaChange>>,
+  Expect<Same<SchemaApplyReport, Curated.SchemaApplyReport>>,
+  Expect<Same<SyncRow, Curated.SyncRow>>,
+  Expect<Same<SyncSpec, Curated.SyncSpec>>,
+  Expect<Same<SyncReport, Curated.SyncReport>>,
 ];
 
 // A module written against the curated types is accepted by the loader.

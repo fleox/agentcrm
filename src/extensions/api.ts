@@ -5,7 +5,7 @@
 // (src/extensions/runtime.ts) gains an export; raise
 // EXTENSION_MIN_API_VERSION only on a breaking change.
 
-export const EXTENSION_API_VERSION = "1.0.0";
+export const EXTENSION_API_VERSION = "1.1.0";
 export const EXTENSION_MIN_API_VERSION = "1.0.0";
 
 // Global the admin populates (src/extensions/runtime.ts) and the stubs in

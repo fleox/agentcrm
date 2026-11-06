@@ -62,6 +62,30 @@ export interface FieldDef {
   currency?: string;
   relation?: RelationDef;
   defaultValue?: unknown;
+  // The value links to `drilldown.object`'s list filtered on the records
+  // whose relation `drilldown.field` points at this record.
+  drilldown?: DrilldownDef;
+  // The value rolls up a field of child records (stored value: every child;
+  // a list filtered on `rollup.scope.field` recomputes it for that scope).
+  rollup?: RollupDef;
+}
+
+export interface DrilldownDef {
+  object: string;
+  // Relation field of `object` that targets this field's object.
+  field: string;
+}
+
+export interface RollupDef {
+  // Child object and its relation to this field's object.
+  object: string;
+  via: string;
+  // Child field whose values are collected.
+  field: string;
+  // A relation of this object (`field`) and the child's relation to the same target (`via`).
+  scope?: { field: string; via: string };
+  // Children counted.
+  where?: Filter[];
 }
 
 export interface ObjectDef {
@@ -88,7 +112,14 @@ export interface CrmRecord {
   updatedAt: number;
   createdBy?: string;
   updatedBy?: string;
+  // Who last wrote each field, and when (user id, epoch ms).
+  fieldUpdates?: Record<string, FieldUpdate>;
   deletedAt?: number;
+}
+
+export interface FieldUpdate {
+  by: string;
+  at: number;
 }
 
 export type ActivityType = "note" | "task" | "call" | "email" | "meeting";
@@ -169,6 +200,27 @@ export interface CrmUser {
   role: UserRole;
   avatarUrl?: string;
   disabled?: boolean;
+  // Per-user interface preferences (written by the user only).
+  prefs?: UserPrefs;
+}
+
+// One user's own layout of a view (missing key = the view's own value; `at`
+// = epoch ms of the last change, newest copy wins between devices).
+export interface ViewPrefs {
+  type?: ViewDef["type"];
+  columns?: string[];
+  filters?: Filter[];
+  sorts?: Sort[];
+  groupBy?: string | null;
+  pipelineId?: string | null;
+  widths?: Record<string, number>;
+  at: number;
+}
+
+export interface UserPrefs {
+  views?: Record<string, ViewPrefs>;
+  // Last view opened per object.
+  lastView?: Record<string, { id: string; at: number }>;
 }
 
 export interface CrmSettings {
@@ -332,7 +384,121 @@ export interface RuntimeOps {
   getModuleConfig<T = unknown>(ctx: OpsContext, id: string): T | undefined;
   setModuleConfig<T = unknown>(ctx: OpsContext, id: string, value: T | null): Promise<T | undefined>;
   getAppearance(ctx: OpsContext): Appearance;
+  // Schema as code (admins): additive, idempotent, atomic.
+  parseSchemaSpec(raw: unknown): SchemaSpec;
+  applySchema(ctx: OpsContext, spec: SchemaSpec): Promise<SchemaApplyReport>;
+  // Mirror an external source into one object (members): one write, diff-only, no automation fires.
+  syncRecords(ctx: OpsContext, spec: SyncSpec): Promise<SyncReport>;
   [op: string]: unknown;
+}
+
+// ─── Schema as code (ops.applySchema) ───────────────────────────────────
+
+export interface FieldSpec {
+  id: string;
+  label: string;
+  type: FieldType;
+  description?: string;
+  required?: boolean;
+  unique?: boolean;
+  hidden?: boolean;
+  // Labels, or options ({ label, color } recolours an existing option).
+  options?: Array<string | Partial<SelectOption>>;
+  currency?: string;
+  relation?: RelationDef;
+  defaultValue?: unknown;
+  drilldown?: DrilldownDef;
+  rollup?: RollupDef;
+}
+
+export interface ObjectSpec {
+  id: string;
+  labelSingular: string;
+  labelPlural: string;
+  icon?: string;
+  color?: string;
+  labelField?: string;
+  imageField?: string;
+  fields?: FieldSpec[];
+}
+
+export interface StageSpec {
+  id: string;
+  label: string;
+  color?: string;
+  probability?: number;
+  kind?: StageKind;
+}
+
+export interface PipelineSpec {
+  id: string;
+  name: string;
+  object: string;
+  stageField?: string;
+  stages: StageSpec[];
+}
+
+export interface ViewSpec {
+  object: string;
+  name: string;
+  type?: ViewDef["type"];
+  columns?: string[];
+  filters?: Filter[];
+  sorts?: Sort[];
+  groupBy?: string;
+  pipelineId?: string;
+  shared?: boolean;
+}
+
+export interface SchemaSpec {
+  objects?: ObjectSpec[];
+  pipelines?: PipelineSpec[];
+  views?: ViewSpec[];
+}
+
+export interface SchemaChange {
+  kind: "object" | "field" | "pipeline" | "view";
+  action: "create" | "update";
+  target: string;
+  changes?: string[];
+}
+
+export interface SchemaApplyReport {
+  changes: SchemaChange[];
+  // Field type differences (never applied).
+  conflicts: string[];
+  // Custom fields the spec doesn't list (left alone).
+  extraFields: string[];
+}
+
+// ─── Records sync (ops.syncRecords) ─────────────────────────────────────
+
+export interface SyncRow {
+  key: string;
+  // Field ids → values; a relation may reference mirrored records by key: { "$key": "12" } / { "$key": ["12", "13"] }.
+  fields: Record<string, unknown>;
+}
+
+export interface SyncSpec {
+  object: string;
+  key: string;
+  rows: SyncRow[];
+  archiveField?: string;
+  refKey?: string;
+}
+
+export interface SyncReport {
+  object: string;
+  rows: number;
+  created: number;
+  updated: number;
+  unchanged: number;
+  archived: number;
+  unresolved: number;
+  // References with no matching record: that relation was left unchanged on that row.
+  unresolvedRefs: Array<{ key: string; field: string; refs: string[] }>;
+  errors: Array<{ key: string; message: string }>;
+  samples: { created: string[]; updated: Array<{ key: string; fields: string[] }>; archived: string[] };
 }
 
 // ─── Customisation ───────────────────────────────────────────────────────
@@ -689,6 +855,8 @@ export interface FieldValueProps {
   compact?: boolean;
   className?: string;
   emptyText?: string;
+  // The record shown: lets a drilldown field link to its filtered list.
+  recordId?: string;
 }
 
 export interface FieldInputProps {

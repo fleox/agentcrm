@@ -95,7 +95,7 @@ A ZIP with, at its root (one wrapping folder is accepted; `__MACOSX` and dotfile
 | `kind` | `module` or `theme`. |
 | `name`, `description`, `author`, `homepage` | Shown in the admin and the install plan (`homepage`: http(s) URL). |
 | `version` | Semver `1.2.3`. Installing a package whose id is installed = upgrade. |
-| `apiVersion` | The runtime API it targets; must be between the admin's minimum and current (today `1.0.0`). |
+| `apiVersion` | The runtime API it targets; must be between the admin's minimum and current (today `1.0.0` … `1.1.0`; 1.1.0 = AgentCRM 0.12.1, adds `ops.applySchema` / `parseSchemaSpec` / `syncRecords`). |
 | `entry` | Always `bundle.js`. |
 | `style` | `style.css` when shipped. |
 | `icon` | Module only: a lucide icon name in PascalCase (`Target`). |

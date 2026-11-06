@@ -186,8 +186,8 @@ Roles: `admin` (everything incl. schema/settings/users), `member` (CRUD records/
 Every op takes an `OpsContext` first: `{ store: DataStore; user: CrmUser | null; now(): number; log?: (msg) => void }` (`ops/context.ts`). Ops validate input with `core/fields.ts`, enforce roles, write through `store.write`, then emit plugin actions (`record.created`, `record.updated`, `record.deleted`, `activity.created`, `stage.changed`) on `core/pluginRegistry.ts` — the automations engine subscribes to those. Ops return plain JSON-able values (the CLI prints them as-is).
 
 Main modules: `records.ts` (list with filter/sort/search/pagination, get with relations expanded, create, update, delete (soft), restore, bulkUpdate, bulkDelete), `relations.ts`, `activities.ts` (notes/tasks/calls/emails/meetings, timeline), `pipelines.ts` (move stage, forecast), `schema.ts` (create/update/delete objects & fields with data migration on type change), `views.ts`, `users.ts`, `settings.ts`, `importCsv.ts` (mapping, type coercion, dedupe on email/domain, dry run), `exportCsv.ts`, `dedupe.ts` (find duplicates, merge records keeping relations/activities), `reports.ts` (pipeline by stage, forecast, won/lost over time, activity by user, lead sources, stale deals), `automations.ts` (engine: event triggers in-process + `runScheduled(ctx)` for schedule/inactivity), `forms.ts` (build static form HTML + embed snippet, `ingestInbox`), `compact.ts`, `stats.ts`, `seed.ts` (standard objects + optional demo data),
-`schemaApply.ts` (schema as code), `syncRecords.ts` (mirror an external source) — these two are **not** re-exported by `src/ops/index.ts`
-(the CLI imports them directly, so they are not in the extension runtime's `ops`) — and `users.ts` `setUserPrefs` (per-user view layouts).
+`schemaApply.ts` (schema as code), `syncRecords.ts` (mirror an external source) — re-exported by `src/ops/index.ts` since 0.12.1, so
+typed in the extension runtime's `ops` (`RuntimeOps`, extension API 1.1.0) — and `users.ts` `setUserPrefs` (per-user view layouts).
 
 ## Runtime config & setup
 

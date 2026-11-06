@@ -1,6 +1,6 @@
 # Runtime API reference — `@agent-crm/runtime`
 
-Everything an extension bundle can import from `@agent-crm/runtime` (extension API **1.0.0**). The authoritative signatures, with every type, are in [`types/agentcrm-runtime.d.ts`](../types/agentcrm-runtime.d.ts) — shipped in the npm package and copied into each project by `agentcrm ext new`. Map it in your `tsconfig.json`:
+Everything an extension bundle can import from `@agent-crm/runtime` (extension API **1.1.0**). The authoritative signatures, with every type, are in [`types/agentcrm-runtime.d.ts`](../types/agentcrm-runtime.d.ts) — shipped in the npm package and copied into each project by `agentcrm ext new`. Map it in your `tsconfig.json`:
 
 ```json
 { "compilerOptions": { "paths": { "@agent-crm/runtime": ["./types/agentcrm-runtime.d.ts"] } } }
@@ -14,7 +14,7 @@ Hooks (`use…`) and UI components work only inside React components rendered by
 
 | Export | Signature | Notes |
 |---|---|---|
-| `apiVersion` | `string` | API version of the running admin (`"1.0.0"`). |
+| `apiVersion` | `string` | API version of the running admin (`"1.1.0"` since AgentCRM 0.12.1; `"1.0.0"` before). |
 | `minApiVersion` | `string` | Oldest extension `apiVersion` it accepts. An extension's `apiVersion` must be within `minApiVersion` … `apiVersion`. |
 | `defineModule` | `(def: ModuleDefinition) => ModuleDefinition` | Identity helper for typing the default export of a module. |
 | `defineTheme` | `(def: ThemeDefinition) => ThemeDefinition` | Same for a theme. |
@@ -51,6 +51,11 @@ Every op takes an `OpsContext` first (`useOps()` in components; the `ctx` argume
 | `getModuleConfig` | `<T>(ctx, moduleId) => T \| undefined` |
 | `setModuleConfig` | `<T>(ctx, moduleId, value \| null) => Promise<T \| undefined>` (admins; JSON ≤ 256 KB, no secrets) |
 | `getAppearance` | `(ctx) => Appearance` |
+| `parseSchemaSpec` | `(raw: unknown) => SchemaSpec` — validates the shape of a schema file (throws `validation`). |
+| `applySchema` | `(ctx, spec: SchemaSpec) => Promise<SchemaApplyReport>` (admins) — schema as code ([schema-as-code.md](schema-as-code.md)): additive, idempotent, atomic (all or nothing, one write). `SchemaApplyReport` = `{ changes: SchemaChange[], conflicts, extraFields }`. |
+| `syncRecords` | `(ctx, spec: SyncSpec) => Promise<SyncReport>` (members) — mirror an external source into one object ([sync.md](sync.md)): `SyncSpec` = `{ object, key, rows: SyncRow[], archiveField?, refKey? }`; one write, diff-only, no automation fires. |
+
+`applySchema`, `parseSchemaSpec` and `syncRecords` are in `ops` since API **1.1.0**: an extension calling them should declare `"apiVersion": "1.1.0"` (what `ext new` writes) so an older admin refuses it instead of failing at run time; one that doesn't may keep `"1.0.0"` to load on older admins too.
 
 Other ops (cast before calling): `searchRecords`, `getRecordDetails`, `restoreRecord`, `bulkUpdate`, `bulkDelete`, `setRecordOwner`, `linkRecords`, `unlinkRecords`, `inverseRelations`, `addActivity`, `updateActivity`, `deleteActivity`, `listTasks`, `createPipeline`, `updatePipeline`, `describeSchema`, `createObject`, `updateObject`, `createField`, `updateField`, `addOption`, views, users and settings ops, `importCsv`, `exportCsv`, `findDuplicates`, `mergeRecords`, `runReport`, `getStats`, `listAutomations`, `createAutomation`, `runScheduled`, `listExtensions`, `setAppearance`, `applyPreset`… (see `src/ops/index.ts`).
 
@@ -169,7 +174,7 @@ In components use `useTranslation("<moduleId>")` from `react-i18next`.
 
 ## Types
 
-Type-only exports (import with `import type`): `FieldType`, `SelectOption`, `RelationDef`, `FieldDef`, `ObjectDef`, `CrmRecord`, `ActivityType`, `ActivityTarget`, `Activity`, `StageKind`, `PipelineStage`, `Pipeline`, `FilterOp`, `Filter`, `Sort`, `ViewDef`, `UserRole`, `CrmUser`, `CrmSettings`, `Page`, `CollectionName`, `StoredDoc`, `DocMutation`, `DataStore`, `OpsContext`, `ListRecordsOptions`, `WriteRecordOptions`, `ListActivitiesOptions`, `TaskInput`, `ForecastStage`, `Forecast`, `ModuleInfo`, `RuntimeOps`, `ModuleCategory`, `Appearance`, `ThemeDefinition`, `JsonSchema`, `AiTool`, `AutomationActionParam`, `AutomationTriggerType`, `Automation`, `AutomationActionRunInput`, `AutomationActionDef`, `CrmActionPayloads`, `CrmActionName`, `OpsContextLike`, `CrmActionHandler`, `NamespaceBundles`, `FeatureRoute`, `NavSection`, `NavItem`, `RecordSlotProps`, `RecordDetailTab`, `RecordDetailPanel`, `RecordAction`, `SettingsSection`, `DashboardWidget`, `FeatureSlots`, `FeatureEnv`, `ModuleFeature`, `ModuleApi`, `ModuleDefinition`, `ExtensionKind`, `ExtensionManifest`, UI props (`ButtonVariant`, `ButtonSize`, `SelectOptionItem`, `ButtonProps`, `IconButtonProps`, `InputProps`, `SelectProps`, `CheckboxProps`, `SwitchProps`, `ModalProps`, `DrawerProps`, `TabItem`, `MenuItem`, `FieldValueProps`, `FieldInputProps`, `ConfirmOptions`), `FormatContext`, `CoerceResult`, `DateLike`, `ClassValue`, `ClassArray`, `ClassDictionary`, `ToastApi`, `OpsAction`, `CrmContextValue`, `I18nInstance`, `AppPaths`, `NavigateFunction`, `LinkProps`.
+Type-only exports (import with `import type`): `FieldType`, `SelectOption`, `RelationDef`, `FieldDef`, `ObjectDef`, `DrilldownDef`, `RollupDef`, `CrmRecord`, `FieldUpdate`, `ActivityType`, `ActivityTarget`, `Activity`, `StageKind`, `PipelineStage`, `Pipeline`, `FilterOp`, `Filter`, `Sort`, `ViewDef`, `UserRole`, `CrmUser`, `ViewPrefs`, `UserPrefs`, `CrmSettings`, `Page`, `CollectionName`, `StoredDoc`, `DocMutation`, `DataStore`, `OpsContext`, `ListRecordsOptions`, `WriteRecordOptions`, `ListActivitiesOptions`, `TaskInput`, `ForecastStage`, `Forecast`, `ModuleInfo`, `RuntimeOps`, schema as code (`FieldSpec`, `ObjectSpec`, `StageSpec`, `PipelineSpec`, `ViewSpec`, `SchemaSpec`, `SchemaChange`, `SchemaApplyReport`), records sync (`SyncRow`, `SyncSpec`, `SyncReport`), `ModuleCategory`, `Appearance`, `ThemeDefinition`, `JsonSchema`, `AiTool`, `AutomationActionParam`, `AutomationTriggerType`, `Automation`, `AutomationActionRunInput`, `AutomationActionDef`, `CrmActionPayloads`, `CrmActionName`, `OpsContextLike`, `CrmActionHandler`, `NamespaceBundles`, `FeatureRoute`, `NavSection`, `NavItem`, `RecordSlotProps`, `RecordDetailTab`, `RecordDetailPanel`, `RecordAction`, `SettingsSection`, `DashboardWidget`, `FeatureSlots`, `FeatureEnv`, `ModuleFeature`, `ModuleApi`, `ModuleDefinition`, `ExtensionKind`, `ExtensionManifest`, UI props (`ButtonVariant`, `ButtonSize`, `SelectOptionItem`, `ButtonProps`, `IconButtonProps`, `InputProps`, `SelectProps`, `CheckboxProps`, `SwitchProps`, `ModalProps`, `DrawerProps`, `TabItem`, `MenuItem`, `FieldValueProps`, `FieldInputProps`, `ConfirmOptions`), `FormatContext`, `CoerceResult`, `DateLike`, `ClassValue`, `ClassArray`, `ClassDictionary`, `ToastApi`, `OpsAction`, `CrmContextValue`, `I18nInstance`, `AppPaths`, `NavigateFunction`, `LinkProps`.
 
 ### Slots (`feature.slots`)
 
@@ -188,4 +193,4 @@ Type-only exports (import with `import type`): `FieldType`, `SelectOption`, `Rel
 
 ## Changing the API (maintainers)
 
-Adding an export: `runtimeApi` in `src/extensions/runtime.ts`, `public/runtime/agentcrm-runtime.js`, `types/agentcrm-runtime.d.ts`, this page, then bump `EXTENSION_API_VERSION` (minor) in `src/extensions/api.ts`. `src/extensions/runtime.test.ts` keeps the three lists identical and `scripts/docs.test.ts` checks this page lists every value export.
+Adding an export: `runtimeApi` in `src/extensions/runtime.ts`, `public/runtime/agentcrm-runtime.js`, `types/agentcrm-runtime.d.ts`, this page, then bump `EXTENSION_API_VERSION` (minor) in `src/extensions/api.ts` — also when `ops` gains a re-exported module or a typed op. An optional field added to a domain type (`src/core/types.ts`) or to a UI kit prop is restated in the typings: the compile-time checks of `src/extensions/runtime.test.ts` compare the key sets (`Same<…>`), not just assignability. `src/extensions/runtime.test.ts` keeps the three lists identical and `scripts/docs.test.ts` checks this page lists every value export.
