@@ -122,7 +122,8 @@ Relations are stored on the record field holding the id (`one`) or id array (`ma
   (relations may target objects of the same spec), drilldowns / rollups last. Comparisons ignore key order (Firestore).
 - **Records sync** — `src/ops/syncRecords.ts` (`syncRecords(ctx, { object, key, rows: [{ key, fields }], archiveField?, refKey? })`,
   CLI `records sync`). Mirrors an external source by a key field: diff-only patches (`recordPatchMutation`), relations by the related
-  record's key (`{ "$key": "12" }` / `{ "$key": [...] }`), records whose key left the source get `archiveField = true` (never deleted);
+  record's key (`{ "$key": "12" }` / `{ "$key": [...] }`; an unresolved key leaves that relation untouched and is listed in
+  `unresolvedRefs`), records whose key left the source get `archiveField = true` (never deleted);
   **one `store.write()`, no plugin actions** (no automation fires).
 - **URL image fields** — `ObjectDef.imageField` may be an `image` field (file id) or a `url` field (an `https://` logo hosted elsewhere,
   no file storage); `recordImageId` / `isImageUrl` in `src/ops/files.ts`, `FileAvatar` shows the URL as is.
@@ -133,7 +134,8 @@ Relations are stored on the record field holding the id (`one`) or id array (`ma
   `rollup.scope.field`, `scopeRollups` (`src/features/records/lib/viewModel.ts`) recomputes it from the children in scope (and narrows
   the scope relation); narrowed columns are read-only inline. Validation: `checkDrilldown` / `checkRollup` in `src/ops/schema.ts`.
 - **fieldUpdates** — every record write by a known actor stamps `fieldUpdates.<fieldId> = { by, at }` for the fields it changed
-  (`createRecord`, `recordPatchMutation`, relations' `patchFieldMutation`, `mergeRecords`); `records list / get` print it.
+  (`createRecord`, `recordPatchMutation`, relations' `patchFieldMutation`, `mergeRecords`; hand-built creations in `importCsv` /
+  `syncRecords` spread `creationStamps`); `records list / get` print it.
 - **Per-user view prefs** — `setUserPrefs(ctx, { views?: { [viewId]: ViewPrefs | null }, lastView? })` in `src/ops/users.ts` (any role,
   own user only, `PREFS_MAX_BYTES` 64 KB — oldest layouts dropped); the list page keeps a `localStorage` copy and debounces the CRM write
   (`src/features/records/lib/userPrefs.ts`; git-json keeps the browser copy only).

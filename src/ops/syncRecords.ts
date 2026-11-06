@@ -4,14 +4,19 @@
 // (never deleted: notes, tasks and deals may hang on them). Relation values
 // point at other mirrored objects by THEIR key: { "$key": "12" } or
 // { "$key": ["12", "13"] }, resolved against the related object's key field.
-// One store write, no automation fires (bulk mirror, not user activity).
+// A reference that matches no record leaves that relation as it is (for a
+// `many` relation: if any id is unresolved, the whole value is kept) and is
+// listed in `unresolvedRefs`; an explicit null / [] / "" still clears.
+// New records carry the same stamps as createRecord (createdBy, updatedBy,
+// fieldUpdates) for a known actor. One store write, no automation fires
+// (bulk mirror, not user activity).
 
 import { recordLabel } from "../core/fields";
 import type { CrmRecord, FieldDef, ObjectDef } from "../core/types";
 import { newId } from "../core/ids";
 import type { DocMutation } from "../data/types";
 import { assertCan, OpsError, type OpsContext } from "./context";
-import { prepareRecordFields, recordPatchMutation } from "./records";
+import { creationStamps, prepareRecordFields, recordPatchMutation } from "./records";
 import { asDoc, recordsOf, requireObject } from "./store";
 
 export interface SyncRow {
@@ -38,15 +43,18 @@ export interface SyncReport {
   updated: number;
   unchanged: number;
   archived: number;
-  // Relation references with no matching record (sync that object first).
+  // Relation references with no matching record (sync that object first):
+  // `unresolved` counts the keys, `unresolvedRefs` lists them per row and
+  // field (the relation was left unchanged on that row).
   unresolved: number;
+  unresolvedRefs: Array<{ key: string; field: string; refs: string[] }>;
   errors: Array<{ key: string; message: string }>;
   samples: { created: string[]; updated: Array<{ key: string; fields: string[] }>; archived: string[] };
 }
 
 const SAMPLE = 10;
 
-function isRef(v: unknown): v is { $key: string | string[] } {
+function isRef(v: unknown): v is { $key: unknown } {
   return !!v && typeof v === "object" && !Array.isArray(v) && "$key" in (v as Record<string, unknown>);
 }
 
@@ -59,7 +67,7 @@ export async function syncRecords(ctx: OpsContext, spec: SyncSpec): Promise<Sync
   if (spec.archiveField && archive?.type !== "boolean") throw new OpsError("validation", `--archive-field must be a boolean field of ${object.labelPlural}.`);
   const refKey = spec.refKey ?? spec.key;
 
-  const report: SyncReport = { object: object.id, rows: 0, created: 0, updated: 0, unchanged: 0, archived: 0, unresolved: 0, errors: [], samples: { created: [], updated: [], archived: [] } };
+  const report: SyncReport = { object: object.id, rows: 0, created: 0, updated: 0, unchanged: 0, archived: 0, unresolved: 0, unresolvedRefs: [], errors: [], samples: { created: [], updated: [], archived: [] } };
 
   // Last row wins for a duplicated key.
   const rows = new Map<string, Record<string, unknown>>();
@@ -83,14 +91,23 @@ export async function syncRecords(ctx: OpsContext, spec: SyncSpec): Promise<Sync
     if (v !== undefined && v !== null && v !== "") existing.set(String(v), r);
   }
   const refMaps = new Map<string, Map<string, string>>();
-  const resolve = (field: FieldDef, value: { $key: string | string[] }): unknown => {
+  // KEEP = some key matched nothing: the row leaves this relation unchanged.
+  const KEEP = Symbol("keep");
+  const resolve = (rowKey: string, field: FieldDef, value: { $key: unknown }): unknown => {
     const target = field.relation?.object;
     if (!target) throw new OpsError("validation", `${field.label} is not a relation: { "$key": … } only fits relation fields.`);
     if (!refMaps.has(target)) refMaps.set(target, byKey(target, refKey));
     const map = refMaps.get(target)!;
-    const keys = (Array.isArray(value.$key) ? value.$key : [value.$key]).map(String);
-    const ids = keys.map((k) => map.get(k)).filter((x): x is string => !!x);
-    report.unresolved += keys.length - ids.length;
+    const keys = (Array.isArray(value.$key) ? value.$key : [value.$key])
+      .filter((k) => k !== null && k !== undefined && String(k).trim() !== "")
+      .map((k) => String(k).trim());
+    const missing = keys.filter((k) => !map.has(k));
+    if (missing.length) {
+      report.unresolved += missing.length;
+      report.unresolvedRefs.push({ key: rowKey, field: field.id, refs: missing });
+      return KEEP;
+    }
+    const ids = keys.map((k) => map.get(k)!);
     return field.relation?.cardinality === "many" ? ids : ids[0] ?? null;
   };
 
@@ -101,7 +118,8 @@ export async function syncRecords(ctx: OpsContext, spec: SyncSpec): Promise<Sync
       const input: Record<string, unknown> = { [spec.key]: key };
       for (const [fieldId, v] of Object.entries(raw)) {
         const field = object.fields.find((f) => f.id === fieldId);
-        input[fieldId] = field && isRef(v) ? resolve(field, v) : v;
+        const value = field && isRef(v) ? resolve(key, field, v) : v;
+        if (value !== KEEP) input[fieldId] = value;
       }
       if (archive) input[archive.id] = false;
       const previous = existing.get(key) ?? null;
@@ -115,7 +133,7 @@ export async function syncRecords(ctx: OpsContext, spec: SyncSpec): Promise<Sync
         report.updated++;
         if (report.samples.updated.length < SAMPLE) report.samples.updated.push({ key, fields: prepared.changed });
       } else {
-        const record: CrmRecord = { id: newId(now), object: object.id, fields: prepared.fields, createdAt: now, updatedAt: now };
+        const record: CrmRecord = { id: newId(now), object: object.id, fields: prepared.fields, createdAt: now, updatedAt: now, ...creationStamps(ctx, prepared.fields, now) };
         mutations.push({ op: "set", collection: "records", doc: asDoc(record) });
         report.created++;
         if (report.samples.created.length < SAMPLE) report.samples.created.push(`${key} ${recordLabel(object, record)}`);

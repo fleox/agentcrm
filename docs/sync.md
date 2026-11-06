@@ -38,7 +38,7 @@ Engine: `src/ops/syncRecords.ts` (`syncRecords(ctx, spec)`); needs `records.writ
 - `key` is the source id. It is written to the `--key` field (a text field, ideally `unique`) and matched against it as a string. Rows with an empty key are ignored; when a key appears twice, the last row wins.
 - `fields` uses field ids (`agentcrm objects get <object>`), with the same values as `records create`: select options by id or label, dates `YYYY-MM-DD`, numbers, booleans, arrays for multi values. An unknown field id or an invalid value is an **error for that row** (listed in `errors`); the other rows are still written.
 - Only the fields a row lists are written. Fields the source doesn't send (an owner, a note field, tags your team adds) are never touched, so the team can enrich mirrored records. A field the source does send is overwritten on every run where it differs: the source wins for those fields. Send `null` to clear a value.
-- **Relations by key**: a relation value `{ "$key": "FR" }` (cardinality one) or `{ "$key": ["FR", "DE"] }` (many) is resolved against the key field of the related object. That field id is `--ref-key` (default: the same id as `--key`) and is the same for every relation of the run — give every mirrored object the same key field id (`sourceId`). Keys with no matching record are counted in `unresolved` and left out: a `one` relation becomes empty, a `many` relation keeps the resolved ids only. **Sync the referenced objects first** (markets before operators before licences).
+- **Relations by key**: a relation value `{ "$key": "FR" }` (cardinality one) or `{ "$key": ["FR", "DE"] }` (many) is resolved against the key field of the related object. That field id is `--ref-key` (default: the same id as `--key`) and is the same for every relation of the run — give every mirrored object the same key field id (`sourceId`). A reference whose key matches no record leaves that relation **as it is** on that row (for a `many` relation, one unknown key is enough: the whole value is kept, never a partial list) and is reported: `unresolved` counts the keys, `unresolvedRefs` lists them as `{ key, field, refs }` (row key, relation field, unknown keys). The rest of the row is still written. To clear a relation, send it explicitly empty: `null`, `{ "$key": [] }` or `{ "$key": "" }`. **Sync the referenced objects first** (markets before operators before licences).
 - Soft-deleted records don't match: a key whose record was deleted is created again.
 
 ## Archive instead of delete
@@ -53,16 +53,17 @@ Plan (no `--yes`): the sync runs on an in-memory copy and returns `{ "needsConfi
 { "ok": true, "data": {
   "object": "operators", "rows": 2,
   "created": 1, "updated": 1, "unchanged": 0, "archived": 1, "unresolved": 1,
+  "unresolvedRefs": [{ "key": "op-2", "field": "markets", "refs": ["SE"] }],
   "errors": [{ "key": "op-9", "message": "Status: \"Bogus\" is not one of Live, Pending, Closed." }],
   "samples": { "created": ["op-2 Nordic Play"], "updated": [{ "key": "op-1", "fields": ["name", "markets"] }], "archived": ["op-7 Old Casino"] }
 } }
 ```
 
-`samples` holds up to 10 items of each kind. The text output is one line: `operators: 2 rows → 1 new, 1 updated, 0 unchanged, 1 archived, 1 unresolved references, 1 errors (first: op-9: …)`. Errors don't change the exit code (0): check `errors` and `unresolved` in scripts.
+`samples` holds up to 10 items of each kind. The text output is one line: `operators: 2 rows → 1 new, 1 updated, 0 unchanged, 1 archived, 1 unresolved references (relation kept; first: op-2.markets → SE), 1 errors (first: op-9: …)`. Errors and unresolved references don't change the exit code (0): check `errors` and `unresolvedRefs` in scripts.
 
 ## Who changed what
 
-Patches made by a sync stamp `updatedBy` and `fieldUpdates.<fieldId> = { by, at }` with the CLI user (the site's `--user`, or `--as`); records created by a sync carry no `createdBy`. `records list` / `records get` print them, so you can tell a value the source wrote from one a teammate edited:
+Writes made by a sync are stamped with the CLI user (the site's `--user`, or `--as`): patches set `updatedBy` and `fieldUpdates.<fieldId> = { by, at }` for the fields they change; records created by a sync carry `createdBy`, `updatedBy` and a `fieldUpdates` stamp for every field they are created with, like a record created in the admin. `records list` / `records get` print them, so you can tell a value the source wrote from one a teammate edited:
 
 ```bash
 agentcrm records get <id> --json   # … "updatedBy": "u_sync", "fieldUpdates": { "name": { "by": "u_sync", "at": "2026-11-06T12:18:43.996Z" } }

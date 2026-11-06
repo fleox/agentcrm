@@ -224,7 +224,7 @@ export const recordsCommand: Command = {
           return pending ? { needsConfirmation: true as const, plan: result } : result;
         }, (r) => {
           const s = ("needsConfirmation" in r ? r.plan : r) as import("../../src/ops/syncRecords").SyncReport;
-          const line = `${s.object}: ${s.rows} rows → ${s.created} new, ${s.updated} updated, ${s.unchanged} unchanged, ${s.archived} archived${s.unresolved ? `, ${s.unresolved} unresolved references` : ""}${s.errors.length ? `, ${s.errors.length} errors (first: ${s.errors[0].key}: ${s.errors[0].message})` : ""}`;
+          const line = `${s.object}: ${s.rows} rows → ${s.created} new, ${s.updated} updated, ${s.unchanged} unchanged, ${s.archived} archived${s.unresolved ? `, ${s.unresolved} unresolved references (relation kept; first: ${s.unresolvedRefs?.[0] ? `${s.unresolvedRefs[0].key}.${s.unresolvedRefs[0].field} → ${s.unresolvedRefs[0].refs.join(", ")}` : "?"})` : ""}${s.errors.length ? `, ${s.errors.length} errors (first: ${s.errors[0].key}: ${s.errors[0].message})` : ""}`;
           return "needsConfirmation" in r ? `${line}\nNothing changed — re-run with --yes once the user agrees.` : line;
         });
       }
