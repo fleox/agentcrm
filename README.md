@@ -31,10 +31,10 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/fleox/agentcrm/blob/master/.github/assets/agentcrm-demo.mp4">
+  <a href="https://cdn.jsdelivr.net/gh/fleox/agentcrm@master/.github/assets/agentcrm-demo.mp4">
     <img src="https://raw.githubusercontent.com/fleox/agentcrm/master/.github/assets/video-poster.jpg" width="900" alt="Watch the 2-minute demo: real Claude Code sessions install AgentCRM and run the daily sales work, then a tour of the admin">
   </a>
-  <br><sub>▶️ <a href="https://github.com/fleox/agentcrm/blob/master/.github/assets/agentcrm-demo.mp4">Watch the 2-minute demo</a>: Claude Code installs the CRM, imports leads, moves a deal and plans the follow-ups, then a tour of the admin.</sub>
+  <br><sub>▶️ <a href="https://cdn.jsdelivr.net/gh/fleox/agentcrm@master/.github/assets/agentcrm-demo.mp4">Watch the 2-minute demo</a>: Claude Code installs the CRM, imports leads, moves a deal and plans the follow-ups, then a tour of the admin.</sub>
 </p>
 
 ---
