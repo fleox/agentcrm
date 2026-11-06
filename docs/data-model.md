@@ -6,20 +6,28 @@ AgentCRM is metadata-driven (like Twenty): every business entity is a **record o
 
 ```ts
 interface ObjectDef { id: string /* "companies" */; labelSingular; labelPlural; icon; color; standard: boolean; labelField: string;
-  imageField?: string /* image field shown as the record avatar */; fields: FieldDef[] }
+  imageField?: string /* image or URL field shown as the record avatar */; fields: FieldDef[] }
 interface FieldDef { id; label; type: FieldType; required?; unique?; standard?; system?; hidden?; options?: SelectOption[]; currency?;
   relation?: { object: string; cardinality: "one" | "many"; inverseField?: string }; defaultValue?;
   drilldown?: { object: string; field: string };
   rollup?: { object: string; via: string; field: string; scope?: { field: string; via: string }; where?: Filter[] } }
 ```
 
+Objects and fields are created in Settings → Data model, with `objects` / `fields` commands, or declared in a file and applied with [`schema apply`](schema-as-code.md).
+
+**Record image** — `imageField` names the field shown as the record's avatar / logo (record header, tables, kanban cards, relation chips, search). It is an `image` field (a stored file, see [files.md](files.md)) or, since 0.7.0, a `url` field: an `https://` image hosted elsewhere (a logo CDN) is displayed as is, with no file storage and no upload; when it fails to load the initials are shown. A URL image is edited like any URL field (the crop / upload menu only applies to `image` fields).
+
+### Drilldown and rollup fields
+
 `drilldown` turns a value (typically a count) into a link to another object's list filtered on the current record: `{ object: "companies", field: "markets" }` on a market's `operatorCount` opens `#/objects/companies?filter=markets:in:<marketId>`. `field` must be a relation of `object` pointing at this object. The list page applies `?filter=field:op:value` (repeatable) on top of the view, shows it in a banner and never saves it with the view.
 
-`rollup` marks a value that rolls up a field of child records: `{ object: "operator-markets", via: "operator", field: "statusLabel", scope: { field: "markets", via: "market" }, where: [{ field: "archived", op: "neq", value: true }] }` on an operator's Status. The stored value (written by whoever syncs it) covers every child. While a list is filtered on `scope.field` (eq / in / contains), the list recomputes the rollup from the children whose `scope.via` matches, so cells, the other filters and the sorts all see the values for the filtered markets; the scope relation itself shows the filtered markets only, the list header names the narrowed fields and those columns are not editable inline while the filter is on. Values take the field's type: options in option order (select / multiSelect), distinct tags or ids, a sum for numbers, distinct text joined.
+`rollup` marks a value that rolls up a field of child records (`via` = the child's relation to this object, `field` = the child field collected, `where` = which children count, `scope` = a relation of this object paired with the child's relation to the same target): `{ object: "operator-markets", via: "operator", field: "statusLabel", scope: { field: "markets", via: "market" }, where: [{ field: "archived", op: "neq", value: true }] }` on an operator's Status. The engine never computes the stored value: whoever maintains the data writes it (typically a [`records sync`](sync.md) job), and it covers every child. Both are validated when set (`fields update --data`, `schema apply`): the relations they name must exist and point the right way. While a list is filtered on `scope.field` (eq / in / contains), the list recomputes the rollup from the children whose `scope.via` matches, so cells, the other filters and the sorts all see the values for the filtered markets; the scope relation itself shows the filtered markets only, the list header names the narrowed fields and those columns are not editable inline while the filter is on. Values take the field's type: options in option order (select / multiSelect; a child select is read by its option labels, so parent and child options only need the same labels), distinct tags or ids, a sum for numbers, distinct text joined. Other operators on the scope relation (`neq`, `notIn`, `empty`…) select parents without narrowing: the rollup is then recomputed from all of the record's children (those matching `where`).
+
+**Link filters** — any list page accepts `?filter=field:op:value` (repeatable, same ops as the CLI; `in` / `notIn` values comma-separated), e.g. `#/objects/people?filter=lifecycleStage:eq:customer&filter=city:contains:Paris`. Fields must be fields of the object (not `ownerId` / `createdAt`); unknown fields or operators are ignored. A link filter also narrows rollups like a filter of the view.
 
 Field types: `text`, `longText`, `number`, `currency`, `percent`, `date`, `datetime`, `boolean`, `select`, `multiSelect`, `email`, `phone`, `url`, `relation`, `user`, `rating`, `address`, `tags`, `image` (one file: photo / logo), `files` (several files).
 
-Storage formats: dates `YYYY-MM-DD`, datetimes epoch ms, currency a number in the field's currency, select the option id, multi values arrays, relations the target id (`one`) or an id array (`many`), `image` a file id, `files` an array of file ids (see [files.md](files.md)). Inverse relations (a company's people) are computed, never stored twice.
+Storage formats: dates `YYYY-MM-DD`, datetimes epoch ms, currency a number in the field's currency, select the option id, multi values arrays, relations the target id (`one`) or an id array (`many`), `image` a file id, `files` an array of file ids, `url` a string (an `https://` URL when it is the image field) (see [files.md](files.md)). Inverse relations (a company's people) are computed, never stored twice.
 
 ## Standard objects (seeded at install)
 
@@ -46,7 +54,9 @@ Default pipeline **Sales**: New → Qualified → Proposal → Negotiation → W
 | `automations`, `automationRuns` | see [automations.md](automations.md) |
 | `forms` | lead capture forms |
 | `settings` | `general`: name, currency, locale, timezone, staleDealDays, maxUploadMb… |
-| `config` | public config docs (`hosting`: where the admin / forms are published) — never secrets |
+| `config` | public config docs (`hosting`: where the admin / forms are published, `modules`, `appearance`) — never secrets |
+| `extensions` | installed extension packages ([extensions.md](extensions.md)) |
+| `deletions` | Firebase only: tombstones `{ collection, id, _ts }` (`deletions/{collection}__{id}`), written in the same batch as every delete so cached copies drop the document ([firebase.md](firebase.md#costs)) |
 
 ## Roles
 
@@ -62,7 +72,7 @@ Enforced in `src/ops/context.ts` (`assertCan`) for every front door, and by Fire
 
 - **Journal** (`src/data/journal/`): `<root>/keyinfo.json` (public KDF params), `<root>/snapshot.bin` (encrypted merged state), `<root>/journal/<hlc>.bin` (one encrypted batch per write, never rewritten). Reads merge segments per field with last-writer-wins on hybrid logical clocks. `compact` writes a new snapshot and deletes merged segments — the physical purge of deleted records. Files: `<root>/files/<id>.bin`, encrypted with the same key; `compact` also erases the bytes of deleted / orphan files.
 - **git-json**: one JSON file per document in a private repo, one commit per write; file bytes in `files/<id>.bin`.
-- **Firebase**: one Firestore collection per collection, real-time listeners; file bytes in Firebase Storage (`files/<id>`).
+- **Firebase**: one Firestore collection per collection; every write stamps a server time `_ts` (never visible in the CRM documents) and every delete leaves a tombstone in `deletions`, so clients keep a local copy and read / listen to changed documents only. File bytes in Firebase Storage (`files/<id>`) or an HTTP files endpoint ([files.md](files.md#http-files-endpoint-firebase-without-firebase-storage)).
 - **local**: IndexedDB in one browser (file bytes in the `agentcrm-local-files` database).
 
 `package.json → agentcrm.dataSchema` is the stored format version; an admin never downgrades below it.

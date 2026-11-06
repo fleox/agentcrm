@@ -17,6 +17,12 @@ agentcrm import csv leads.csv --object people --site acme --yes      # apply
 
 The AI tool `import_csv` does the same and is a dry run unless `confirm: true`.
 
+## Recurring mirrors: `records sync`, not `import csv`
+
+`import csv` is for loading a list once (leads from an event, a spreadsheet of companies): it matches people by email and companies by domain, creates missing options and related companies, and fires automations for every record. To keep an object **in line with another system** on a schedule, use [`records sync`](sync.md): rows `{ key, fields }` matched on a source-id field, patches only where a value differs (a second run writes nothing), relations by source key, records that left the source flagged in an archive field instead of deleted, one write for the whole batch and no automation. CSV data can be turned into sync rows with any CSV-to-JSON tool (`mlr --icsv --ojson`, `jq`, a few lines of script).
+
+The data model itself (objects, fields, options, pipelines, views) can be kept as a file too: [schema-as-code.md](schema-as-code.md).
+
 ## CSV export
 
 ```bash

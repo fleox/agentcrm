@@ -109,16 +109,31 @@ firebase deploy --only firestore
   team can read it. Members ingest and delete submissions, or mark them
   `{ status, error }`. See `src/features/forms/INBOX.md`.
 
+- **Tombstones**: `deletions/{collection}__{id}` = `{ collection, id, _ts }`,
+  created by members and admins in the same batch as a delete (which the
+  rules of that collection judge), `_ts` must be the server time; admins
+  purge them. Every tracked write may also carry `_ts` (the self-edit and
+  automation-stamp rules allow it).
+
 Re-generate and re-publish the rules whenever you change the admin email or
-the sign-up mode, and when a release says so in its changelog `actions`
-(0.11.0: users keep their own `prefs`; with older rules the list layouts
-stay in each browser instead of following the user).
+the sign-up mode, and when a release says so in its changelog `actions`:
+
+- **0.4.0**: the `deletions` rules. With older rules **every delete is
+  refused** (its tombstone has no rule) and self profile edits fail.
+- **0.11.0**: users keep their own `prefs`; with older rules the list
+  layouts stay in each browser instead of following the user.
+
+```bash
+agentcrm options --firebase-rules you@example.com   # prints the current rules
+```
 
 ### Indexes
 
-AgentCRM reads whole collections and filters in memory, so **no composite
-index is needed**. `firestore.indexes.json` is just
-`{ "indexes": [], "fieldOverrides": [] }`.
+AgentCRM reads whole collections (first load) or `_ts > <cursor>` on each
+collection (incremental loads), and filters in memory. Firestore indexes
+single fields automatically, so **no composite index is needed**.
+`firestore.indexes.json` is just `{ "indexes": [], "fieldOverrides": [] }`
+— don't exempt `_ts` from indexing.
 
 ### Files: Firebase Storage + storage.rules
 
@@ -173,15 +188,54 @@ One Firestore collection per CRM collection, with the same names: `objects`,
 `records` (all objects, with an `object` field), `activities`, `pipelines`,
 `views`, `automations`, `forms`, `users`, `settings`, `config`,
 `automationRuns`, `extensions`, `files` (file metadata; bytes in Firebase
-Storage `files/<id>`). Plus `invites` and `inbox`. The document id is the CRM id.
-Dates are epoch milliseconds.
+Storage `files/<id>` or the HTTP files endpoint). Plus `invites`, `inbox`,
+`extensionChunks` (extension packages larger than 300 000 characters) and
+`deletions` (tombstones). The document id is the CRM id. Dates are epoch
+milliseconds; every document written since 0.4.0 also has `_ts`, the server
+time of its last write (a Firestore timestamp, stripped before the CRM sees
+the document).
 
-- Each user action is one write. Batches are split in chunks of 500 (the
-  Firestore limit). A multi-batch write that fails halfway (very large
+- Each user action is one write. Batches are split in chunks of 500
+  operations (the Firestore limit; a delete counts twice, with its tombstone). A multi-batch write that fails halfway (very large
   imports) is re-synchronised by the live listener.
 - Field edits are `update`s with dot paths (`fields.email`). Two people
   editing different fields of the same record never overwrite each other.
-- Live updates use `onSnapshot` on every collection while the admin is open.
+- Live updates use `onSnapshot` on `_ts > <cursor>` of every collection (and
+  on `deletions`) while the admin is open: only changed documents are read.
+  Local writes are applied at once and confirmed when the server answers.
+
+## The CLI and MCP on Firebase
+
+The `agentcrm` CLI (and `agentcrm mcp`) signs in like a person: with a
+Firebase Auth account (email + password) that is a CRM user, and the rules
+apply to it exactly as to the admin.
+
+```bash
+# the login, stored in ~/.agentcrm/credentials.json (0600); the user types the password
+npx -y @fleox-agent-crm/agentcrm@0.12.0 credentials set firebase:acme
+# register the CRM (reads config.js from the hosted admin)
+npx -y @fleox-agent-crm/agentcrm@0.12.0 site add acme --admin-url https://crm.example.com/ --data-credential firebase:acme
+npx -y @fleox-agent-crm/agentcrm@0.12.0 doctor --site acme
+```
+
+- Use **Email/Password** accounts (Google accounts can't sign in from the
+  CLI). The address must be verified and invited (or the bootstrap admin).
+  A teammate's CLI uses their own account; a scheduled job gets its own
+  account, invited as member.
+- The session is kept in `~/.agentcrm/sessions/<account>.json` (mode 0600):
+  the next command restores it and at most refreshes its ID token instead of
+  signing in again (Firebase rate-limits password sign-ins:
+  `auth/quota-exceeded` after a few dozen quick sign-ins). `credentials set`
+  / `credentials remove` of that login forget the session.
+- `install --dry-run` with a Firebase plan really checks access: it signs in,
+  refuses an unverified address and reads `settings/general` through the
+  rules (it tells you which rules to publish, or that an existing CRM will be
+  kept).
+- `users add` / `users role` from an admin login write the invitation
+  (`invites/{email}`) too. With 0.3.1–0.3.2 they didn't: re-save those users
+  once (`agentcrm users role <email> <role>`).
+- Up to 0.3.1 the CLI talked to Firestore unauthenticated: writes were
+  refused and reads came back empty. Use 0.3.2 or later.
 
 ## Costs
 
@@ -203,7 +257,18 @@ same batch. Clients ask for `_ts > the last one they saw`. Signing out of
 the admin clears that account's copy.
 
 Check what an open cost: `agentcrm doctor --site <alias>` (CLI, check
-`firestore-reads`), or `__AGENTCRM_FIRESTORE__` in the browser console.
+`firestore-reads`: "Full read: N Firestore reads" or "Loaded from the local
+cache + changes: N Firestore reads"), or `__AGENTCRM_FIRESTORE__` in the
+browser console (`{ mode: "full" | "incremental", reads, cursor }` of the
+last load, `totalReads()` since the page opened).
+
+The local copy is per **home directory**: a CI job that starts from a fresh
+`AGENTCRM_HOME` (the [cron template](templates/agentcrm-cron.yml), a
+[sync job](sync.md#on-a-schedule-github-actions)) pays a full read on every
+run. Run such jobs a few times a day, or persist `$AGENTCRM_HOME/cache`
+between runs (it holds CRM data: keep it private). Deleting
+`~/.agentcrm/cache/` (or signing out of the admin) only forces the next open
+to read everything again.
 
 With that, the free Spark plan (50k reads / 20k writes a day) holds a CRM of
 several thousand records used by a team every day: the full read happens
@@ -220,3 +285,8 @@ once per browser per week. On Blaze, set a budget alert anyway.
 | Viewer edits fail with "permission-denied" | Expected: viewers are read-only. The UI rolls the change back. |
 | "Firebase Storage isn't enabled for this project" | Enable Storage, add `storageBucket` to the web config, deploy storage.rules. |
 | Images don't load (CORS error in the console) | Set the bucket CORS for the admin's origin (`gsutil cors set`). |
+| Every delete fails with "permission-denied" | Rules older than 0.4.0 (no `deletions` rule): re-publish them. |
+| CLI: `auth/quota-exceeded` | Too many password sign-ins: update the CLI (0.3.2+ keeps the session), wait a few minutes. |
+| CLI: reads come back empty, writes refused | CLI older than 0.3.2, or the site has no `--data-credential firebase:<name>`: `agentcrm site credentials <alias> --data-credential firebase:<name>`. |
+| A teammate added from the CLI can't join | Re-save them once from an admin login: `agentcrm users role <email> <role>`. |
+| `doctor` shows a full read on every run | No persisted `~/.agentcrm` (CI), or the cache file was removed; normal once a week. |

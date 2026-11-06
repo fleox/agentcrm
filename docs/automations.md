@@ -6,7 +6,7 @@ An automation = a trigger + conditions (filters) + actions.
 
 | Trigger | When it runs |
 |---|---|
-| `record.created`, `record.updated`, `field.changed`, `stage.changed` | In-process, right after the write — in the browser, in the CLI (`agentcrm records …`, `import csv --yes`), in the MCP server, in the assistant. Every front door installs the engine (`installAutomations`). |
+| `record.created`, `record.updated`, `field.changed`, `stage.changed` | In-process, right after the write — in the browser, in the CLI (`agentcrm records …`, `import csv --yes`), in the MCP server, in the assistant. Every front door installs the engine (`installAutomations`). [`records sync`](sync.md) deliberately fires none (bulk mirror). |
 | `schedule` (every N hours), `inactivity` (no activity for N days) | `runScheduled`: periodically while an admin tab is open, or from `agentcrm automations run --yes` (cron). |
 
 Actions: create a task (due in N days, assigned to the owner or a user), update a field, add a note, assign an owner (fixed or round robin), call a webhook. Every run is logged in `automationRuns` (see the admin's run log). Writes made by an automation carry a depth counter; nesting stops at 3 to prevent loops.

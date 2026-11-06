@@ -20,7 +20,7 @@ AgentCRM is a CRM with **no server of its own**. Four front doors share one engi
 
 - `src/core/` — pure domain: types, field validation and formatting, query (filters / sorts / pagination), search index, ids, hybrid logical clock, plugin action registry, standard objects.
 - `src/data/` — the `DataStore` API (`ready`, synchronous `list` / `get`, optimistic `write(mutations)`, `subscribe`, `refresh`, `identity`, `compact`) and its backends. The whole dataset is held in memory: perfect for small and medium teams, not for millions of records.
-- `src/ops/` — every business rule. Each op takes an `OpsContext { store, user, now, plugins }`, checks the role, validates through `core/fields`, writes through `store.write`, then emits plugin actions (`record.created`, `stage.changed`…). The automations engine subscribes to those actions.
+- `src/ops/` — every business rule (including `schemaApply.ts`, the [schema as code](schema-as-code.md) engine, and `syncRecords.ts`, the [mirror of an external source](sync.md)). Each op takes an `OpsContext { store, user, now, plugins }`, checks the role, validates through `core/fields`, writes through `store.write`, then emits plugin actions (`record.created`, `stage.changed`…). The automations engine subscribes to those actions.
 - `src/ai/tools.ts` — the AI tool catalog (name, description, JSON schema, `mutating`, handler calling ops). Exposed identically by the MCP server, the assistant and `agentcrm tools`.
 - `src/features/` — the admin UI, one folder per feature; `src/app/` the shell.
 - `src/shared/` — infrastructure copied from AgentCMS: storage connectors (S3 SigV4, git pages, local folder, browser mirror, memory), git transport, crypto.
@@ -36,6 +36,10 @@ AgentCRM is a CRM with **no server of its own**. Four front doors share one engi
 ## Journal backend in one paragraph
 
 Every `write()` becomes one encrypted, gzipped segment `journal/<wall>-<counter>-<client>.bin` appended to the location: no lock, no read-modify-write, so the browser admin, the CLI, a cron and the MCP server can write at the same time. Each mutation carries a hybrid-logical-clock stamp; readers merge the snapshot and every unapplied segment with per-field last-writer-wins. Clients poll the `journal/` listing every 20 s. `compact` folds everything into `snapshot.bin` and deletes the merged segments — which also physically erases deleted records. The passphrase never leaves the client; `keyinfo.json` holds only the salt, iteration count and an encrypted check value.
+
+## Firebase backend in one paragraph
+
+Firestore bills every document read, so the Firebase store keeps a local copy of the dataset per project and signed-in user (the admin in IndexedDB, the CLI in `~/.agentcrm/cache/`). Every write stamps a server time `_ts` and every delete writes a tombstone in `deletions/` in the same batch; an open restores the copy and reads `_ts > <last seen>` on each collection (plus new tombstones), and live listeners watch the same queries. A full read happens on the first open and once a week. The CLI signs in with the site's `firebase:<name>` login and keeps the session in `~/.agentcrm/sessions/`. Details: [firebase.md](firebase.md).
 
 ## Why no server
 

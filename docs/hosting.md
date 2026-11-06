@@ -21,7 +21,7 @@ Security** shows what a browser holds and can forget it.
 | Backend | Where | Live sync | Accounts & roles | Personal-data erasure |
 |---|---|---|---|---|
 | **Encrypted file on my storage** (journal, default) | S3-compatible bucket, GitHub / GitLab repo, local folder | polling every 20 s | none: the storage keys + passphrase give full access | `compact` rewrites the snapshot and deletes old segments (git: history remains) |
-| **Firebase** | your Firestore project | real time | Firebase Auth, roles enforced by rules ([firebase.md](firebase.md)) | deletes are physical |
+| **Firebase** | your Firestore project | real time | Firebase Auth, roles enforced by rules ([firebase.md](firebase.md)) | deletes are physical (a tombstone keeps only the collection and id); clients' local copies drop the document on their next load |
 | **Private git repository** (git-json) | GitHub / GitLab repo, local clone | polling every 30 s | each user's own token, repo permission → role | **git history keeps everything** |
 | **This browser** | IndexedDB | — | single user | delete = gone |
 

@@ -8,9 +8,9 @@ npx -y @fleox-agent-crm/agentcrm@0.12.0 <command> [action] [options] [--json]
 
 ## Conventions
 
-- **`--json`** prints exactly one object on stdout: `{ "ok": true, "data": … }` or `{ "ok": false, "error": { "code", "message", "hint" } }`. Progress and notes go to stderr.
+- **`--json`** prints exactly one object on stdout: `{ "ok": true, "data": … }` or `{ "ok": false, "error": { "code", "message", "hint" } }`. Progress and notes go to stderr. The process exits only once stdout and stderr have flushed, so a large result read through a pipe arrives whole (fixed in 0.10.1: a 500-record page used to be cut short).
 - **Exit codes**: `0` ok, `1` failure (network, permission, not found…), `2` usage error (unknown command / option, invalid plan, validation).
-- **Plans**: destructive actions (`records delete|merge`, `objects delete`, `fields delete`, `views delete`, `compact`, `deploy-admin`, `forms publish`), workspace-wide customisation (`modules enable|disable|config set`, `appearance set|preset|logo|favicon|css|reset`, `ext install|enable|disable|uninstall`) and dry-run-first actions (`import csv`, `automations run`, `forms ingest`) answer `{ "needsConfirmation": true, … }` and change nothing unless `--yes`. Customisation plans are computed by running the op on an in-memory copy of the data (`plan.changes` / `plan.changed`), so a conflict or validation error shows up before `--yes`.
+- **Plans**: destructive actions (`records delete|merge`, `objects delete`, `fields delete`, `views delete`, `compact`, `deploy-admin`, `forms publish`), workspace-wide customisation (`modules enable|disable|config set`, `appearance set|preset|logo|favicon|css|reset`, `ext install|enable|disable|uninstall`) and dry-run-first actions (`import csv`, `records sync`, `schema apply`, `automations run`, `forms ingest`) answer `{ "needsConfirmation": true, … }` and change nothing unless `--yes`. Customisation, `schema apply` and `records sync` plans are computed by running the op on an in-memory copy of the data (`plan.changes` / `plan.changed` / the sync report), so a conflict or validation error shows up before `--yes`.
 - **Extensions**: commands that open a CRM load its enabled extension modules and themes in Node (same loader as the admin): their AI tools are in `tools list|call` and `mcp`, their hooks see the command's writes, their automation actions run in `automations run`. A failing extension is a note on stderr. `--safe` (any command) or `AGENTCRM_SAFE=1` skips them.
 - **Site resolution**: `--site <alias>` > `$AGENTCRM_SITE` > `./agentcrm.json` (`{ "site": "<alias>" }`, searched upwards) > the only registered site > the default set by `site use` > error `site-required` (exit 2).
 - **Acting user**: data commands act as the site's CLI user (the install's owner, or `site credentials --user`), or `--as <email|id>`. Roles are enforced.
@@ -25,6 +25,8 @@ npx -y @fleox-agent-crm/agentcrm@0.12.0 <command> [action] [options] [--json]
 | `sites.json` | Registered CRMs: alias, runtime config (public), data path, hosting (public settings), admin URL, credential account ids, CLI user, admin version. No secret. |
 | `credentials.json` | Mode 0600. Accounts `<type>:<name>` → values. Types: `s3` (accessKeyId, secretAccessKey), `github` / `gitlab` (token), `firebase` (email, password), `passphrase`, `anthropic` (apiKey). |
 | `locks/` | One lock file per site during writes. |
+| `sessions/` | Mode 0600. Firebase only: the signed-in session of each `firebase:<name>` login (user record + refresh token, what a browser would keep), so commands refresh a token instead of signing in with the password every time (Firebase rate-limits password sign-ins). `credentials set` / `remove` of that login forget it. |
+| `cache/` | Mode 0600. Firebase only: `firebase-<project>-<uid>.json`, a local copy of the dataset per project and signed-in user, so a command reads only the documents written since the previous one ([firebase.md](firebase.md#costs)). It holds CRM data: delete it to force a full read. |
 
 Environment: `AGENTCRM_HOME`, `AGENTCRM_SITE`, `AGENTCRM_DIST` (alternate dist folder), `AGENTCRM_SAFE` (`1` = safe mode, no extensions), `AGENTCRM_RUNTIME_DIR` (runtime stubs used to load extensions; default `dist/admin/runtime` of the package), `AGENTCRM_KDF_ITERATIONS` (PBKDF2 iterations for NEW datasets — tests only).
 
@@ -41,7 +43,7 @@ Environment: `AGENTCRM_HOME`, `AGENTCRM_SITE`, `AGENTCRM_DIST` (alternate dist f
 }
 ```
 
-`install` checks every access (`--dry-run` stops there), generates and stores the passphrase (`passphrase:<alias>`) before the first encrypted write, seeds the standard objects / pipeline / views / settings / owner (and demo data with `"demo": true`), stores the public hosting target in the dataset (`config/hosting`), uploads the admin + `version.json` + `config.js`, and registers the site.
+`install` checks every access (`--dry-run` stops there; on Firebase the dry run signs in with the plan's login, refuses an unverified address and reads through the published rules), generates and stores the passphrase (`passphrase:<alias>`) before the first encrypted write, seeds the standard objects / pipeline / views / settings / owner (and demo data with `"demo": true`), stores the public hosting target in the dataset (`config/hosting`), uploads the admin + `version.json` + `config.js`, and registers the site.
 
 ## Commands
 
@@ -74,8 +76,12 @@ agentcrm status [--site <alias>]
 Data backends, data locations, admin hostings, credential types and the install plan format — ask the user about the data first, then the hosting.
 
 ```text
-agentcrm options
+agentcrm options [--firebase-rules <admin email>]
 ```
+
+| Option | Description |
+|---|---|
+| `--firebase-rules <value>` | Print the Firestore rules for a Firebase CRM with this email as bootstrap admin (re-publish them when a release asks, e.g. 0.4.0 tombstones, 0.11.0 user prefs). |
 
 ### `credentials`
 
@@ -101,6 +107,8 @@ agentcrm credentials <set|list|remove|copy|verify|types> [<type>:<name>] [--from
 | `--from-aws-profile <value>` | s3: import the key pair of this aws CLI profile. |
 | `--generate` | passphrase: generate a strong random passphrase. |
 | `--field <value>` | copy / verify: which field (default: the first). |
+
+A `firebase:<name>` credential (email + password of a Firebase Auth account that is a CRM user) is the CLI's login: every command on that site signs in with it and keeps the session in `~/.agentcrm/sessions/` (see [firebase.md](firebase.md#the-cli-and-mcp-on-firebase)). Storing it again or removing it forgets that session.
 
 ### `install`
 
@@ -137,12 +145,19 @@ agentcrm site <list|show|add|use|rename|forget|credentials> [args] [--admin-url 
 | Option | Description |
 |---|---|
 | `--admin-url <value>` | add: URL of the hosted admin, e.g. https://crm.acme.com/admin/. |
-| `--runtime <value>` | add: the runtime config (config.js object) as JSON or @file, when the admin isn't hosted. |
+| `--runtime <value>` | add / runtime: the runtime config (config.js object) as JSON or @file, when the admin isn't hosted. |
 | `--data-credential <value>` | Account of the data location / git token / Firebase login. |
 | `--hosting-credential <value>` | Account used to write to the admin hosting. |
 | `--passphrase-credential <value>` | Passphrase account of an encrypted dataset. |
 | `--data-path <value>` | add: folder of this computer holding a local-folder dataset. |
 | `--user <value>` | Email of the CRM user the CLI acts as (default: the store identity / first admin). |
+
+`site runtime` replaces the runtime config of a registered site, e.g. after the admin's `config.js` gained a files endpoint. The new config must point at the same data (same backend and dataset: the same Firebase project, bucket + root, repo…), otherwise it is refused with `config-mismatch` — register other data under another alias with `site add`:
+
+```bash
+agentcrm site runtime acme --runtime '{"backend":"firebase","firebase":{"apiKey":"…","projectId":"acme-crm","authDomain":"acme-crm.firebaseapp.com"},"files":{"endpoint":"https://crm.acme.com/files"}}'
+agentcrm site runtime acme --runtime @config.json --json   # → { "ok": true, "data": { "alias": "acme", "runtime": { … } } }
+```
 
 ### `doctor`
 
@@ -155,6 +170,8 @@ agentcrm doctor [--site <alias>] [--repair]
 | Option | Description |
 |---|---|
 | `--repair` | Seed what the dataset lacks (standard objects, pipeline, settings, admin) — idempotent. |
+
+On Firebase, the `firestore-reads` check reports what opening the dataset cost: `Full read: N Firestore reads` on the first run of this computer (or once a week), `Loaded from the local cache + changes: N Firestore reads` afterwards ([firebase.md](firebase.md#costs)).
 
 ### `serve`
 
@@ -185,10 +202,10 @@ agentcrm deploy-admin [--site <alias> | --all] [--yes] [--allow-downgrade]
 
 ### `records`
 
-Records of any object (companies, people, deals, custom objects): list with filters / sorts / pagination, get with relations and timeline counts, create, update (only the given fields), soft delete / restore, full-text search, find and merge duplicates.
+Records of any object (companies, people, deals, custom objects): list with filters / sorts / pagination, get with relations and timeline counts, create, update (only the given fields), soft delete / restore, full-text search, find and merge duplicates, mirror an external source.
 
 ```text
-agentcrm records <list|get|create|update|delete|restore|search|duplicates|merge|image> …
+agentcrm records <list|get|create|update|delete|restore|search|duplicates|merge|image|sync> …
 ```
 
 | Action | Usage | What it does |
@@ -223,10 +240,31 @@ agentcrm records <list|get|create|update|delete|restore|search|duplicates|merge|
 | `--by <value>` | duplicates: email,domain,name,phone. |
 | `--remove` | image: remove the record's image. |
 | `--field <value>` | image: image field id (default: the object's image field). |
+| `--key <value>` | sync: field holding the source id (match key). |
+| `--rows <value>` | sync: rows as a JSON array [{ key, fields }], @file.json or - (stdin). |
+| `--archive-field <value>` | sync: boolean field set to true on records whose key is missing from the rows. |
+| `--ref-key <value>` | sync: key field of related objects for { "$key": … } (default: --key). |
+
+#### Output
+
+`records list --json` returns `{ object, total, offset, hasMore, records: [...] }`; `records get` one record with `relations` (resolved ids → `{ id, object, label }`), `related` (inverse relations) and `activityCount`. Each record:
+
+```json
+{ "id": "0mw4xxvxoc6dsmi9", "object": "operators", "label": "Acme Bet Ltd",
+  "fields": { "name": "Acme Bet Ltd", "markets": ["0mw4xxvuk3tt5l2u", "0mw4xxvuk3tt5l2v"] },
+  "ownerId": "u_ada",
+  "createdAt": "2026-11-06T12:18:37.932Z", "updatedAt": "2026-11-06T12:18:43.996Z",
+  "createdBy": "u_ada", "updatedBy": "u_sync",
+  "fieldUpdates": { "name": { "by": "u_sync", "at": "2026-11-06T12:18:43.996Z" } } }
+```
+
+`createdBy`, `updatedBy` and `fieldUpdates` (who last wrote each field, and when — see [data-model.md](data-model.md#other-collections)) appear when known; with `--columns`, `fields` and `fieldUpdates` are restricted to those columns.
+
+A record image stored in a **URL field** (the object's `imageField` is a `url` field) is set with `records update --set logoUrl=https://…`; `records image` uploads files to `image` fields only.
 
 #### Mirroring an external source (`records sync`)
 
-`--rows` is a JSON array of `{ "key": "<source id>", "fields": { … } }`. Rows are matched on the `--key` field (a text field, ideally unique); a record is created when the key is new and patched only on the fields whose value differs, so a second run of the same rows writes nothing. A relation value can point at another mirrored record by its key: `{ "$key": "12" }` (one) or `{ "$key": ["12", "13"] }` (many), resolved against the related object's `--ref-key` field (default: the same field id as `--key`) — mirror the referenced objects first; references with no match are counted in `unresolved`. With `--archive-field <boolean field>`, records whose key is missing from the rows are flagged `true` (and `false` again when they come back): they are never deleted, so notes, tasks and deals attached to them stay. No automation fires. Invalid rows are reported in `errors` and the others are still written.
+`--rows` is a JSON array of `{ "key": "<source id>", "fields": { … } }`. Rows are matched on the `--key` field (a text field, ideally unique); a record is created when the key is new and patched only on the fields whose value differs, so a second run of the same rows writes nothing. A relation value can point at another mirrored record by its key: `{ "$key": "12" }` (one) or `{ "$key": ["12", "13"] }` (many), resolved against the related object's `--ref-key` field (default: the same field id as `--key`) — mirror the referenced objects first; references with no match are counted in `unresolved`. With `--archive-field <boolean field>`, records whose key is missing from the rows are flagged `true` (and `false` again when they come back): they are never deleted, so notes, tasks and deals attached to them stay. No automation fires, and the whole batch is one write. Invalid rows are reported in `errors` and the others are still written. Report: `{ object, rows, created, updated, unchanged, archived, unresolved, errors: [{ key, message }], samples: { created, updated: [{ key, fields }], archived } }`. Recipes, the comparison with `import csv` and a scheduled GitHub Action: [sync.md](sync.md).
 
 ### `objects`
 
@@ -253,6 +291,8 @@ agentcrm objects <list|get|create|update|delete> …
 | `--color <value>` | Color name. |
 | `--label-field <value>` | update: field used as the record label. |
 | `--data <value>` | create: full ObjectInput JSON (with fields) or @file. |
+
+The record avatar (`imageField`: an `image` field, or a `url` field holding an `https://` image) is set in Settings → Data model or with [`schema apply`](schema-as-code.md) (`"imageField": "<fieldId>"` on the object); `objects update` has no option for it.
 
 ### `fields`
 
@@ -282,6 +322,14 @@ agentcrm fields <add|update|delete> --object <id> …
 | `--unique` | Values must be unique. |
 | `--description <value>` | Help text. |
 | `--data <value>` | update: raw FieldPatch JSON. |
+
+`fields update --data` also sets the links `fields add` has no option for — a drilldown or a rollup (`null` removes one); both are validated against the relations they name ([data-model.md](data-model.md#drilldown-and-rollup-fields)):
+
+```bash
+agentcrm fields update operatorCount --object markets --data '{"drilldown":{"object":"operators","field":"markets"}}'
+agentcrm fields update status --object operators --data '{"rollup":{"object":"licences","via":"operator","field":"status","scope":{"field":"markets","via":"market"}}}'
+agentcrm fields update status --object operators --data '{"rollup":null}'
+```
 
 ### `schema`
 
@@ -321,6 +369,10 @@ The description:
 - Never deletes and never changes a field type (reported in `conflicts`); select options and stages are only added, never removed (records point at them). Custom fields the file doesn't list are reported in `extraFields`.
 - Relation fields may point at objects defined later in the same file. Standard objects (`companies`, `people`, `deals`) can be relabelled and extended.
 - Stage ids are unique across all pipelines: a stage id another pipeline uses is a conflict (prefix them, e.g. `p-prospect`).
+- Also: `imageField` on objects (an image or URL field), `drilldown` / `rollup` on fields (applied after every relation of the file exists), and options given as `{ "label", "color" }` recolour existing options. It is the CLI's way to create a pipeline.
+- Output: `{ changes: [{ kind: object|field|pipeline|view, action: create|update, target, changes? }], conflicts: string[], extraFields: string[] }` (inside `plan` with `needsConfirmation: true` without `--yes`; `upToDate: true` when nothing differs).
+
+Full guide with an annotated example: [schema-as-code.md](schema-as-code.md).
 
 ### `activities`
 
@@ -492,6 +544,8 @@ agentcrm users <list|add|role|disable> …
 | `--role <value>` | add: role (default member). |
 | `--all` | list: include disabled users. |
 | `--enable` | disable: re-enable instead. |
+
+On Firebase, `users add` (and `users role`) run by an admin login also write the invitation `invites/{email}` that lets that person join on their first sign-in. Users added from the CLI with 0.3.1 or 0.3.2 got no invitation: re-save them once (`agentcrm users role <email> <role>`).
 
 ### `settings`
 

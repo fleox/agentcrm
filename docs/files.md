@@ -4,10 +4,14 @@ AgentCRM stores **record images** (a person's photo, a company's logo, the image
 
 ## What you get
 
-- **Photo / logo** — `people.avatar` and `companies.logo` (field type `image`), shown next to the name everywhere: record header, tables, kanban cards, relation chips, the search palette. Click (or drop an image on) the avatar in the record header, adjust the square crop (zoom + drag), save; *Replace* / *Remove* from the same menu. Initials are shown when there is no image. Any object gets an avatar by adding a field of type **Image** (Settings → Data model; the first image field becomes the object's *image field*, changeable in the object settings).
+- **Photo / logo** — `people.avatar` and `companies.logo` (field type `image`), shown next to the name everywhere: record header, tables, kanban cards, relation chips, the search palette. Click (or drop an image on) the avatar in the record header, adjust the square crop (zoom + drag), save; *Replace* / *Remove* from the same menu. Initials are shown when there is no image. Any object gets an avatar by adding a field of type **Image** (Settings → Data model; the first image field becomes the object's *image field*, changeable in the object settings) — or uses a URL field, see [below](#record-images-from-a-url).
 - **Attachments** — the activity composer and the task editor take files from the *Attach* button, drag & drop or paste (screenshots). Pasted images are inserted inline in the Markdown body as `![name](file:<id>)`; other images can be inserted with the image button of their chip. Timeline items and task rows show image thumbnails (click → lightbox, ←/→, Esc) and document chips (icon by type, size, open in a new tab, download, delete).
 - **Files tab** on every record: its own files, its image / files fields and — toggle *Include files of activities and related records* — the attachments of its activities and of linked records (a company's people and deals). Drop zone, grid / list, sort (newest, oldest, name, size), search, preview, download, delete.
 - **Custom fields** of type `image` (one file) and `files` (several).
+
+### Record images from a URL
+
+An object's image field can also be a **URL field** (Settings → Data model → object → *Image field*, or `"imageField"` in [`schema apply`](schema-as-code.md)). Its value — an `https://` URL of an image hosted elsewhere, such as a logo CDN or the source system you mirror — is shown in lists, kanban cards, the search palette and the record header like a stored image, without any upload and without file storage (handy on Firebase without Storage, or for thousands of [synced](sync.md) companies). An image that fails to load falls back to the initials; only `https://` values are displayed. The URL is fetched by each viewer's browser from that host (which therefore sees the viewer's IP address); nothing is copied into the CRM. Set it like any field (`records update <id> --set logoUrl=https://…`, or `records sync`); the crop / upload menu of the record header and `records image` apply to `image` fields only.
 
 ## Where the bytes live
 
@@ -62,7 +66,7 @@ To keep Firestore and Firebase Auth but store the bytes elsewhere (your own S3 b
 window.__AGENTCRM_CONFIG__ = { backend: "firebase", firebase: { … }, files: { endpoint: "files" } };
 ```
 
-`endpoint` is an absolute URL, or a path relative to the admin page (`"files"` next to `/crm/` → `/crm/files`). The admin and the CLI then send every file to it (`src/data/files/http.ts`) instead of Firebase Storage; no `storageBucket`, storage rules or bucket CORS are needed. Every request carries `Authorization: Bearer <Firebase ID token>` of the signed-in user (the CLI: its `firebase:<name>` login):
+`endpoint` is an absolute URL, or a path relative to the admin page (`"files"` next to `/crm/` → `/crm/files`; relative paths work in the browser only — the CLI needs an absolute URL, see below). The admin and the CLI then send every file to it (`src/data/files/http.ts`) instead of Firebase Storage; no `storageBucket`, storage rules or bucket CORS are needed. Every request carries `Authorization: Bearer <Firebase ID token>` of the signed-in user (the CLI: its `firebase:<name>` login):
 
 | Request | Answer |
 |---|---|
@@ -75,7 +79,20 @@ Ids match `^[A-Za-z0-9_-]{1,80}$` (thumbnails are `<id>_t`). `503` means the end
 
 **The endpoint is responsible for access control**: verify the ID token (signature with Google's public keys, `aud` = the project id, `iss` = `https://securetoken.google.com/<project>`, not expired), then read the caller's `users/<uid>` from Firestore — with their own token, which the rules allow — and apply the same roles as the storage rules: active users read, members and admins write and delete, admins list; disabled or unknown users get `403`. Keep the bucket keys and any encryption key on the server: the browser only ever holds the user's ID token.
 
-For a CLI registered before the endpoint existed: `agentcrm site runtime <alias> --runtime <json|@file>` replaces its runtime config (same project only).
+Other notes:
+
+- `files.endpoint` is read from the runtime config (`config.js`, or the CLI's site registry) and is public like the rest of it: it holds no secret. It only applies to the Firebase backend.
+- The endpoint is called directly by the browser: when it is on another origin than the admin, answer CORS preflights (`Authorization`, `Content-Type`, `X-File-Name` request headers; `GET`, `PUT`, `DELETE`). Requests are sent with `cache: "no-store"` and `credentials: "same-origin"` (no cookies cross-origin).
+- Bytes arrive as AgentCRM prepared them (images already resized / thumbnailed by the admin) and unencrypted over HTTPS: encrypt them at rest on the endpoint's side if you need to.
+- The CLI has no page to resolve a relative endpoint against: file commands then fail with "…must be an absolute URL here". A site registered with `site add --admin-url` copies the admin's `config.js`; when it says `"files"`, give the CLI an absolute URL with `site runtime` (below).
+- Uploads of a batch are sent one by one; there is no resumable upload, so keep `settings.maxUploadMb` in line with what the endpoint accepts.
+- `compact` (admin login, in the admin or the CLI) lists the endpoint (`GET <endpoint>/`) and deletes the stored ids that no file metadata references.
+
+For a CLI registered before the endpoint existed: `agentcrm site runtime <alias> --runtime <json|@file>` replaces its runtime config (same backend and project only):
+
+```bash
+agentcrm site runtime acme --runtime '{"backend":"firebase","firebase":{"apiKey":"…","projectId":"acme-crm"},"files":{"endpoint":"https://crm.acme.com/files"}}'
+```
 
 ## Limits & processing
 
