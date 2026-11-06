@@ -9,7 +9,7 @@ Read `CLAUDE.md` first (architecture, hard rules, contracts). This file lists wh
 
 ## Engine invariants
 
-- Record writes go through `createRecord` / `recordPatchMutation` (`src/ops/records.ts`): with a known actor they stamp `updatedBy` and `fieldUpdates.<fieldId> = { by, at }` for every field they change. A hand-built record mutation must do the same.
+- Record writes go through `createRecord` / `recordPatchMutation` (`src/ops/records.ts`): with a known actor they stamp `updatedBy` and `fieldUpdates.<fieldId> = { by, at }` for every field they change. A hand-built record mutation must do the same (`creationStamps(ctx, fields, now)` for a new record, as `importCsv` and `syncRecords` do).
 - `syncRecords` and `applySchema` (`src/ops/syncRecords.ts`, `src/ops/schemaApply.ts`) keep their promises: sync = one `store.write()`, diff-only, no plugin actions, archive instead of delete; schema apply = additive and idempotent (never deletes, never changes a field type, never removes an option or a stage). A second run of the same input must report nothing to do.
 - Firebase: every batch goes through `withChangeTracking` (`_ts` server stamp on writes, `deletions/` tombstone with each delete, same batch). Rules with a narrow `affectedKeys().hasOnly([...])` must list `_ts`. A new collection needs its rule (`RULED_COLLECTIONS`), and changed rules need a `changelog.json` action telling Firebase users to re-publish them.
 

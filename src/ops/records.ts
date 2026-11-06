@@ -240,7 +240,7 @@ export async function createRecord(
     ...(ownerId ? { ownerId } : {}),
     createdAt: now,
     updatedAt: now,
-    ...(actorId(ctx) ? { createdBy: actorId(ctx), updatedBy: actorId(ctx), fieldUpdates: fieldStamps(Object.keys(prepared.fields), actorId(ctx)!, now) } : {}),
+    ...creationStamps(ctx, prepared.fields, now),
   };
   await ctx.store.write([{ op: "set", collection: "records", doc: asDoc(record) }], { message: opts.message ?? `Create ${object.labelSingular}` });
   const stored = requireRecord(ctx.store, id);
@@ -251,10 +251,23 @@ export async function createRecord(
   return stored;
 }
 
-// Mutation patching only the changed fields (per-field LWW on the journal).
 function fieldStamps(ids: string[], by: string, at: number): Record<string, { by: string; at: number }> {
   return Object.fromEntries(ids.map((k) => [k, { by, at }]));
 }
+
+// Stamps of a new record: `createdBy`, `updatedBy` and `fieldUpdates.<id>` for
+// every field it is created with. Empty for the system context (user null).
+// Every code path creating a record by hand (import, sync…) spreads this.
+export function creationStamps(
+  ctx: OpsContext,
+  fields: Record<string, unknown>,
+  at: number = ctx.now(),
+): Pick<CrmRecord, "createdBy" | "updatedBy" | "fieldUpdates"> {
+  const actor = actorId(ctx);
+  return actor ? { createdBy: actor, updatedBy: actor, fieldUpdates: fieldStamps(Object.keys(fields), actor, at) } : {};
+}
+
+// Mutation patching only the changed fields (per-field LWW on the journal).
 
 export function recordPatchMutation(ctx: OpsContext, previous: CrmRecord, fields: Record<string, unknown>, changed: string[], extra: Record<string, unknown> = {}): DocMutation {
   const now = ctx.now();

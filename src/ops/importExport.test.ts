@@ -48,6 +48,23 @@ describe("importCsv", () => {
     expect(skip.skipped).toBe(1);
   });
 
+  it("stamps created records (and created companies) like createRecord; none for the system context", async () => {
+    const t = await setupTestCrm();
+    t.clock.now = 7000;
+    await importCsv(t.as("member"), { object: "people", csv: "First name,Last name,E-mail,Company\nAda,Lovelace,ada@acme.com,Acme\n", createRelated: true });
+    const ada = listRecords(t.admin, "people").items[0];
+    expect(ada).toMatchObject({ createdBy: "u-member", updatedBy: "u-member" });
+    expect(ada.fieldUpdates).toMatchObject({ firstName: { by: "u-member", at: 7000 }, email: { by: "u-member", at: 7000 }, company: { by: "u-member", at: 7000 } });
+    expect(Object.keys(ada.fieldUpdates!).sort()).toEqual(Object.keys(ada.fields).sort());
+    const acme = listRecords(t.admin, "companies").items[0];
+    expect(acme).toMatchObject({ createdBy: "u-member", updatedBy: "u-member", fieldUpdates: { name: { by: "u-member", at: 7000 } } });
+
+    await importCsv(t.as(null), { object: "companies", csv: "Name\nGlobex\n" });
+    const globex = listRecords(t.admin, "companies", { search: "globex" }).items[0];
+    expect(globex.createdBy).toBeUndefined();
+    expect(globex.fieldUpdates).toBeUndefined();
+  });
+
   it("companies dedupe by domain; deals map stages by label; explicit mapping is validated", async () => {
     const { admin } = await setupTestCrm();
     await importCsv(admin, { object: "companies", csv: "Name,Website,Employees\nAcme,https://www.acme.com,1 200\nAcme Inc,acme.com,\n" });

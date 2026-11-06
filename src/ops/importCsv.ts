@@ -10,7 +10,7 @@ import type { CrmRecord, FieldDef, ObjectDef } from "../core/types";
 import type { DocMutation } from "../data/types";
 import { camelId } from "../shared/lib/utils";
 import { actorId, assertCan, emit, OpsError, type OpsContext } from "./context";
-import { prepareRecordFields, recordPatchMutation } from "./records";
+import { creationStamps, prepareRecordFields, recordPatchMutation } from "./records";
 import { asDoc, objectOf, recordsOf, requireObject, usersOf, thaw } from "./store";
 
 export interface ParsedCsv {
@@ -330,7 +330,7 @@ export async function importCsv(ctx: OpsContext, opts: ImportOptions): Promise<I
         ...(ownerId ?? actorId(ctx) ? { ownerId: ownerId ?? actorId(ctx) } : {}),
         createdAt: now,
         updatedAt: now,
-        ...(actorId(ctx) ? { createdBy: actorId(ctx), updatedBy: actorId(ctx) } : {}),
+        ...creationStamps(ctx, prepared.fields, now),
       };
       mutations.push({ op: "set", collection: "records", doc: asDoc(record) });
       createdDocs.push(record);
@@ -360,7 +360,7 @@ export async function importCsv(ctx: OpsContext, opts: ImportOptions): Promise<I
         const isDomain = /^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(part) && !part.includes(" ");
         const id = newId(now);
         const fields: Record<string, unknown> = isDomain ? { name: part.split(".")[0].replace(/^./, (c) => c.toUpperCase()), domain: `https://${normalizeDomain(part)}` } : { name: part };
-        const rec: CrmRecord = { id, object: target, fields, ...(actorId(ctx) ? { ownerId: actorId(ctx), createdBy: actorId(ctx) } : {}), createdAt: now, updatedAt: now };
+        const rec: CrmRecord = { id, object: target, fields, ...(actorId(ctx) ? { ownerId: actorId(ctx) } : {}), createdAt: now, updatedAt: now, ...creationStamps(ctx, fields, now) };
         pendingRelated.set(id, rec);
         m.set(part.toLowerCase(), id);
         if (isDomain) m.set(normalizeDomain(part), id);
