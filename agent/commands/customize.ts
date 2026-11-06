@@ -82,7 +82,7 @@ export const modulesCommand: Command = {
           return { needsConfirmation: true as const, plan: result };
         }, (r) =>
           "needsConfirmation" in r
-            ? `${r.plan.changed.length ? `Would ${action}: ${r.plan.changed.map((c) => `${c.id} → ${c.enabled ? "on" : "off"}`).join(", ")}` : `${id} is already ${enabled ? "enabled" : "disabled"}`}.\nNothing changed — re-run with --yes once the user agrees.`
+            ? `${r.plan.changed.length ? `Would ${action}: ${r.plan.changed.map((c) => `${c.id} → ${c.enabled ? "on" : "off"}`).join(", ")}` : `${id} is already ${enabled ? "enabled" : "disabled"}`}.\nNothing changed. Re-run with --yes to apply.`
             : r.changed.length
               ? `Changed: ${r.changed.map((c) => `${c.id} → ${c.enabled ? "on" : "off"}`).join(", ")}`
               : `${id} was already ${enabled ? "enabled" : "disabled"}.`);
@@ -247,7 +247,7 @@ export const appearanceCommand: Command = {
       }, (r) => {
         const changes = r.plan ? r.plan.changes : r.changes ?? {};
         const lines = Object.entries(changes).map(([k, c]) => `  ${k}: ${JSON.stringify(c.from)} → ${JSON.stringify(c.to)}`);
-        return [`${r.plan ? "Would apply" : "Applied"}: ${describe}`, ...(lines.length ? lines : ["  (no visible change)"]), ...(r.plan ? ["Nothing changed — re-run with --yes once the user agrees."] : [])].join("\n");
+        return [`${r.plan ? "Would apply" : "Applied"}: ${describe}`, ...(lines.length ? lines : ["  (no visible change)"]), ...(r.plan ? ["Nothing changed. Re-run with --yes to apply."] : [])].join("\n");
       }));
 
     switch (action) {

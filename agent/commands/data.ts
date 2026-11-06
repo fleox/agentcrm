@@ -63,7 +63,7 @@ export const importCommand: Command = {
           [
             `Would restore ${r.plan.restore} (${r.plan.mode}): ${r.plan.added} new, ${r.plan.overwritten} overwritten, ${r.plan.deleted} deleted document(s), ${r.plan.files} file(s).`,
             ...r.plan.warnings.map((w) => `Warning: ${w}`),
-            "Re-run with --yes once the user agrees.",
+            "Nothing changed. Re-run with --yes to apply.",
           ].join("\n"),
         );
       }
@@ -96,7 +96,7 @@ export const importCommand: Command = {
         `${r.dryRun ? "DRY RUN — " : ""}${r.total} row(s): ${r.created} create, ${r.updated} update, ${r.skipped} skip, ${r.failed} error`,
         `Mapping: ${Object.entries(r.mapping).map(([h, f]) => `${h} → ${f || "(skip)"}`).join(", ")}`,
         ...r.rows.filter((x) => x.action === "error").map((x) => `  row ${x.row}: ${(x.messages ?? []).join("; ")}`),
-        ...(r.dryRun ? ["Nothing changed — re-run with --yes once the user agrees."] : []),
+        ...(r.dryRun ? ["Nothing changed. Re-run with --yes to apply."] : []),
       ].join("\n"));
   },
 };
@@ -212,7 +212,15 @@ export const reportCommand: Command = {
       ...(strOpt(options, "pipeline") ? { pipelineId: strOpt(options, "pipeline") } : {}),
       ...(strOpt(options, "owner") ? { ownerId: strOpt(options, "owner") } : {}),
     };
-    return withSession(io, options, {}, async ({ ctx }) => ({ report: name, data: (await import("../../src/ops/reports")).runReport(ctx, internal, params) }));
+    let text = "";
+    return withSession(io, options, {}, async ({ ctx }) => {
+      const out = { report: name, data: (await import("../../src/ops/reports")).runReport(ctx, internal, params) };
+      if (!io.json) {
+        const { humanFormat, reportText } = await import("./human");
+        text = reportText(await humanFormat(ctx), internal, out.data);
+      }
+      return out;
+    }, () => text);
   },
 };
 
@@ -241,7 +249,7 @@ export const compactCommand: Command = {
       const { compactData } = await import("../../src/ops/compact");
       const report = await compactData(ctx, { olderThanDays: numOpt(options, "older-than"), keepRuns: numOpt(options, "keep-runs"), dryRun: !apply });
       return apply ? report : { needsConfirmation: true, plan: report };
-    }, (r) => ("plan" in r ? `Would purge ${r.plan.purgedRecords.length} record(s), ${r.plan.purgedActivities} activit(ies), ${r.plan.purgedRuns} run(s), ${r.plan.purgedFiles} file(s). Re-run with --yes once the user agrees.` : `Purged ${r.purgedRecords.length} record(s), ${r.purgedFiles} file(s); storage compacted: ${r.storageCompacted}`));
+    }, (r) => ("plan" in r ? `Would purge ${r.plan.purgedRecords.length} record(s), ${r.plan.purgedActivities} activit(ies), ${r.plan.purgedRuns} run(s), ${r.plan.purgedFiles} file(s).\nNothing changed. Re-run with --yes to apply.` : `Purged ${r.purgedRecords.length} record(s), ${r.purgedFiles} file(s); storage compacted: ${r.storageCompacted}`));
   },
 };
 

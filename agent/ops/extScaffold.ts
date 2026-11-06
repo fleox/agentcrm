@@ -64,14 +64,33 @@ function viteConfig(entry: string): string {
 //      React, router, i18n and UI kit at runtime. Never bundle react.
 //   3. inlineDynamicImports: the admin only loads bundle.js (chunks 404).
 //   4. Production JSX (the admin doesn't provide react/jsx-dev-runtime).
-${IMPORT} { defineConfig } from "vite";
+${IMPORT} { defineConfig, type Plugin } from "vite";
 
 export const RUNTIME_EXTERNALS = ${JSON.stringify(RUNTIME_SPECIFIERS)};
+
+// logLevel "warn" hides Vite's own report: print one line per written file.
+function reportSize(): Plugin {
+  let silent = false;
+  return {
+    name: "agentcrm-report-size",
+    configResolved(config) {
+      silent = config.logLevel === "silent";
+    },
+    writeBundle(_options, bundle) {
+      if (silent) return;
+      for (const file of Object.values(bundle)) {
+        const bytes = file.type === "chunk" ? new TextEncoder().encode(file.code).length : typeof file.source === "string" ? new TextEncoder().encode(file.source).length : file.source.length;
+        console.log(\`built dist/\${file.fileName} (\${(bytes / 1024).toFixed(1)} KB)\`);
+      }
+    },
+  };
+}
 
 export default defineConfig({
   esbuild: { jsx: "automatic", jsxDev: false },
   define: { "process.env.NODE_ENV": JSON.stringify("production") },
   logLevel: "warn",
+  plugins: [reportSize()],
   build: {
     lib: { entry: ${JSON.stringify(entry)}, formats: ["es"], fileName: () => "bundle.js" },
     outDir: "dist",

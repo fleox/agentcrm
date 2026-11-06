@@ -83,12 +83,16 @@ export const installCommand: Command = {
         updatedAt: now,
       });
       const nextSteps: string[] = [];
+      const adminFolder = localAdminFolder(plan.hosting);
       if (plan.adminUrl) nextSteps.push(`Open the admin: ${plan.adminUrl}`);
-      else if (localAdminFolder(plan.hosting)) nextSteps.push(`The admin is in ${localAdminFolder(plan.hosting)} (no public URL): open it with \`agentcrm serve --dir ${localAdminFolder(plan.hosting)}\`, or serve that folder over HTTPS.`);
-      else if (plan.hosting) nextSteps.push(`The admin was uploaded to the ${plan.hosting.type} hosting; its public URL is unknown (add siteUrl to the plan's hosting settings next time).`);
+      if (adminFolder) nextSteps.push(`The admin is in ${adminFolder}: open it on this computer with \`agentcrm serve --dir ${adminFolder}\`${plan.adminUrl ? "" : ", or serve that folder over HTTPS"}.`);
+      else if (plan.adminUrl) {
+        // Listed above.
+      } else if (plan.hosting) nextSteps.push(`The admin was uploaded to the ${plan.hosting.type} hosting; its public URL is unknown (add siteUrl to the plan's hosting settings next time).`);
       else nextSteps.push("The admin was not uploaded: run `agentcrm serve` to use it on this computer.");
       if (plan.backend === "journal") {
-        nextSteps.push(`Each new browser asks once for the data location keys${plan.passphraseAccount ? " and the passphrase" : ""} (they stay in that browser).`);
+        const where = plan.runtime.backend === "journal" && plan.runtime.journal.connectorId === "local-folder" ? "to pick the data folder (Chrome or Edge)" : "for the data location keys";
+        nextSteps.push(`Each new browser asks once ${where}${plan.passphraseAccount ? " and the passphrase" : ""} (they stay in that browser).`);
       } else if (plan.backend === "git-json") {
         nextSteps.push("Each user signs in to the admin with their own git token (Contents read/write on the data repository).");
       } else {

@@ -1,6 +1,22 @@
 {
   "versions": [
     {
+      "version": "0.12.2",
+      "date": "2026-11-06",
+      "breaking": false,
+      "changes": [
+        "CLI: readable output without `--json`. `report <name>` prints a table per report (amounts in the workspace currency), `records search` a kind / object / label table, `records get` the fields by label with relations by name and the last writers, `records list --columns a,b` shows those fields, and `pipelines move` / `tasks add` confirm in one line. Tables shrink to the terminal width (ids are cut last). `--json` output is unchanged.",
+        "CLI: every plan now ends with \"Nothing changed. Re-run with --yes to apply.\", `ext install --yes` no longer prints a duplicate line, long notes are wrapped, and a scaffolded extension prints `built dist/bundle.js (N KB)` after `npm run build`.",
+        "`agentcrm serve` no longer stops when a file is replaced or removed while it is being served (for example when the npx cache is refreshed).",
+        "`agentcrm serve --dir <path>` also accepts the root of a local-folder hosting and serves its `admin/` subfolder; after an install with a local-folder hosting, the next steps always give the `serve --dir` command (even with a site URL) and say that each browser asks to pick the data folder, not for keys.",
+        "Admin: with the default \"system\" mode and no choice made in this browser, the admin now follows a light / dark switch of the operating system live. Settings → Appearance previews the workspace name instead of \"Acme Corp\".",
+        "New README with a demo video, real screenshots, terminal demos and real Claude Code sessions; issue and pull request templates."
+      ],
+      "actions": [
+        "deploy-admin"
+      ]
+    },
+    {
       "version": "0.12.1",
       "date": "2026-11-06",
       "breaking": false,

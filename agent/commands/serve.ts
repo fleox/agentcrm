@@ -43,6 +43,14 @@ export function resolveRequestPath(root: string, url: string): string | null {
   return file;
 }
 
+function isFile(file: string): boolean {
+  try {
+    return statSync(file).isFile();
+  } catch {
+    return false;
+  }
+}
+
 export function startStaticServer(root: string, host: string, port: number): Promise<Server> {
   const server = createServer((req, res) => {
     if (req.method !== "GET" && req.method !== "HEAD") {
@@ -50,7 +58,7 @@ export function startStaticServer(root: string, host: string, port: number): Pro
       return;
     }
     const file = resolveRequestPath(root, req.url ?? "/");
-    if (!file || !existsSync(file) || !statSync(file).isFile()) {
+    if (!file || !isFile(file)) {
       res.writeHead(404, { "content-type": "text/plain; charset=utf-8" }).end("Not found");
       return;
     }
@@ -61,8 +69,14 @@ export function startStaticServer(root: string, host: string, port: number): Pro
       "x-content-type-options": "nosniff",
     });
     if (req.method === "HEAD") res.end();
-    else createReadStream(file).pipe(res);
+    // A read error (file replaced or removed while serving, e.g. the npx
+    // cache re-extracted) must end this response, not crash the server.
+    else
+      createReadStream(file)
+        .on("error", () => res.destroy())
+        .pipe(res);
   });
+  server.on("clientError", (_err, socket) => socket.destroy());
   return new Promise((resolve, reject) => {
     server.once("error", reject);
     server.listen(port, host, () => {
@@ -91,8 +105,16 @@ export const serveCommand: Command = {
     { name: "no-open", type: "boolean", description: "Don't open a browser." },
   ],
   async run({ io, options }) {
-    const root = strOpt(options, "dir") ?? join(distRoot(), "admin");
-    if (!existsSync(join(root, "index.html"))) throw new CliError("admin-missing", `No index.html in ${root}.`, "Use the npm package, or run `npm run build` in a clone.");
+    const dir = strOpt(options, "dir");
+    let root = dir ?? join(distRoot(), "admin");
+    // A local-folder hosting keeps the admin in <path>/admin: accept <path> too.
+    if (dir && !existsSync(join(root, "index.html")) && existsSync(join(root, "admin", "index.html"))) root = join(root, "admin");
+    if (!existsSync(join(root, "index.html")))
+      throw new CliError(
+        "admin-missing",
+        `No index.html in ${root}.`,
+        dir ? "Point --dir at the folder holding the admin's index.html (for a local-folder hosting: <path>/admin)." : "Use the npm package, or run `npm run build` in a clone.",
+      );
     const first = Number(strOpt(options, "port") ?? 4173);
     if (!Number.isInteger(first) || first < 1 || first > 65535) usage(`Invalid port: ${String(options.port)}`);
     let server: Server | null = null;

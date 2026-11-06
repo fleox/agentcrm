@@ -146,10 +146,13 @@ export function parseSorts(values: string[]): Sort[] {
     });
 }
 
+// Last line of every human plan (the --json answer carries needsConfirmation).
+export const PLAN_FOOTER = "Nothing changed. Re-run with --yes to apply.";
+
 // Destructive commands: without --yes, print the plan and write nothing.
 export function confirmOrPlan(io: Io, options: Record<string, OptionValue>, plan: unknown, human: () => string): boolean {
   if (options.yes === true) return true;
-  printResult(io, { needsConfirmation: true, plan }, () => `${human()}\nNothing changed — re-run with --yes once the user agrees.`);
+  printResult(io, { needsConfirmation: true, plan }, () => `${human()}\n${PLAN_FOOTER}`);
   return false;
 }
 
@@ -159,12 +162,58 @@ export function positional(positionals: string[], index: number, what: string, u
   return v;
 }
 
-export function table(rows: Record<string, unknown>[], columns: string[]): string {
+export interface TableOptions {
+  // Columns whose cells are right-aligned (numbers, amounts).
+  right?: string[];
+  // Maximum line width; the widest columns shrink (with an ellipsis) to fit.
+  // Default: the terminal width when stdout is a TTY, else no limit.
+  maxWidth?: number;
+}
+
+const MIN_COL = 4;
+
+function terminalWidth(): number | undefined {
+  return process.stdout.isTTY && process.stdout.columns ? process.stdout.columns : undefined;
+}
+
+// Column widths shrunk until the line (columns joined by two spaces) fits
+// `maxWidth`: the widest column loses a character at a time (the last one
+// on ties), never below MIN_COL. Columns listed in `keep` (ids people copy)
+// shrink only once nothing else can.
+export function fitWidths(widths: number[], maxWidth: number | undefined, keep: number[] = []): number[] {
+  const out = [...widths];
+  if (!maxWidth) return out;
+  const total = () => out.reduce((a, w) => a + w, 0) + 2 * Math.max(0, out.length - 1);
+  const pick = (allowKept: boolean) => {
+    let i = -1;
+    for (let j = 0; j < out.length; j++) if (out[j] > MIN_COL && (allowKept || !keep.includes(j)) && (i < 0 || out[j] >= out[i])) i = j;
+    return i;
+  };
+  while (total() > maxWidth) {
+    const i = pick(false) >= 0 ? pick(false) : pick(true);
+    if (i < 0) break;
+    out[i]--;
+  }
+  return out;
+}
+
+export function table(rows: Record<string, unknown>[], columns: string[], opts: TableOptions = {}): string {
   if (!rows.length) return "(none)";
   const cell = (v: unknown) => (v === undefined || v === null ? "" : typeof v === "object" ? JSON.stringify(v) : String(v)).replace(/\s+/g, " ").slice(0, 60);
-  const widths = columns.map((c) => Math.max(c.length, ...rows.map((r) => cell(r[c]).length)));
-  const line = (vals: string[]) => vals.map((v, i) => v.padEnd(widths[i])).join("  ").trimEnd();
-  return [line(columns), line(widths.map((w) => "-".repeat(w))), ...rows.map((r) => line(columns.map((c) => cell(r[c]))))].join("\n");
+  const natural = columns.map((c) => Math.max(c.length, ...rows.map((r) => cell(r[c]).length)));
+  const keep = columns.flatMap((c, i) => (c === "id" ? [i] : []));
+  const widths = fitWidths(natural, opts.maxWidth ?? terminalWidth(), keep);
+  const right = new Set(opts.right ?? []);
+  const clip = (v: string, w: number) => (v.length > w ? `${v.slice(0, Math.max(0, w - 1))}…` : v);
+  const line = (vals: string[], align = true) =>
+    vals
+      .map((v, i) => {
+        const t = clip(v, widths[i]);
+        return align && right.has(columns[i]) ? t.padStart(widths[i]) : t.padEnd(widths[i]);
+      })
+      .join("  ")
+      .trimEnd();
+  return [line(columns), line(widths.map((w) => "-".repeat(w)), false), ...rows.map((r) => line(columns.map((c) => cell(r[c]))))].join("\n");
 }
 
 export const SITE_OPTION = { name: "site", type: "string" as const, description: "Site alias (default: $AGENTCRM_SITE, ./agentcrm.json, the only site, or `site use`)." };

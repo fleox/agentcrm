@@ -58,7 +58,7 @@ export const deployAdminCommand: Command = {
     }
     if (options.yes !== true) {
       printResult(io, { needsConfirmation: true, plans }, () =>
-        [...plans.map((p) => (p.refused ? `${p.alias}: refused — ${p.refused}` : `${p.alias}: admin ${p.from ?? "(none)"} → ${p.to} on ${p.hosting}, ${p.files} files`)), "Nothing was changed. Re-run with --yes once the user agrees."].join("\n"),
+        [...plans.map((p) => (p.refused ? `${p.alias}: refused — ${p.refused}` : `${p.alias}: admin ${p.from ?? "(none)"} → ${p.to} on ${p.hosting}, ${p.files} files`)), "Nothing changed. Re-run with --yes to apply."].join("\n"),
       );
       return;
     }

@@ -110,7 +110,23 @@ export function modeIsDark(mode: ColorMode): boolean {
 }
 
 // Applies the default light / dark mode unless this browser chose one.
+// With "system", a later OS switch is followed live (one listener).
+let systemMode: { doc: Document; mode: ColorMode } | null = null;
+let systemListener = false;
+
 function applyDefaultMode(doc: Document, mode: ColorMode): void {
+  systemMode = { doc, mode };
+  if (!systemListener && typeof window !== "undefined" && window.matchMedia) {
+    systemListener = true;
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", () => {
+      if (systemMode?.mode !== "system") return;
+      const stored = storedTheme();
+      if (stored === "dark" || stored === "light") return;
+      const dark = modeIsDark("system");
+      systemMode.doc.documentElement.classList.toggle("dark", dark);
+      window.dispatchEvent(new CustomEvent("agentcrm:theme", { detail: dark ? "dark" : "light" }));
+    });
+  }
   const stored = storedTheme();
   if (stored === "dark" || stored === "light") return;
   doc.documentElement.classList.toggle("dark", modeIsDark(mode));

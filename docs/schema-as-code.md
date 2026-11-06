@@ -156,7 +156,7 @@ Would change 1 thing(s):
   update field operators.status (options +Suspended, colors Closed)
   conflict: markets.operatorCount: type is number in the CRM, text in the schema (not changed)
   not in the schema (kept): markets.region
-Nothing changed — re-run with --yes once the user agrees.
+Nothing changed. Re-run with --yes to apply.
 ```
 
 ## In a repository

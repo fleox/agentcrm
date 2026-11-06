@@ -22,7 +22,23 @@ export const pipelinesCommand: Command = {
     }
     if (action === "move") {
       if (!id || !stage.length) usage("pipelines move needs <recordId> <stage>.");
-      return withSession(io, options, { lock: true }, async ({ ctx }) => recordOut(ctx, await (await import("../../src/ops/pipelines")).moveStage(ctx, id, stage.join(" "), { lostReason: strOpt(options, "lost-reason") })));
+      let line = "";
+      return withSession(io, options, { lock: true }, async ({ ctx }) => {
+        const pipelines = await import("../../src/ops/pipelines");
+        const { getRecord } = await import("../../src/ops/records");
+        const before = getRecord(ctx, id);
+        const fromPipeline = pipelines.pipelineOfRecord(ctx, before);
+        const fromStage = fromPipeline?.stages.find((s) => s.id === before.fields[fromPipeline.stageField]);
+        const moved = await pipelines.moveStage(ctx, id, stage.join(" "), { lostReason: strOpt(options, "lost-reason") });
+        const out = await recordOut(ctx, moved);
+        const pipeline = pipelines.pipelineOfRecord(ctx, moved);
+        const to = pipeline?.stages.find((s) => s.id === moved.fields[pipeline.stageField]);
+        const { objectOf } = await import("../../src/ops/store");
+        const what = (objectOf(ctx.store, moved.object)?.labelSingular ?? moved.object).toLowerCase();
+        const probability = typeof moved.fields.probability === "number" ? moved.fields.probability : to?.probability;
+        line = `Moved ${what} ${String(out.label)}: ${fromStage?.label ?? "(no stage)"} → ${to?.label ?? stage.join(" ")}${probability !== undefined ? ` (probability ${probability} %)` : ""}`;
+        return out;
+      }, () => line);
     }
     usage(`Unknown pipelines action "${action}".`, "Use list or move.");
   },

@@ -47,7 +47,7 @@ The admin app holds no data and no secret (its `config.js` is public by design):
 - `s3` - a public bucket with static website hosting, behind HTTPS (CDN or the bucket's https endpoint).
 - `github-pages` - a GitHub repo served by Pages (`https://<owner>.github.io/<repo>`).
 - `gitlab-pages`, `cloudflare-pages` - same idea.
-- `local-folder` - a folder of this computer (serve it with `serve --dir`).
+- `local-folder` - a folder of this computer: the admin lands in `<path>/admin` (or `hosting.folder`); open it with `serve --dir <path>/admin`, exactly as the install's next steps print it. Don't improvise another web server.
 - no hosting (`"hosting": false`) - the user runs `serve` when needed.
 
 HTTPS is required: browsers only allow the admin's request signing and encryption on secure pages.

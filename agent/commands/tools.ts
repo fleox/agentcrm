@@ -46,7 +46,7 @@ export const toolsCommand: Command = {
       return withSession(io, options, { lock: builtin ? builtin.mutating : true }, async ({ ctx }) => {
         if (!findTool(name)) usage(`Unknown tool "${name}".`, `\`agentcrm tools list\` lists them (${listAiTools().length} available).`);
         return { tool: name, result: await callTool(ctx, name, input) };
-      });
+      }, (r) => JSON.stringify(r.result ?? null, null, 2));
     }
     usage(`Unknown tools action "${action}".`, "Use list or call.");
   },

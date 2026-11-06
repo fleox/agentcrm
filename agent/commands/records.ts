@@ -104,6 +104,7 @@ export const recordsCommand: Command = {
         const columns = listOpt(options, "columns");
         const filters = parseFilters(multiOpt(options, "filter"), FILTER_OPS);
         const sorts = parseSorts(multiOpt(options, "sort"));
+        let columnTable: string | undefined;
         return withSession(io, options, {}, async ({ ctx }) => {
           const { listRecords } = await import("../../src/ops/records");
           const page = listRecords(ctx, objectId, {
@@ -116,16 +117,32 @@ export const recordsCommand: Command = {
             limit: Math.min(500, numOpt(options, "limit") ?? 50),
             onlyDeleted: boolOpt(options, "deleted"),
           });
+          if (columns?.length && !io.json) {
+            const { humanFormat, recordRows } = await import("./human");
+            const fmt = await humanFormat(ctx);
+            const { rows, headers } = recordRows(fmt, objectId, page.items, columns);
+            columnTable = table(rows, headers);
+          }
           return { object: objectId, total: page.total, offset: page.offset, hasMore: page.hasMore, records: await Promise.all(page.items.map((r) => recordOut(ctx, r, columns))) };
-        }, (r) => `${r.total} record(s)${r.hasMore ? ` (showing ${r.records.length} from ${r.offset})` : ""}\n${table(r.records, ["id", "label", "updatedAt"])}`);
+        }, (r) => `${r.total} record(s)${r.hasMore ? ` (showing ${r.records.length} from ${r.offset})` : ""}\n${columnTable ?? table(r.records, ["id", "label", "updatedAt"])}`);
       }
       case "get": {
         const id = positional(args, 0, "record id", U.get);
+        let human = (r: unknown) => JSON.stringify(r, null, 2);
         return withSession(io, options, {}, async ({ ctx }) => {
           const { getRecordDetails } = await import("../../src/ops/records");
           const d = getRecordDetails(ctx, id);
-          return { ...(await recordOut(ctx, d.record)), relations: d.relations, related: d.inverse.filter((i) => i.records.length), activityCount: d.activityCount };
-        });
+          const out = { ...(await recordOut(ctx, d.record)), relations: d.relations, related: d.inverse.filter((i) => i.records.length), activityCount: d.activityCount };
+          if (!io.json) {
+            const { humanFormat, recordDetails } = await import("./human");
+            const { objectOf } = await import("../../src/ops/store");
+            const fmt = await humanFormat(ctx);
+            const order = objectOf(ctx.store, d.record.object)?.fields.map((f) => f.id) ?? [];
+            const text = recordDetails(fmt, out as unknown as Parameters<typeof recordDetails>[1], order, { related: out.related, activityCount: out.activityCount });
+            human = () => text;
+          }
+          return out;
+        }, (r) => human(r));
       }
       case "create": {
         const objectId = object();
@@ -159,7 +176,7 @@ export const recordsCommand: Command = {
           if (options.yes !== true) return { needsConfirmation: true as const, plan };
           if (args.length === 1) return { deleted: [await deleteRecord(ctx, args[0], { hard })], hard };
           return { ...(await bulkDelete(ctx, args, { hard })), hard };
-        }, (r) => ("needsConfirmation" in r && r.plan ? `Would delete ${r.plan.delete.length} record(s)${hard ? " permanently" : ""}. Re-run with --yes once the user agrees.` : `Deleted ${JSON.stringify(r.deleted)}`));
+        }, (r) => ("needsConfirmation" in r && r.plan ? `Would delete ${r.plan.delete.length} record(s)${hard ? " permanently" : ""}.\nNothing changed. Re-run with --yes to apply.` : `Deleted ${JSON.stringify(r.deleted)}`));
       }
       case "restore": {
         const id = positional(args, 0, "record id", U.restore);
@@ -174,7 +191,7 @@ export const recordsCommand: Command = {
         return withSession(io, options, {}, async ({ ctx }) => {
           const { searchRecords } = await import("../../src/ops/records");
           return searchRecords(ctx, query, { objects: listOpt(options, "object"), limit: Math.min(100, numOpt(options, "limit") ?? 20) });
-        });
+        }, (hits) => `${hits.length} result(s) for "${query}"\n${table(hits.map((h) => ({ kind: h.kind, object: h.object, label: h.label, sub: h.sub ?? "", id: h.id })), ["kind", "object", "label", "sub", "id"])}`);
       }
       case "duplicates": {
         const objectId = object();
@@ -196,7 +213,7 @@ export const recordsCommand: Command = {
           const { mergeRecords } = await import("../../src/ops/dedupe");
           const res = await mergeRecords(ctx, primary, dups);
           return { record: await recordOut(ctx, res.record), merged: res.merged, movedActivities: res.movedActivities };
-        }, (r) => ("plan" in r && r.plan ? `Would merge ${r.plan.duplicates.length} duplicate(s) into ${r.plan.primary.id}. Re-run with --yes once the user agrees.` : "merged" in r ? `Merged ${r.merged.length} into ${r.record.id}` : ""));
+        }, (r) => ("plan" in r && r.plan ? `Would merge ${r.plan.duplicates.length} duplicate(s) into ${r.plan.primary.id}.\nNothing changed. Re-run with --yes to apply.` : "merged" in r ? `Merged ${r.merged.length} into ${r.record.id}` : ""));
       }
       case "image":
         return (await import("./files")).recordImageAction(io, options, args);
@@ -225,7 +242,7 @@ export const recordsCommand: Command = {
         }, (r) => {
           const s = ("needsConfirmation" in r ? r.plan : r) as import("../../src/ops/syncRecords").SyncReport;
           const line = `${s.object}: ${s.rows} rows → ${s.created} new, ${s.updated} updated, ${s.unchanged} unchanged, ${s.archived} archived${s.unresolved ? `, ${s.unresolved} unresolved references (relation kept; first: ${s.unresolvedRefs?.[0] ? `${s.unresolvedRefs[0].key}.${s.unresolvedRefs[0].field} → ${s.unresolvedRefs[0].refs.join(", ")}` : "?"})` : ""}${s.errors.length ? `, ${s.errors.length} errors (first: ${s.errors[0].key}: ${s.errors[0].message})` : ""}`;
-          return "needsConfirmation" in r ? `${line}\nNothing changed — re-run with --yes once the user agrees.` : line;
+          return "needsConfirmation" in r ? `${line}\nNothing changed. Re-run with --yes to apply.` : line;
         });
       }
       default:

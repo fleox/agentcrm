@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSPro
 import { useTranslation } from "react-i18next";
 import { Check, ImageUp, Monitor, Moon, RotateCcw, Search, Sun, Trash2 } from "lucide-react";
 import { Badge, Button, Card, Select, Switch, Textarea, confirmDialog } from "../../components/ui";
-import { useCan, useCollection, useConfigDoc, useOps } from "../../app/CrmDataContext";
+import { useCan, useCollection, useConfigDoc, useOps, useSettings } from "../../app/CrmDataContext";
 import {
   DEFAULT_APPEARANCE,
   FONTS,
@@ -345,6 +345,7 @@ function Thumbnail({ appearance }: { appearance: Appearance }) {
 function Preview({ appearance }: { appearance: Appearance }) {
   const { t } = useTranslation("customize");
   const s = (k: string) => t(`appearance.previewSample.${k}`);
+  const workspaceName = useSettings().name?.trim();
   const sidebar = appearance.sidebar;
   return (
     <div style={scoped(appearance)} className="overflow-hidden rounded-lg border border-surface-200 bg-white text-surface-900 dark:border-surface-800 dark:bg-surface-950 dark:text-surface-100" data-testid="appearance-preview">
@@ -362,7 +363,7 @@ function Preview({ appearance }: { appearance: Appearance }) {
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 border-b border-surface-200 px-3 py-page dark:border-surface-800">
-            <span className="truncate text-[13px] font-semibold">{s("title")}</span>
+            <span className="truncate text-[13px] font-semibold">{workspaceName || s("title")}</span>
             <span className="ml-auto flex h-6 items-center gap-1 rounded-md border border-surface-200 px-1.5 text-2xs text-surface-400 dark:border-surface-700">
               <Search className="h-3 w-3" />
               {s("search")}

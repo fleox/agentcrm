@@ -206,7 +206,7 @@ export const schemaCommand: Command = {
           ...report.conflicts.map((c) => `  conflict: ${c}`),
           ...(report.extraFields.length ? [`  not in the schema (kept): ${report.extraFields.join(", ")}`] : []),
         ];
-        if ("needsConfirmation" in r) return [`Would change ${report.changes.length} thing(s):`, ...lines, ...extra, "Nothing changed — re-run with --yes once the user agrees."].join("\n");
+        if ("needsConfirmation" in r) return [`Would change ${report.changes.length} thing(s):`, ...lines, ...extra, "Nothing changed. Re-run with --yes to apply."].join("\n");
         return [report.changes.length ? `Applied ${report.changes.length} change(s):` : "The data model already matches the schema.", ...lines, ...extra].join("\n");
       },
     );

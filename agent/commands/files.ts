@@ -129,7 +129,7 @@ export const filesCommand: Command = {
           if (options.yes !== true) return { needsConfirmation: true as const, plan: { delete: meta } };
           await deleteFile(ctx, id);
           return { deleted: id };
-        }, (r) => ("plan" in r && r.plan ? `Would delete ${r.plan.delete.name} (${r.plan.delete.id}). Re-run with --yes once the user agrees.` : `Deleted ${"deleted" in r ? r.deleted : id} (bytes purged by \`agentcrm compact\`).`));
+        }, (r) => ("plan" in r && r.plan ? `Would delete ${r.plan.delete.name} (${r.plan.delete.id}).\nNothing changed. Re-run with --yes to apply.` : `Deleted ${"deleted" in r ? r.deleted : id} (bytes purged by \`agentcrm compact\`).`));
       }
       case "usage":
         return withSession(io, options, {}, async ({ ctx }) => (await import("../../src/ops/files")).fileUsage(ctx));

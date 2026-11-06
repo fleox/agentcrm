@@ -144,6 +144,18 @@ export const notesCommand: Command = {
   },
 };
 
+// "Created task t_… "Call back" due 2026-11-12, assigned to Ada, on Globex."
+async function taskLine(ctx: OpsContext, t: ReturnType<typeof activityOut>): Promise<string> {
+  const { recordOf, objectOf, userOf } = await import("../../src/ops/store");
+  const { recordLabel } = await import("../../src/core/fields");
+  const on = t.targets.map((x) => {
+    const r = recordOf(ctx.store, x.id);
+    return r ? recordLabel(objectOf(ctx.store, r.object), r) : x.id;
+  });
+  const who = t.assigneeId ? userOf(ctx.store, t.assigneeId)?.name ?? t.assigneeId : "";
+  return `Created task ${t.id} "${t.title}"${t.dueAt ? ` due ${t.dueAt.slice(0, 10)}` : ""}${who ? `, assigned to ${who}` : ""}${on.length ? `, on ${on.join(", ")}` : ""}`;
+}
+
 export const tasksCommand: Command = {
   name: "tasks",
   usage: "tasks <list|add|done|reassign> …",
@@ -188,10 +200,13 @@ export const tasksCommand: Command = {
       case "add": {
         const title = requireStr(options, "title");
         const files = attachPaths(options);
+        let line = "";
         return withSession(io, options, { lock: true }, async ({ ctx }) => {
           const { addActivity } = await import("../../src/ops/activities");
-          return activityOut(await addActivity(ctx, { type: "task", title, body: body(options), dueAt: strOpt(options, "due"), assigneeId: (await assignee(ctx)) ?? ctx.user?.id, targets: targets(multiOpt(options, "record")), attachments: await attachments(ctx, files) }));
-        });
+          const task = activityOut(await addActivity(ctx, { type: "task", title, body: body(options), dueAt: strOpt(options, "due"), assigneeId: (await assignee(ctx)) ?? ctx.user?.id, targets: targets(multiOpt(options, "record")), attachments: await attachments(ctx, files) }));
+          if (!io.json) line = await taskLine(ctx, task);
+          return task;
+        }, () => line);
       }
       case "done":
         if (!id) usage("tasks done needs a task id.");

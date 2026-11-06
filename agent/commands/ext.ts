@@ -4,6 +4,7 @@ import { CliError, printResult } from "../output";
 import { dryRun } from "../ops/dryRun";
 import { withSession } from "../ops/session";
 import type { Command, CommandContext } from "./types";
+import { wrapText } from "./human";
 import { AS_OPTION, boolOpt, positional, SITE_OPTION, strOpt, table, usage, YES_OPTION } from "./util";
 
 // `agentcrm ext …` — create, test and ship AgentCRM extensions (modules and
@@ -13,6 +14,12 @@ import { AS_OPTION, boolOpt, positional, SITE_OPTION, strOpt, table, usage, YES_
 // of every admin who opens the CRM: always a plan first, --yes to apply.
 
 const TRUST_NOTE = "Installing runs this extension's code in the admin (and in CLI / MCP sessions) with the rights of the user who opens it — admins included. Only install code from an author you trust.";
+
+// "cmd   (comment)" → the command, then the comment on its own line.
+function nextLines(step: string): string[] {
+  const m = /^(.*?)\s{2,}\((.*)\)$/.exec(step);
+  return m ? [`  ${m[1]}`, `    (${m[2]})`] : [`  ${step}`];
+}
 
 function kb(n: number): string {
   return `${(n / 1024).toFixed(1)} KB`;
@@ -28,7 +35,7 @@ async function scaffold({ io, options, positionals }: CommandContext) {
   }
   const { scaffoldExtension } = await import("../ops/extScaffold");
   const res = scaffoldExtension({ kind, id, dir, name: strOpt(options, "name"), description: strOpt(options, "description"), author: strOpt(options, "author") });
-  printResult(io, res, () => [`Created ${kind} "${id}" in ${dir}:`, ...res.files.map((f) => `  ${f}`), "", "Next:", ...res.next.map((n) => `  ${n}`)].join("\n"));
+  printResult(io, res, () => [`Created ${kind} "${id}" in ${dir}:`, ...res.files.map((f) => `  ${f}`), "", "Next:", ...res.next.flatMap(nextLines)].join("\n"));
 }
 
 async function check({ io, options, positionals }: CommandContext) {
@@ -120,7 +127,8 @@ async function install({ io, options, positionals }: CommandContext) {
       const { result } = await dryRun(s.ctx, (copy) => ext.installExtension(copy, pkg, disabled ? { enabled: false } : {}));
       return { needsConfirmation: true as const, plan: { ...plan, enabled: result.enabled, warnings: result.warnings } };
     }
-    const result = await ext.installExtension(s.ctx, pkg, disabled ? { enabled: false } : {});
+    // The op's log line repeats the "Installed …" line printed below.
+    const result = await ext.installExtension(io.json ? s.ctx : { ...s.ctx, log: undefined }, pkg, disabled ? { enabled: false } : {});
     // Load it in this process: proves the bundle runs and lists its tools.
     const report = await s.extensions.sync();
     const { getLoadedExtension } = await import("../../src/extensions/registry");
@@ -134,8 +142,8 @@ async function install({ io, options, positionals }: CommandContext) {
           `Would ${r.plan.mode} ${r.plan.kind} "${r.plan.name}" (${r.plan.id}) ${r.plan.mode === "upgrade" ? `${r.plan.from} → ` : ""}${r.plan.version}${r.plan.author ? ` by ${r.plan.author}` : ""}${r.plan.enabled ? "" : " (disabled)"}`,
           `  apiVersion ${r.plan.apiVersion}, bundle ${kb(r.plan.size.bundle)}${r.plan.dependsOn.length ? `, needs ${r.plan.dependsOn.join(", ")}` : ""}`,
           ...r.plan.warnings.map((w) => `  note: ${w}`),
-          `  ${r.plan.warning}`,
-          "Nothing changed — re-run with --yes once the user agrees.",
+          wrapText(r.plan.warning, 76, "  "),
+          "Nothing changed. Re-run with --yes to apply.",
         ].join("\n")
       : `${r.mode === "upgrade" ? `Upgraded ${r.id} ${r.previousVersion} → ${r.version}` : `Installed ${r.id} ${r.version}`} (${r.enabled ? "enabled" : "disabled"}; load: ${r.load.status}${"error" in r.load ? ` — ${r.load.error}` : ""})${r.warnings.length ? `\n  ${r.warnings.join("\n  ")}` : ""}`);
 }
@@ -214,7 +222,7 @@ export const extCommand: Command = {
           const summary = await ext.setExtensionEnabled(s.ctx, id, enabled, { cascade });
           await s.extensions.sync();
           return summary;
-        }, (r) => ("needsConfirmation" in r ? `Would ${action} ${id}${r.plan.changed.length > 1 ? ` (also: ${r.plan.changed.filter((c) => c.id !== id).map((c) => `${c.id} → ${c.enabled ? "on" : "off"}`).join(", ")})` : ""}.\nNothing changed — re-run with --yes once the user agrees.` : `${r.id} is now ${r.enabled ? "enabled" : "disabled"}.`));
+        }, (r) => ("needsConfirmation" in r ? `Would ${action} ${id}${r.plan.changed.length > 1 ? ` (also: ${r.plan.changed.filter((c) => c.id !== id).map((c) => `${c.id} → ${c.enabled ? "on" : "off"}`).join(", ")})` : ""}.\nNothing changed. Re-run with --yes to apply.` : `${r.id} is now ${r.enabled ? "enabled" : "disabled"}.`));
       }
       case "uninstall": {
         const id = positional(positionals, 1, "extension id", "ext uninstall <id> [--yes]");
@@ -229,7 +237,7 @@ export const extCommand: Command = {
           const res = await ext.uninstallExtension(s.ctx, id, { force });
           await s.extensions.sync();
           return { ...res, name: summary.name, version: summary.version };
-        }, (r) => (r.needsConfirmation ? `Would uninstall ${r.plan.kind} "${r.plan.name}" ${r.plan.version}.\nNothing changed — re-run with --yes once the user agrees.` : `Uninstalled ${r.id} ${r.version}.`));
+        }, (r) => (r.needsConfirmation ? `Would uninstall ${r.plan.kind} "${r.plan.name}" ${r.plan.version}.\nNothing changed. Re-run with --yes to apply.` : `Uninstalled ${r.id} ${r.version}.`));
       }
       case "export": {
         const id = positional(positionals, 1, "extension id", "ext export <id> [--out <file.zip>]");
