@@ -32,8 +32,8 @@ npx -y @fleox-agent-crm/agentcrm@0.12.0 records sync --site acme --object compan
 npx -y @fleox-agent-crm/agentcrm@0.12.0 records sync --site acme --object companies --key sourceId --rows @rows.json --archive-field archived --yes --json
 ```
 
-- Without `--yes` nothing is written: the result is `needsConfirmation: true` with a `plan` of `created`, `updated`, `unchanged`, `archived`, `unresolved`, `errors` and `samples` (keys created, fields updated per key, keys archived). Show it, then re-run with `--yes`.
-- Sync the **referenced objects first** (markets before companies): `unresolved` counts `$key` references with no matching record.
+- Without `--yes` nothing is written: the result is `needsConfirmation: true` with a `plan` of `created`, `updated`, `unchanged`, `archived`, `unresolved`, `unresolvedRefs`, `errors` and `samples` (keys created, fields updated per key, keys archived). Show it, then re-run with `--yes`.
+- Sync the **referenced objects first** (markets before companies): `unresolved` counts `$key` references with no matching record and `unresolvedRefs` lists them (`{ key, field, refs }`). Such a relation is left unchanged on that row (for a `many` relation, the whole value is kept); send `null` or `{ "$key": [] }` to clear it.
 - `--ref-key <fieldId>` when the related objects' key field has another id than `--key`. `--rows -` reads stdin (pipe the output of the user's own export script).
 - Without `--archive-field`, records missing from the rows are left alone. A record that comes back is un-archived.
 - Only the fields given in the rows are compared: fields edited in the CRM that the source doesn't send stay as they are.

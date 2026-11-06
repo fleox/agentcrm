@@ -1,6 +1,21 @@
 {
   "versions": [
     {
+      "version": "0.12.1",
+      "date": "2026-11-06",
+      "breaking": false,
+      "changes": [
+        "Records created by `records sync` now carry `createdBy`, `updatedBy` and a `fieldUpdates` stamp for every field, and records (and companies) created by `import csv` carry `fieldUpdates` too, like a record created in the admin.",
+        "`records sync`: a `{ \"$key\": … }` reference that matches no record now leaves that relation unchanged on that row (for a many relation, the whole existing value is kept) instead of clearing it or dropping ids. The report lists them in the new `unresolvedRefs` field (`[{ key, field, refs }]`, next to the `unresolved` count). `null`, `{ \"$key\": [] }` or `{ \"$key\": \"\" }` still clear the relation.",
+        "`schema apply --yes` is all or nothing: a validation error anywhere in the file (a drilldown, a rollup, a view…) now writes nothing, where the objects and fields of earlier passes used to stay. A successful apply is one write (one journal segment, one git commit).",
+        "Extensions: `ops.parseSchemaSpec`, `ops.applySchema` and `ops.syncRecords` are available and typed in `@agent-crm/runtime`; the public typings declare `FieldDef.drilldown` / `rollup`, `CrmRecord.fieldUpdates`, `CrmUser.prefs` and `FieldValue`'s `recordId`. Extension API 1.1.0 (extensions declaring 1.0.0 still load)."
+      ],
+      "actions": [
+        "Scripts reading `records sync` reports: check `unresolvedRefs` (or `unresolved`) and sync the referenced objects first — an unresolved reference no longer clears the relation.",
+        "Extension authors using the new ops: set `apiVersion` to `1.1.0` in `manifest.json` and the default export (needs AgentCRM 0.12.1 or later)."
+      ]
+    },
+    {
       "version": "0.12.0",
       "date": "2026-11-06",
       "breaking": false,
