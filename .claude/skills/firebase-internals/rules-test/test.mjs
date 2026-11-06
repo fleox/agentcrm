@@ -2,7 +2,7 @@
 // Mirrors the join flow of src/data/firebase.ts (ensureUserRecord): admin
 // first, then the invitation's role, then member when sign-up allows it.
 import { assertFails, assertSucceeds, initializeTestEnvironment } from "@firebase/rules-unit-testing";
-import { collection, deleteDoc, doc, getDoc, getDocs, setDoc, updateDoc } from "firebase/firestore";
+import { collection, deleteDoc, doc, getDoc, getDocs, query, serverTimestamp, setDoc, Timestamp, updateDoc, where, writeBatch } from "firebase/firestore";
 import { ADMIN, buildFirestoreRules, FIRESTORE, PROJECT, summary, t } from "./rules.mjs";
 
 // A users/{uid} record exactly as ensureUserRecord writes it.
@@ -68,6 +68,34 @@ async function env(projectId, options) {
   await t("viewer reads records", assertSucceeds(getDocs(collection(vic, "records"))));
   await t("viewer cannot write records", assertFails(setDoc(doc(vic, "records/r2"), { object: "companies", fields: {} })));
   await t("viewer cannot read the lead inbox", assertFails(getDocs(collection(vic, "inbox"))));
+
+  // Per-user interface preferences (users/<id>.prefs, setUserPrefs in
+  // src/ops/users.ts): any active role, own document only. The store patches
+  // dot paths and stamps _ts (src/data/firebase/api.ts, withChangeTracking).
+  const layout = { columns: ["name"], at: Date.now() };
+  await t("member writes its own prefs (+ _ts)", assertSucceeds(updateDoc(doc(anna, "users/anna"), { "prefs.views.v1": layout, _ts: serverTimestamp() })));
+  await t("viewer writes its own prefs", assertSucceeds(updateDoc(doc(vic, "users/vic"), { prefs: { lastView: { companies: { id: "v1", at: Date.now() } } }, _ts: serverTimestamp() })));
+  await t("member cannot write another user's prefs", assertFails(updateDoc(doc(anna, "users/vic"), { "prefs.views.v1": layout })));
+  await t("viewer cannot slip a role change in with its prefs", assertFails(updateDoc(doc(vic, "users/vic"), { "prefs.views.v1": layout, role: "admin" })));
+
+  // Change tracking (incremental loads): _ts stamps and deletions/ tombstones.
+  await t("member stamps lastRunAt with _ts", assertSucceeds(updateDoc(doc(anna, "automations/a1"), { lastRunAt: Date.now(), updatedAt: Date.now(), _ts: serverTimestamp() })));
+  await t("member writes a record stamped with _ts", assertSucceeds(setDoc(doc(anna, "records/r9"), { object: "companies", fields: { name: "Gone" }, _ts: serverTimestamp() })));
+  {
+    const batch = writeBatch(anna);
+    batch.delete(doc(anna, "records/r9"));
+    batch.set(doc(anna, "deletions/records__r9"), { collection: "records", id: "r9", _ts: serverTimestamp() });
+    await t("member deletes a record + its tombstone in one batch", assertSucceeds(batch.commit()));
+  }
+  await t("tombstone with a client-side _ts is refused", assertFails(setDoc(doc(anna, "deletions/records__x1"), { collection: "records", id: "x1", _ts: Timestamp.fromMillis(Date.now()) })));
+  await t("tombstone with an extra key is refused", assertFails(setDoc(doc(anna, "deletions/records__x2"), { collection: "records", id: "x2", role: "admin", _ts: serverTimestamp() })));
+  await t("viewer cannot write a tombstone", assertFails(setDoc(doc(vic, "deletions/records__r1"), { collection: "records", id: "r1", _ts: serverTimestamp() })));
+  await t("stranger cannot write a tombstone", assertFails(setDoc(doc(eve, "deletions/records__r1"), { collection: "records", id: "r1", _ts: serverTimestamp() })));
+  await t("viewer reads tombstones since a cursor", assertSucceeds(getDocs(query(collection(vic, "deletions"), where("_ts", ">", Timestamp.fromMillis(0))))));
+  await t("viewer reads records changed since a cursor", assertSucceeds(getDocs(query(collection(vic, "records"), where("_ts", ">", Timestamp.fromMillis(0))))));
+  await t("stranger cannot read tombstones", assertFails(getDocs(collection(eve, "deletions"))));
+  await t("member cannot delete a tombstone", assertFails(deleteDoc(doc(anna, "deletions/records__r9"))));
+  await t("admin deletes a tombstone", assertSucceeds(deleteDoc(doc(boss, "deletions/records__r9"))));
   await t("uninvited pat cannot join in invite mode", assertFails(setDoc(doc(pat, "users/pat"), userRec("pat", "pat@example.com", "member"))));
 
   // Public lead-form inbox.

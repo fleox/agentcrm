@@ -124,6 +124,8 @@ Pick the checks from the changed paths:
 | `src/features/**`, `src/app/**` | also `npx vitest run src/app/App.test.tsx` (whole-shell smoke test) and `src/i18n/parity.test.ts` when i18n bundles changed |
 | `agent/`, `plugin/skills/`, `changelog.json`, `package.json` | `npm run build`, then `npm run check:skills` and `npx vitest run agent/bundle.test.ts` (nothing to commit: `dist/` is git-ignored) |
 | `plugin/skills/`, `hermes/python/` | `npm run hermes:build`, then `npm run check:hermes` — commit the regenerated `hermes/skills/` (never edit it by hand) |
+| `src/ops/firebaseRules.ts` | `npx vitest run src/ops/firebaseRules.test.ts src/data/firebase.test.ts` + the emulator harness of `firebase-internals` (`rules-test/`, Java 21) |
+| `src/ops/schemaApply.ts`, `syncRecords.ts`, `records.ts`, `users.ts`, `src/features/records/lib/` | the tests listed in `data-model-internals` → "Checks before handing over" |
 | `src/extensions/`, `public/runtime/`, `types/agentcrm-runtime.d.ts`, `external/` | `npx vitest run src/extensions scripts/docs.test.ts`; `npm run build:examples` + `node dist/agent/agentcrm.mjs ext check dist/extensions/<zip>` (`extension-internals`) |
 | `src/ops/firebaseRules.ts` | the emulator harness of `firebase-internals` |
 
@@ -185,19 +187,23 @@ options:
 
 ### Step 7 — build the commit message
 
-The repository's history uses `<Area>: <subject>` (see
+Since 0.10.0 the repository uses Conventional Commits with a scope (older
+commits used `<Area>: <subject>`; see
 [`reference/commit-messages.md`](reference/commit-messages.md)):
 
 ```
-<Area>: <subject, imperative or descriptive, ≤ 72 chars>
+<type>(<scope>): <subject, what changed for the user, ≤ 72 chars when possible>
 
-<body — why the change, what reviewers must know, wrapped at 72>
+<body — why the change, what reviewers must know, wrapped at ~80>
 ```
+
+e.g. `feat(records): fieldUpdates, who last wrote each field and when`,
+`fix(cli): exit once stdout has flushed, a large --json result was cut short`.
 
 Never add `Co-Authored-By: Claude` or a "Generated with Claude Code" line, in the
 commit or the PR body.
 
-Infer `<Area>` and `<subject>` from the diff. Show the draft in chat, then
+Infer `<type>`, `<scope>` and `<subject>` from the diff. Show the draft in chat, then
 confirm via `AskUserQuestion`:
 
 ```
@@ -226,8 +232,10 @@ options:
 
 Use the [`reference/pr-template.md`](reference/pr-template.md) template, in
 **English**: Summary, Motivation, Changes, How to test, Related, Risk & rollback
-(+ "Changelog" when the change is user-visible: the line proposed for
-`changelog.json`, which maintainers add at release time). Skip sections that
+(+ "Changelog" when the change is user-visible: the `changelog.json` entry.
+Since 0.4.0 the entry ships in the feature commit itself, under the next
+version (`changes[]` + `actions[]`, e.g. "re-publish the Firestore rules");
+add it to the commit unless the user prefers to leave it to the maintainer). Skip sections that
 don't apply.
 
 ### Step 10 — final confirmation

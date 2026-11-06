@@ -14,7 +14,7 @@ Read [CLAUDE.md](../../../CLAUDE.md) first. Don't commit or push unless asked. E
 - npm renders it away from the repository. Use **absolute** links for anything new: `https://github.com/fleox/agentcrm/blob/master/…` for files, `https://raw.githubusercontent.com/fleox/agentcrm/master/…` for images. The branch is `master`: `blob/main` links are 404s (fixed once, in 0.3.1). The current README still has relative links (`docs/…`, `LICENSE`, `plugin/skills`): check how they render on npmjs.com before relying on them, and convert the ones you touch.
 - The README ships with a release: a README fix reaches npm only with the next published version.
 - It is a landing page — Why → Quick start (agent, then by hand) → Features → Customisation → How it works → Data backends → Hosting → CLI → MCP → AI assistant → Automations → Security & GDPR → Compared with… → Development → License. Details belong in `docs/`; link them.
-- Pinned commands (`npx -y @fleox-agent-crm/agentcrm@x.y.z …`) in the README, `docs/*.md` and `docs/templates/agentcrm-cron.yml` are bumped by `scripts/sync-version.mjs` at `npm version`. Write them with the **current** version; never write an unpinned `npx @fleox-agent-crm/agentcrm`.
+- Pinned commands (`npx -y @fleox-agent-crm/agentcrm@x.y.z …`) in the README, `docs/*.md` and `docs/templates/agentcrm-cron.yml` are bumped by `scripts/sync-version.mjs` at `npm version`. Write them with the **current** version; never write an unpinned `npx @fleox-agent-crm/agentcrm`. The `version` script stages only `plugin hermes .claude-plugin`, so the README / docs pins it rewrites must be committed by hand (0.12.0: a separate `docs: pin 0.12.0` commit after the tag, so the npm README of 0.12.0 still pins 0.11.0) — see `agent-cli-internals` → Releases.
 - The mermaid diagram under "How it works" is the architecture picture ("one engine, four front doors"); keep it in step with `docs/architecture.md`.
 
 ## Layout
@@ -28,6 +28,8 @@ Read [CLAUDE.md](../../../CLAUDE.md) first. Don't commit or push unless asked. E
 | `hermes/README.md` | The Hermes Agent page (skills table, Python scripts) |
 | `.claude-plugin/marketplace.json`, `plugin/.claude-plugin/plugin.json` | Claude Code marketplace + plugin descriptions (the version lives in `plugin.json` only; `check:skills` enforces it) |
 | `CONTRIBUTING.md`, `SECURITY.md`, `LICENSE`, `AGENTS.md`, `SHARED.md` | Community and maintenance files |
+
+Docs that describe contracts contributors change often: `docs/data-model.md` (field options `drilldown` / `rollup`, URL image fields, `fieldUpdates`, `users.prefs`), `docs/files.md` (the HTTP files endpoint protocol), `docs/firebase.md` (rules, incremental loading), `docs/cli.md` (`schema apply`, `records sync`, `site runtime`) — keep them in the same commit as the code.
 
 Docs that are also test inputs: `docs/runtime-api-reference.md` must list every runtime export and exported type (`scripts/docs.test.ts`); see [`extension-internals`](../extension-internals/SKILL.md). Docs linked from the app or the CLI use absolute `blob/master` URLs (`EXTENSIONS_DOCS_URL` in `src/features/customize/ModulesSection.tsx`, the scaffold README in `agent/ops/extScaffold.ts`): renaming a doc breaks them.
 

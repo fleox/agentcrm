@@ -5,7 +5,13 @@ Read `CLAUDE.md` first (architecture, hard rules, contracts). This file lists wh
 ## One engine, four front doors
 
 - Business rules live in `src/ops/` only. The admin (`src/features/`), the CLI (`agent/commands/`), the MCP server (`agent/mcp/`) and the assistant call ops — never re-implement a rule in a command or a page.
-- AI tools are declared once in `src/ai/tools.ts` (+ the files it spreads in). MCP `tools/list`, `agentcrm tools list` and the assistant expose exactly `AI_TOOLS`. A new tool needs: a precise description, a JSON schema, `mutating` set right (read-only MCP mode and the assistant's confirmation depend on it).
+- AI tools are declared once in `src/ai/tools.ts` (+ the files it spreads in). MCP `tools/list`, `agentcrm tools list` and the assistant expose exactly `listAiTools()` (`AI_TOOLS` + tools registered by extensions). A new tool needs: a precise description, a JSON schema, `mutating` set right (read-only MCP mode and the assistant's confirmation depend on it).
+
+## Engine invariants
+
+- Record writes go through `createRecord` / `recordPatchMutation` (`src/ops/records.ts`): with a known actor they stamp `updatedBy` and `fieldUpdates.<fieldId> = { by, at }` for every field they change. A hand-built record mutation must do the same.
+- `syncRecords` and `applySchema` (`src/ops/syncRecords.ts`, `src/ops/schemaApply.ts`) keep their promises: sync = one `store.write()`, diff-only, no plugin actions, archive instead of delete; schema apply = additive and idempotent (never deletes, never changes a field type, never removes an option or a stage). A second run of the same input must report nothing to do.
+- Firebase: every batch goes through `withChangeTracking` (`_ts` server stamp on writes, `deletions/` tombstone with each delete, same batch). Rules with a narrow `affectedKeys().hasOnly([...])` must list `_ts`. A new collection needs its rule (`RULED_COLLECTIONS`), and changed rules need a `changelog.json` action telling Firebase users to re-publish them.
 
 ## Skills follow the code
 
@@ -34,14 +40,15 @@ Read `CLAUDE.md` first (architecture, hard rules, contracts). This file lists wh
 
 - `package.json` version = plugin version = skills' `metadata.version` = pinned commands. `dist/version.json` (built) carries `minSkillsVersion` and `dataSchema` from `package.json → agentcrm`.
 - Bump `agentcrm.dataSchema` when an older admin could no longer read data written by the new one; `deploy-admin` refuses downgrades below it.
-- Every release has a `changelog.json` entry (newest first) with `changes[]` and `actions[]` (what `deploy-admin` users must run after updating). See `docs/releasing.md`.
+- Every release has a `changelog.json` entry (newest first) with `changes[]` and `actions[]` (what `deploy-admin` users must run after updating), committed with the feature it describes. See `docs/releasing.md`.
 
 ## Tests
 
 - `npx vitest run agent` — CLI contract, e2e on a fake S3 (`agent/testing/fakeS3.ts`) and a local folder, MCP protocol, bundle (when `dist/agent` exists).
+- After any change to `src/ops/firebaseRules.ts`: the emulator harness in `.claude/skills/firebase-internals/rules-test/` (Java 21).
 - `npx tsc --noEmit -p tsconfig.agent.json` — the CLI typechecks with the DOM lib (it reuses browser-written modules through `agent/browserEnv.ts`).
 - Tests never touch the network: stub `fetch` with the fakes; point `AGENTCRM_HOME` and `AGENTCRM_DIST` at temp folders; `AGENTCRM_KDF_ITERATIONS=1000` keeps new test datasets fast.
 
 ## Contributor skills
 
-`.claude/skills/` holds Claude Code skills for working **on** this repository (not shipped in the npm package nor checked by `check:skills`): `agent-cli-internals`, `extension-internals`, `firebase-internals` (with an emulator harness for the generated Firestore / Storage rules in `rules-test/`), `repo-presentation`, `create-mr`. Keep them true when the code they describe changes.
+`.claude/skills/` holds Claude Code skills for working **on** this repository (not shipped in the npm package nor checked by `check:skills`): `agent-cli-internals`, `data-model-internals` (schema apply, records sync, drilldowns, rollups, fieldUpdates, view prefs), `extension-internals`, `firebase-internals` (with an emulator harness for the generated Firestore / Storage rules in `rules-test/`), `repo-presentation`, `create-mr`. Keep them true when the code they describe changes.

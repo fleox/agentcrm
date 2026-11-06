@@ -19,7 +19,20 @@ in [AGENTS.md](../../../../AGENTS.md).
 - Automations: `ctx.depth` respected (`MAX_AUTOMATION_DEPTH`), no action that
   re-triggers itself forever.
 - Dates are epoch ms everywhere (no `Date` objects in stored docs, no Firestore
-  `Timestamp`).
+  `Timestamp`; the Firebase `_ts` server stamp is the only exception and never
+  reaches CRM documents — `splitTs`).
+- Record writes with a known actor stamp `updatedBy` and
+  `fieldUpdates.<fieldId>` for every changed field: go through `createRecord` /
+  `recordPatchMutation` (`src/ops/records.ts`), not a hand-built mutation.
+- `records sync` stays one `store.write()` with no plugin actions (no
+  automation fires) and never deletes (archive field); `schema apply` stays
+  additive and idempotent — a second run of the same input reports no change
+  (`data-model-internals`).
+- Firebase: batches go through `api.commit` (→ `withChangeTracking`: `_ts` on
+  writes, a `deletions/` tombstone with each delete) and are split with
+  `chunkForCommit`; a write path that bypasses it leaves cached clients stale.
+- CLI: no `process.exit()` after printing — `agent/bin.ts` exits once stdout has
+  flushed (`exitWhenFlushed`); a direct exit truncates piped `--json`.
 - Relations: inverse lists are computed (`src/ops/relations.ts`), never written on
   both sides; hard delete / merge go through `rewriteReferences` and
   `src/ops/fileRefs.ts`.
@@ -72,8 +85,8 @@ in [AGENTS.md](../../../../AGENTS.md).
   code updates `plugin/skills/` in the same change, then `npm run hermes:build`.
 - New command: `agent/commands/index.ts` (usage, summary, options, subcommands),
   `docs/cli.md`, the skill, a test.
-- User-visible change: proposed `changelog.json` line (maintainers add it at
-  release time) with its `actions`.
+- User-visible change: a `changelog.json` entry under the next version, in the
+  same commit, with its `actions` (e.g. Firebase rules to re-publish).
 - `docs/` and CLAUDE.md when the architecture or behaviour they describe
   changed; `docs/runtime-api-reference.md` for runtime exports
   (`scripts/docs.test.ts`); docs links use `blob/master` (`repo-presentation`).
@@ -93,8 +106,16 @@ in [AGENTS.md](../../../../AGENTS.md).
 - GDPR: deletions must stay purgeable by `compact` (records, activities and file
   bytes); nothing copies personal data somewhere `compact` can't reach.
 - Firestore / Storage rules (`src/ops/firebaseRules.ts`): can an account grant
-  itself a role? Is a new collection covered? Run the emulator harness of
-  `firebase-internals`.
+  itself a role? Is a new collection covered (`RULED_COLLECTIONS`)? Does every
+  narrow `affectedKeys().hasOnly([...])` still allow `_ts`? Is a new
+  self-writable `users` key (like `prefs`) limited to the user's own document?
+  Run the emulator harness of `firebase-internals`.
+- Local copies of CRM data or sessions (`~/.agentcrm/cache/`,
+  `~/.agentcrm/sessions/`, the admin's IndexedDB cache) are mode 0600 / per
+  account and cleared on sign-out or credential change.
+- The HTTP files endpoint (`src/data/files/http.ts`) only ever sends the user's
+  Firebase ID token, never a stored secret; file ids go through
+  `assertFileId` before reaching a URL.
 - Rendered HTML / Markdown goes through `src/components/ui/Markdown.tsx`
   (DOMPurify; only `file:` and `https:` images); SVG logos / favicons without
   scripts or handlers.

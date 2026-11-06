@@ -70,11 +70,16 @@ type FieldType = "text" | "longText" | "number" | "currency" | "percent" | "date
 interface SelectOption { id: string; label: string; color: string }
 interface FieldDef { id: string; label: string; type: FieldType; description?: string; required?: boolean; unique?: boolean;
   standard?: boolean; system?: boolean; hidden?: boolean; options?: SelectOption[]; currency?: string;
-  relation?: { object: string; cardinality: "one" | "many"; inverseField?: string }; defaultValue?: unknown }
+  relation?: { object: string; cardinality: "one" | "many"; inverseField?: string }; defaultValue?: unknown;
+  drilldown?: DrilldownDef; rollup?: RollupDef /* see "Data model additions" */ }
+interface DrilldownDef { object: string; field: string /* relation of `object` targeting this field's object */ }
+interface RollupDef { object: string /* child */; via: string /* child relation → this object */; field: string /* child field */;
+  scope?: { field: string /* relation of this object */; via: string /* child relation to the same target */ }; where?: Filter[] }
 interface ObjectDef { id: string /* slug, e.g. "companies" */; labelSingular: string; labelPlural: string; icon: string; color: string;
   standard: boolean; labelField: string; fields: FieldDef[]; createdAt: number; updatedAt: number }
 interface CrmRecord { id: string; object: string; fields: Record<string, unknown>; ownerId?: string;
-  createdAt: number; updatedAt: number; createdBy?: string; updatedBy?: string; deletedAt?: number }
+  createdAt: number; updatedAt: number; createdBy?: string; updatedBy?: string;
+  fieldUpdates?: Record<string, { by: string; at: number }> /* who last wrote each field */; deletedAt?: number }
 type ActivityType = "note" | "task" | "call" | "email" | "meeting";
 interface Activity { id: string; type: ActivityType; title: string; body?: string /* markdown */;
   targets: { object: string; id: string }[]; dueAt?: number; doneAt?: number; assigneeId?: string;
@@ -86,7 +91,10 @@ interface ViewDef { id: string; object: string; name: string; type: "table" | "k
   filters: Filter[]; sorts: Sort[]; groupBy?: string; pipelineId?: string; shared: boolean; ownerId?: string }
 interface Filter { field: string; op: "eq"|"neq"|"contains"|"notContains"|"empty"|"notEmpty"|"gt"|"gte"|"lt"|"lte"|"in"|"notIn"|"before"|"after"|"withinDays"; value?: unknown }
 interface Sort { field: string; dir: "asc" | "desc" }
-interface CrmUser { id: string; email: string; name: string; role: "admin" | "member" | "viewer"; avatarUrl?: string; disabled?: boolean }
+interface CrmUser { id: string; email: string; name: string; role: "admin" | "member" | "viewer"; avatarUrl?: string; disabled?: boolean;
+  prefs?: UserPrefs /* written by the user only */ }
+interface UserPrefs { views?: Record<string /* viewId */, ViewPrefs>; lastView?: Record<string /* objectId */, { id: string; at: number }> }
+interface ViewPrefs { type?; columns?; filters?; sorts?; groupBy?: string | null; pipelineId?: string | null; widths?: Record<string, number>; at: number }
 interface Automation { id: string; name: string; enabled: boolean; object: string;
   trigger: { type: "record.created" | "record.updated" | "field.changed" | "stage.changed" | "schedule" | "inactivity"; field?: string; to?: unknown; days?: number; everyHours?: number };
   conditions: Filter[];
@@ -104,12 +112,38 @@ Standard objects seeded on install (`src/core/schema/standardObjects.ts`): `comp
 
 Relations are stored on the record field holding the id (`one`) or id array (`many`); inverse lists are computed by `ops/relations.ts` (no dual writes).
 
+### Data model additions (v0.5 – v0.11)
+
+- **Schema as code** — `src/ops/schemaApply.ts` (`parseSchemaSpec`, `applySchema(ctx, spec) → { changes, conflicts, extraFields }`,
+  CLI `schema apply <file|-> [--yes]`). Additive and idempotent: creates what is missing, updates what differs (labels, icon, color,
+  required / unique / hidden, currency, new select options, option colours given as `{ label, color }`, `labelField`, `imageField`,
+  drilldown / rollup, pipeline stages added / edited, views matched by object + name); **never** deletes, never changes a field type
+  (→ `conflicts`), never removes an option or a stage; custom fields missing from the spec → `extraFields`. Objects first, then fields
+  (relations may target objects of the same spec), drilldowns / rollups last. Comparisons ignore key order (Firestore).
+- **Records sync** — `src/ops/syncRecords.ts` (`syncRecords(ctx, { object, key, rows: [{ key, fields }], archiveField?, refKey? })`,
+  CLI `records sync`). Mirrors an external source by a key field: diff-only patches (`recordPatchMutation`), relations by the related
+  record's key (`{ "$key": "12" }` / `{ "$key": [...] }`), records whose key left the source get `archiveField = true` (never deleted);
+  **one `store.write()`, no plugin actions** (no automation fires).
+- **URL image fields** — `ObjectDef.imageField` may be an `image` field (file id) or a `url` field (an `https://` logo hosted elsewhere,
+  no file storage); `recordImageId` / `isImageUrl` in `src/ops/files.ts`, `FileAvatar` shows the URL as is.
+- **Drilldown fields** — `FieldDef.drilldown` makes a value a link to `object`'s list filtered on `field in [this record]`
+  (`listHref` in `src/app/paths.ts`, `FieldContextValue.listHref`). List pages read `?filter=field:op:value` (repeatable), applied
+  on top of the view and never saved with it.
+- **Rollups** — `FieldDef.rollup`: the stored value covers every child (written by whoever syncs it); while a list is filtered on
+  `rollup.scope.field`, `scopeRollups` (`src/features/records/lib/viewModel.ts`) recomputes it from the children in scope (and narrows
+  the scope relation); narrowed columns are read-only inline. Validation: `checkDrilldown` / `checkRollup` in `src/ops/schema.ts`.
+- **fieldUpdates** — every record write by a known actor stamps `fieldUpdates.<fieldId> = { by, at }` for the fields it changed
+  (`createRecord`, `recordPatchMutation`, relations' `patchFieldMutation`, `mergeRecords`); `records list / get` print it.
+- **Per-user view prefs** — `setUserPrefs(ctx, { views?: { [viewId]: ViewPrefs | null }, lastView? })` in `src/ops/users.ts` (any role,
+  own user only, `PREFS_MAX_BYTES` 64 KB — oldest layouts dropped); the list page keeps a `localStorage` copy and debounces the CRM write
+  (`src/features/records/lib/userPrefs.ts`; git-json keeps the browser copy only).
+
 ## DataStore API (`src/data/types.ts`)
 
 Generalisation of cms-ia's docstore (`../cms-ia/src/services/docstore/types.ts`): whole dataset in memory, synchronous reads after `ready()`, optimistic `write()`.
 
 ```ts
-type CollectionName = "objects" | "records" | "activities" | "pipelines" | "views" | "automations" | "forms" | "users" | "settings" | "config" | "automationRuns" | "extensions";
+type CollectionName = "objects" | "records" | "activities" | "pipelines" | "views" | "automations" | "forms" | "users" | "settings" | "config" | "automationRuns" | "extensions" | "files";
 interface StoredDoc { id: string; [k: string]: unknown }
 type DocMutation = { op: "set"; collection: CollectionName; doc: StoredDoc } | { op: "patch"; collection: CollectionName; id: string; fields: Record<string, unknown> } | { op: "delete"; collection: CollectionName; id: string };
 interface DataStore { readonly kind: BackendKind; ready(): Promise<void>; list(c): StoredDoc[]; get(c, id): StoredDoc | undefined;
@@ -127,7 +161,19 @@ For any storage connector (S3 / R2 / OVH bucket, git repo, local folder): `<root
 ### Other backends
 - `local` — IndexedDB, single user, no login.
 - `git-json` — one file per doc (`records/<object>/<id>.json`, …) in a **private** repo via `shared/git` (GitHub/GitLab REST, local clone); one commit per write; each user signs in with their own token (repo permission → role). Warn in UI: history keeps personal data.
-- `firebase` — Firestore collections, `onSnapshot`, Firebase Auth (email/password + Google); roles in `users/{uid}`; rules generated by `ops/firebaseRules.ts` and documented in `docs/firebase.md`.
+- `firebase` — Firestore collections, Firebase Auth (email/password + Google); roles in `users/{uid}`; rules generated by `ops/firebaseRules.ts` and documented in `docs/firebase.md`.
+  **Incremental loading** (v0.4): every write to a tracked collection (`COLLECTIONS` + `extensionChunks`) stamps `_ts` = server time
+  and every delete leaves a tombstone `deletions/<collection>__<id>` `{ collection, id, _ts }` **in the same batch**
+  (`withChangeTracking` / `chunkForCommit` in `src/data/firebase/api.ts`; `_ts` never reaches CRM docs, `splitTs`). A local copy
+  (`src/data/firebase/cache.ts`: IndexedDB in the browser, `~/.agentcrm/cache/firebase-<project>-<uid>.json` 0600 in the CLI,
+  `agent/firebaseCache.ts`) lets an open read only `_ts > cursor` + tombstones, and live listeners (`watchSince`) only changes; a full
+  read at least weekly (`FULL_RELOAD_MS`); cache cleared on sign-out. `store.lastLoad()` / `readCount()` → `doctor` check
+  `firestore-reads`. `deletions` is Firestore-only (not a `CollectionName`) but in `RULED_COLLECTIONS`.
+  The CLI signs in with the `firebase:<name>` login (`signInWithSecrets`) and keeps the session in `~/.agentcrm/sessions/<account>.json`
+  (`agent/firebaseSession.ts`); `install --dry-run` checks access through the rules (`checkFirebaseAccess`).
+  Files: Firebase Storage, or an **HTTP files endpoint** the deployment runs when the runtime config has `files: { endpoint }`
+  (`src/data/files/http.ts` `createHttpFileStore`: `PUT|GET|DELETE <endpoint>/<id>`, `GET <endpoint>/` → `{ ids }`, Firebase ID token as
+  `Bearer`, 503 = no storage configured).
 - `memory` — tests and CLI dry runs.
 
 Roles: `admin` (everything incl. schema/settings/users), `member` (CRUD records/activities, own views), `viewer` (read-only). Enforced in `src/ops/` via `ctx.user` (`assertCan(ctx, action)`), and by Firestore rules in Firebase mode.
@@ -136,7 +182,9 @@ Roles: `admin` (everything incl. schema/settings/users), `member` (CRUD records/
 
 Every op takes an `OpsContext` first: `{ store: DataStore; user: CrmUser | null; now(): number; log?: (msg) => void }` (`ops/context.ts`). Ops validate input with `core/fields.ts`, enforce roles, write through `store.write`, then emit plugin actions (`record.created`, `record.updated`, `record.deleted`, `activity.created`, `stage.changed`) on `core/pluginRegistry.ts` — the automations engine subscribes to those. Ops return plain JSON-able values (the CLI prints them as-is).
 
-Main modules: `records.ts` (list with filter/sort/search/pagination, get with relations expanded, create, update, delete (soft), restore, bulkUpdate, bulkDelete), `relations.ts`, `activities.ts` (notes/tasks/calls/emails/meetings, timeline), `pipelines.ts` (move stage, forecast), `schema.ts` (create/update/delete objects & fields with data migration on type change), `views.ts`, `users.ts`, `settings.ts`, `importCsv.ts` (mapping, type coercion, dedupe on email/domain, dry run), `exportCsv.ts`, `dedupe.ts` (find duplicates, merge records keeping relations/activities), `reports.ts` (pipeline by stage, forecast, won/lost over time, activity by user, lead sources, stale deals), `automations.ts` (engine: event triggers in-process + `runScheduled(ctx)` for schedule/inactivity), `forms.ts` (build static form HTML + embed snippet, `ingestInbox`), `compact.ts`, `stats.ts`, `seed.ts` (standard objects + optional demo data).
+Main modules: `records.ts` (list with filter/sort/search/pagination, get with relations expanded, create, update, delete (soft), restore, bulkUpdate, bulkDelete), `relations.ts`, `activities.ts` (notes/tasks/calls/emails/meetings, timeline), `pipelines.ts` (move stage, forecast), `schema.ts` (create/update/delete objects & fields with data migration on type change), `views.ts`, `users.ts`, `settings.ts`, `importCsv.ts` (mapping, type coercion, dedupe on email/domain, dry run), `exportCsv.ts`, `dedupe.ts` (find duplicates, merge records keeping relations/activities), `reports.ts` (pipeline by stage, forecast, won/lost over time, activity by user, lead sources, stale deals), `automations.ts` (engine: event triggers in-process + `runScheduled(ctx)` for schedule/inactivity), `forms.ts` (build static form HTML + embed snippet, `ingestInbox`), `compact.ts`, `stats.ts`, `seed.ts` (standard objects + optional demo data),
+`schemaApply.ts` (schema as code), `syncRecords.ts` (mirror an external source) — these two are **not** re-exported by `src/ops/index.ts`
+(the CLI imports them directly, so they are not in the extension runtime's `ops`) — and `users.ts` `setUserPrefs` (per-user view layouts).
 
 ## Runtime config & setup
 
@@ -144,7 +192,7 @@ Mirror cms-ia (`lib/runtimeConfig.ts`, `pages/SetupForm.tsx`, `pages/setup/insta
 
 ## CLI (`agent/`) & MCP
 
-Mirror cms-ia `agent/` (browserEnv, credentials in `~/.agentcrm/credentials.json` 0600, `sites.json` registry, `--json` → one `{ ok, data } | { ok: false, error: { code, message, hint } }`, exit 2 for usage errors, destructive = plan unless `--yes`). Bundled by `vite.agent.config.ts` into `dist/agent/agentcrm.mjs` (no runtime deps). Commands: `help`, `status`, `options`, `credentials set|list|remove`, `install --plan`, `site list|add|use|forget`, `doctor`, `serve` (serves dist/admin locally), `deploy-admin`, `records list|get|create|update|delete|search|merge`, `objects`/`fields` (schema), `activities add|list|done`, `tasks`, `pipelines list|move`, `views`, `users`, `settings`, `import csv`, `export csv|json`, `report <name>`, `automations list|enable|disable|run`, `forms list|publish|ingest`, `compact`, `tools list|call` (AI tool catalog), `mcp` (stdio MCP server, JSON-RPC 2.0, protocol 2025-06-18, tools = `src/ai/tools.ts`). A GitHub Actions template (`docs/templates/agentcrm-cron.yml`) runs `agentcrm automations run --yes` + `forms ingest --yes` on a schedule.
+Mirror cms-ia `agent/` (browserEnv, credentials in `~/.agentcrm/credentials.json` 0600, `sites.json` registry, `--json` → one `{ ok, data } | { ok: false, error: { code, message, hint } }`, exit 2 for usage errors, destructive = plan unless `--yes`). Bundled by `vite.agent.config.ts` into `dist/agent/agentcrm.mjs` (no runtime deps). Commands: `help`, `status`, `options`, `credentials set|list|remove`, `install --plan`, `site list|show|add|use|rename|forget|credentials|runtime` (`site runtime` replaces a site's runtime config, same dataset only), `doctor` (Firebase: `firestore-reads` check), `serve` (serves dist/admin locally), `deploy-admin`, `records list|get|create|update|delete|restore|search|duplicates|merge|image|sync` (`sync` = `src/ops/syncRecords.ts`, plan unless `--yes`), `objects`/`fields` (schema), `schema apply <file|-> [--yes]` (schema as code, plan unless `--yes`), `activities add|list|done`, `tasks`, `pipelines list|move`, `views`, `users`, `settings`, `import csv`, `export csv|json`, `report <name>`, `automations list|enable|disable|run`, `forms list|publish|ingest`, `compact`, `tools list|call` (AI tool catalog), `mcp` (stdio MCP server, JSON-RPC 2.0, protocol 2025-06-18, tools = `src/ai/tools.ts`). A GitHub Actions template (`docs/templates/agentcrm-cron.yml`) runs `agentcrm automations run --yes` + `forms ingest --yes` on a schedule.
 
 ## Commands
 
@@ -466,7 +514,8 @@ Full user doc: `docs/files.md`. Contracts (additive):
 - **Data**: collection `files` (metadata, every backend + Firestore rules); bytes in `DataStore.files?: FileStore { kind, put, putMany?, get,
   delete, list? }` (`src/data/files/`: `fileStoreOf`, `withFileStore`, `FILE_ID_RE`) — journal `<root>/files/<id>.bin` encrypted with the
   dataset key (`files/journal.ts`), local IndexedDB `agentcrm-local-files`, git-json `files/<id>.bin` (one commit per batch, in
-  `gitJson/store.ts`), Firebase Storage `files/<id>` (`FirebaseApi.storage?`, `firebaseFileStore`, `STORAGE_NOT_ENABLED`), memory map.
+  `gitJson/store.ts`), Firebase Storage `files/<id>` (`FirebaseApi.storage?`, `firebaseFileStore`, `STORAGE_NOT_ENABLED`) or, with
+  `files: { endpoint }` in the Firebase runtime config, the HTTP files endpoint (`files/http.ts`, kind `http`), memory map.
 - **Ops** `src/ops/files.ts` (`uploadFile`, `attachFile`, `detachFile`, `listFiles`, `getFile`, `getFileBytes`, `renameFile`, `deleteFile`
   (soft, removes references), `restoreFile`, `purgeFiles` (called by `compactData`), `setRecordImage`, `clearRecordImage`, `recordImageId`,
   `fileUsage`, `maxUploadBytes`), `fileRefs.ts` (hard delete / merge keep targets in sync), `backup.ts` (`exportBackupZip`,

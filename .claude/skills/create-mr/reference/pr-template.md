@@ -28,9 +28,10 @@ Explain the problem before the solution.>
 
 ## Changelog
 
-<One user-facing line for `changelog.json` → `changes[]`, and any `actions[]`
-users must run after updating (redeploy the admin, update the skills,
-re-publish the Firebase rules…).>
+<The `changelog.json` entry the commit adds (or proposes) under the next
+version: user-facing `changes[]`, and any `actions[]` users must run after
+updating (redeploy the admin, update the skills, re-publish the Firebase
+rules — as 0.4.0 and 0.11.0 required…).>
 
 ## Related
 
