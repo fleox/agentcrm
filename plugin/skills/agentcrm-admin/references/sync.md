@@ -7,8 +7,8 @@ Use `records sync` when the CRM must follow another system (a product database, 
 Each mirrored object needs a key field (text, ideally unique) and, to flag removals, a boolean archive field. With `schema apply` (references/schema.md) or:
 
 ```bash
-npx -y @fleox-agent-crm/agentcrm@0.12.0 fields add --site acme --object companies --label "Source id" --id sourceId --type text --unique --json
-npx -y @fleox-agent-crm/agentcrm@0.12.0 fields add --site acme --object companies --label Archived --id archived --type boolean --json
+npx -y @fleox-agent-crm/agentcrm@0.12.1 fields add --site acme --object companies --label "Source id" --id sourceId --type text --unique --json
+npx -y @fleox-agent-crm/agentcrm@0.12.1 fields add --site acme --object companies --label Archived --id archived --type boolean --json
 ```
 
 Use the same key field id on every mirrored object: relations between them resolve through it.
@@ -27,9 +27,9 @@ Use the same key field id on every mirrored object: relations between them resol
 ## 3. Plan, then apply
 
 ```bash
-npx -y @fleox-agent-crm/agentcrm@0.12.0 records sync --site acme --object markets --key sourceId --rows @markets.json --archive-field archived --json
-npx -y @fleox-agent-crm/agentcrm@0.12.0 records sync --site acme --object companies --key sourceId --rows @rows.json --archive-field archived --json
-npx -y @fleox-agent-crm/agentcrm@0.12.0 records sync --site acme --object companies --key sourceId --rows @rows.json --archive-field archived --yes --json
+npx -y @fleox-agent-crm/agentcrm@0.12.1 records sync --site acme --object markets --key sourceId --rows @markets.json --archive-field archived --json
+npx -y @fleox-agent-crm/agentcrm@0.12.1 records sync --site acme --object companies --key sourceId --rows @rows.json --archive-field archived --json
+npx -y @fleox-agent-crm/agentcrm@0.12.1 records sync --site acme --object companies --key sourceId --rows @rows.json --archive-field archived --yes --json
 ```
 
 - Without `--yes` nothing is written: the result is `needsConfirmation: true` with a `plan` of `created`, `updated`, `unchanged`, `archived`, `unresolved`, `unresolvedRefs`, `errors` and `samples` (keys created, fields updated per key, keys archived). Show it, then re-run with `--yes`.

@@ -5,11 +5,11 @@ All schema commands need the admin role.
 ## Objects
 
 ```bash
-npx -y @fleox-agent-crm/agentcrm@0.12.0 objects list --site acme --json
-npx -y @fleox-agent-crm/agentcrm@0.12.0 objects get deals --site acme --json
-npx -y @fleox-agent-crm/agentcrm@0.12.0 objects create --site acme --singular Project --plural Projects --icon folder --json
-npx -y @fleox-agent-crm/agentcrm@0.12.0 objects update projects --site acme --plural "Client projects" --json
-npx -y @fleox-agent-crm/agentcrm@0.12.0 objects delete projects --site acme --json
+npx -y @fleox-agent-crm/agentcrm@0.12.1 objects list --site acme --json
+npx -y @fleox-agent-crm/agentcrm@0.12.1 objects get deals --site acme --json
+npx -y @fleox-agent-crm/agentcrm@0.12.1 objects create --site acme --singular Project --plural Projects --icon folder --json
+npx -y @fleox-agent-crm/agentcrm@0.12.1 objects update projects --site acme --plural "Client projects" --json
+npx -y @fleox-agent-crm/agentcrm@0.12.1 objects delete projects --site acme --json
 ```
 
 Deleting an object deletes all its records (plan first).
@@ -19,10 +19,10 @@ Deleting an object deletes all its records (plan first).
 Types: text, longText, number, currency, percent, date, datetime, boolean, select, multiSelect, email, phone, url, relation, user, rating, address, tags, image (one picture; the first one becomes the record avatar), files (attachments).
 
 ```bash
-npx -y @fleox-agent-crm/agentcrm@0.12.0 fields add --site acme --object deals --label "Contract type" --type select --options "New,Renewal,Upsell" --json
-npx -y @fleox-agent-crm/agentcrm@0.12.0 fields add --site acme --object projects --label Client --type relation --relation-object companies --json
-npx -y @fleox-agent-crm/agentcrm@0.12.0 fields update contractType --site acme --object deals --options "New,Renewal,Upsell,Cross-sell" --json
-npx -y @fleox-agent-crm/agentcrm@0.12.0 fields delete contractType --site acme --object deals --json
+npx -y @fleox-agent-crm/agentcrm@0.12.1 fields add --site acme --object deals --label "Contract type" --type select --options "New,Renewal,Upsell" --json
+npx -y @fleox-agent-crm/agentcrm@0.12.1 fields add --site acme --object projects --label Client --type relation --relation-object companies --json
+npx -y @fleox-agent-crm/agentcrm@0.12.1 fields update contractType --site acme --object deals --options "New,Renewal,Upsell,Cross-sell" --json
+npx -y @fleox-agent-crm/agentcrm@0.12.1 fields delete contractType --site acme --object deals --json
 ```
 
 `fields update --type <t>` converts existing values (the result reports what could not be converted). Standard fields can't be deleted.
@@ -38,15 +38,15 @@ An object's avatar / logo (`imageField`) can be an `image` field (uploaded file)
 - **Drilldown**: the value links to another object's list filtered on this record. `drilldown: { object, field }`, where `field` is a relation of `object` pointing back here. A market's company count opening the companies of that market:
 
   ```bash
-  npx -y @fleox-agent-crm/agentcrm@0.12.0 fields add --site acme --object markets --label Companies --id companyCount --type number --json
-  npx -y @fleox-agent-crm/agentcrm@0.12.0 fields update companyCount --site acme --object markets --data '{"drilldown":{"object":"companies","field":"markets"}}' --json
+  npx -y @fleox-agent-crm/agentcrm@0.12.1 fields add --site acme --object markets --label Companies --id companyCount --type number --json
+  npx -y @fleox-agent-crm/agentcrm@0.12.1 fields update companyCount --site acme --object markets --data '{"drilldown":{"object":"companies","field":"markets"}}' --json
   ```
 
 - **Scoped rollup**: the field holds the values of a child object (each company's status on each of its markets). `rollup: { object, via, field, scope?, where? }`: `object` = the child, `via` = its relation to this object, `field` = the child field collected, `scope = { field, via }` = a relation of this object (`markets`) and the child's relation to the same target (`market`), `where` = filters on the children. The stored value (written by you or `records sync`) covers every child; a list filtered on the scope relation (Markets = FR) recomputes the cells, filters and sorts from the children in that scope, and those columns are read-only inline while the filter is on. Use a `multiSelect` with the child's option labels (matched by label).
 
   ```bash
-  npx -y @fleox-agent-crm/agentcrm@0.12.0 fields add --site acme --object companies --label "Market status" --id marketStatus --type multiSelect --options "Live,Paused,Closed" --json
-  npx -y @fleox-agent-crm/agentcrm@0.12.0 fields update marketStatus --site acme --object companies --data '{"rollup":{"object":"presences","via":"company","field":"status","scope":{"field":"markets","via":"market"}}}' --json
+  npx -y @fleox-agent-crm/agentcrm@0.12.1 fields add --site acme --object companies --label "Market status" --id marketStatus --type multiSelect --options "Live,Paused,Closed" --json
+  npx -y @fleox-agent-crm/agentcrm@0.12.1 fields update marketStatus --site acme --object companies --data '{"rollup":{"object":"presences","via":"company","field":"status","scope":{"field":"markets","via":"market"}}}' --json
   ```
 
   `--data '{"drilldown":null}'` (or `rollup`) removes it.
@@ -95,9 +95,9 @@ The best way to set up or evolve a whole data model: write it as one JSON file (
 ```
 
 ```bash
-npx -y @fleox-agent-crm/agentcrm@0.12.0 schema apply crm-schema.json --site acme --json        # plan: needsConfirmation + plan.changes / conflicts / extraFields
-npx -y @fleox-agent-crm/agentcrm@0.12.0 schema apply crm-schema.json --site acme --yes --json  # apply, after the user agreed
-npx -y @fleox-agent-crm/agentcrm@0.12.0 schema apply crm-schema.json --site acme --json        # again: upToDate: true
+npx -y @fleox-agent-crm/agentcrm@0.12.1 schema apply crm-schema.json --site acme --json        # plan: needsConfirmation + plan.changes / conflicts / extraFields
+npx -y @fleox-agent-crm/agentcrm@0.12.1 schema apply crm-schema.json --site acme --yes --json  # apply, after the user agreed
+npx -y @fleox-agent-crm/agentcrm@0.12.1 schema apply crm-schema.json --site acme --json        # again: upToDate: true
 ```
 
 - Workflow: `objects list` / `objects get` first, write the file, run the plan, show `changes` (`create` / `update` + what), `conflicts` and `extraFields` to the user, then `--yes`. A second plan must say `upToDate: true`.
@@ -108,10 +108,10 @@ npx -y @fleox-agent-crm/agentcrm@0.12.0 schema apply crm-schema.json --site acme
 ## Views
 
 ```bash
-npx -y @fleox-agent-crm/agentcrm@0.12.0 views list --site acme --object deals --json
-npx -y @fleox-agent-crm/agentcrm@0.12.0 views create --site acme --object deals --name "Closing this month" --filter closeDate:withinDays:30 --sort closeDate --columns name,amount,stage,closeDate --shared --json
-npx -y @fleox-agent-crm/agentcrm@0.12.0 views create --site acme --object deals --name Board --type kanban --group-by stage --json
-npx -y @fleox-agent-crm/agentcrm@0.12.0 views delete <viewId> --site acme --json
+npx -y @fleox-agent-crm/agentcrm@0.12.1 views list --site acme --object deals --json
+npx -y @fleox-agent-crm/agentcrm@0.12.1 views create --site acme --object deals --name "Closing this month" --filter closeDate:withinDays:30 --sort closeDate --columns name,amount,stage,closeDate --shared --json
+npx -y @fleox-agent-crm/agentcrm@0.12.1 views create --site acme --object deals --name Board --type kanban --group-by stage --json
+npx -y @fleox-agent-crm/agentcrm@0.12.1 views delete <viewId> --site acme --json
 ```
 
 ## Users and roles
@@ -119,10 +119,10 @@ npx -y @fleox-agent-crm/agentcrm@0.12.0 views delete <viewId> --site acme --json
 Roles: `admin` (everything), `member` (records, activities, own views, import / export), `viewer` (read only).
 
 ```bash
-npx -y @fleox-agent-crm/agentcrm@0.12.0 users list --site acme --all --json
-npx -y @fleox-agent-crm/agentcrm@0.12.0 users add --site acme --email sam@acme.com --name "Sam Rivera" --role member --json
-npx -y @fleox-agent-crm/agentcrm@0.12.0 users role sam@acme.com admin --site acme --json
-npx -y @fleox-agent-crm/agentcrm@0.12.0 users disable sam@acme.com --site acme --json
+npx -y @fleox-agent-crm/agentcrm@0.12.1 users list --site acme --all --json
+npx -y @fleox-agent-crm/agentcrm@0.12.1 users add --site acme --email sam@acme.com --name "Sam Rivera" --role member --json
+npx -y @fleox-agent-crm/agentcrm@0.12.1 users role sam@acme.com admin --site acme --json
+npx -y @fleox-agent-crm/agentcrm@0.12.1 users disable sam@acme.com --site acme --json
 ```
 
 Firebase / git-json sites: the login itself is created on that service (Firebase Authentication, a repository collaborator).
@@ -130,8 +130,8 @@ Firebase / git-json sites: the login itself is created on that service (Firebase
 ## Settings
 
 ```bash
-npx -y @fleox-agent-crm/agentcrm@0.12.0 settings get --site acme --json
-npx -y @fleox-agent-crm/agentcrm@0.12.0 settings set --site acme --set name="Acme CRM" --set defaultCurrency=EUR --set locale=fr-FR --set staleDealDays=21 --json
+npx -y @fleox-agent-crm/agentcrm@0.12.1 settings get --site acme --json
+npx -y @fleox-agent-crm/agentcrm@0.12.1 settings set --site acme --set name="Acme CRM" --set defaultCurrency=EUR --set locale=fr-FR --set staleDealDays=21 --json
 ```
 
 Secrets are refused in settings.

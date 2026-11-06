@@ -4,7 +4,7 @@ description: Sales workflows on an AgentCRM - pipeline review and forecast, stal
 license: PolyForm-Noncommercial-1.0.0
 compatibility: Requires Node.js 20+. Web search / fetch tools help for enrichment.
 metadata:
-  version: "0.12.0"
+  version: "0.12.1"
   repository: "https://github.com/fleox/agentcrm"
 allowed-tools: Bash Read Write WebSearch WebFetch
 ---
@@ -15,7 +15,7 @@ You are the user's sales assistant on top of their CRM. Read with the CLI, reaso
 
 **Language:** talk to the user in their language; keep commands and files in English.
 
-Every command is `npx -y @fleox-agent-crm/agentcrm@0.12.0 <command> --json` with `--site <alias>` (pick it with the `agentcrm-manage` skill). Command details are in the `agentcrm-admin` skill.
+Every command is `npx -y @fleox-agent-crm/agentcrm@0.12.1 <command> --json` with `--site <alias>` (pick it with the `agentcrm-manage` skill). Command details are in the `agentcrm-admin` skill.
 
 ## Ground rules
 
@@ -28,10 +28,10 @@ Every command is `npx -y @fleox-agent-crm/agentcrm@0.12.0 <command> --json` with
 ## Pipeline review
 
 ```bash
-npx -y @fleox-agent-crm/agentcrm@0.12.0 report pipeline --site acme --json
-npx -y @fleox-agent-crm/agentcrm@0.12.0 report forecast --site acme --json
-npx -y @fleox-agent-crm/agentcrm@0.12.0 report stale --site acme --json
-npx -y @fleox-agent-crm/agentcrm@0.12.0 records list --site acme --object deals --filter closeDate:before:today --filter stage:notIn:won,lost --json
+npx -y @fleox-agent-crm/agentcrm@0.12.1 report pipeline --site acme --json
+npx -y @fleox-agent-crm/agentcrm@0.12.1 report forecast --site acme --json
+npx -y @fleox-agent-crm/agentcrm@0.12.1 report stale --site acme --json
+npx -y @fleox-agent-crm/agentcrm@0.12.1 records list --site acme --object deals --filter closeDate:before:today --filter stage:notIn:won,lost --json
 ```
 
 Answer with: open amount and weighted forecast (vs last review if known), deals per stage, the at-risk list (stale, close date passed, no open task, no contact), and ONE next best action per at-risk deal. Then offer to create the follow-up tasks (`tasks add … --record <dealId>`) and fix stale close dates (`records update <id> --set closeDate=…`).
@@ -44,9 +44,9 @@ Answer with: open amount and weighted forecast (vs last review if known), deals 
 For a person, company or deal:
 
 ```bash
-npx -y @fleox-agent-crm/agentcrm@0.12.0 records get <id> --site acme --json
-npx -y @fleox-agent-crm/agentcrm@0.12.0 activities list --site acme --record <id> --related --limit 30 --json
-npx -y @fleox-agent-crm/agentcrm@0.12.0 tasks list --site acme --record <id> --status all --json
+npx -y @fleox-agent-crm/agentcrm@0.12.1 records get <id> --site acme --json
+npx -y @fleox-agent-crm/agentcrm@0.12.1 activities list --site acme --record <id> --related --limit 30 --json
+npx -y @fleox-agent-crm/agentcrm@0.12.1 tasks list --site acme --record <id> --status all --json
 ```
 
 Brief (one page): who they are (role, company, size, industry), relationship history (last 5 interactions, open questions, promises made), open deals (stage, amount, close date), recent public news about the company (cite links), 3 goals for the meeting, questions to ask, risks. Offer to save it as a note on the record.
@@ -58,7 +58,7 @@ Read the record and its timeline (as above), then draft the email: subject + bod
 ## Lead qualification and enrichment
 
 ```bash
-npx -y @fleox-agent-crm/agentcrm@0.12.0 records list --site acme --object people --filter lifecycleStage:eq:lead --sort createdAt:desc --limit 25 --json
+npx -y @fleox-agent-crm/agentcrm@0.12.1 records list --site acme --object people --filter lifecycleStage:eq:lead --sort createdAt:desc --limit 25 --json
 ```
 
 For each lead: read the record and its company; enrich from public sources (company website: size, industry, location; the person's public role); score fit (1-5) and intent from the timeline; recommend a lifecycle stage and an owner. Present a table, then apply approved changes with `records update` and log the sources with `notes add`. Details: references/enrichment.md.
@@ -66,8 +66,8 @@ For each lead: read the record and its company; enrich from public sources (comp
 ## Clean duplicates
 
 ```bash
-npx -y @fleox-agent-crm/agentcrm@0.12.0 records duplicates --site acme --object people --json
-npx -y @fleox-agent-crm/agentcrm@0.12.0 records duplicates --site acme --object companies --json
+npx -y @fleox-agent-crm/agentcrm@0.12.1 records duplicates --site acme --object people --json
+npx -y @fleox-agent-crm/agentcrm@0.12.1 records duplicates --site acme --object companies --json
 ```
 
 For each group, pick the primary (most complete, most activities), show what the merge keeps, then `records merge <primaryId> <dupId>...` (plan, then `--yes`) group by group.
@@ -75,18 +75,18 @@ For each group, pick the primary (most complete, most activities), show what the
 ## Trade show / event lead lists
 
 1. Look at the file (headers, a few rows) and map columns to people fields; put the event name in `leadSource` (add the option if missing) and `tags`.
-2. Dry run: `npx -y @fleox-agent-crm/agentcrm@0.12.0 import csv leads.csv --site acme --object people --map "…" --json`. Report new vs existing contacts and errors.
+2. Dry run: `npx -y @fleox-agent-crm/agentcrm@0.12.1 import csv leads.csv --site acme --object people --map "…" --json`. Report new vs existing contacts and errors.
 3. After approval: the same with `--yes`.
 4. Offer the follow-up: a task per hot lead for its owner, or a note on each record with the booth conversation if the file has comments.
 
 ## Weekly sales report
 
 ```bash
-npx -y @fleox-agent-crm/agentcrm@0.12.0 report won-lost --site acme --months 3 --json
-npx -y @fleox-agent-crm/agentcrm@0.12.0 report activity --site acme --days 7 --json
-npx -y @fleox-agent-crm/agentcrm@0.12.0 report pipeline --site acme --json
-npx -y @fleox-agent-crm/agentcrm@0.12.0 report conversion --site acme --json
-npx -y @fleox-agent-crm/agentcrm@0.12.0 tasks list --site acme --overdue --json
+npx -y @fleox-agent-crm/agentcrm@0.12.1 report won-lost --site acme --months 3 --json
+npx -y @fleox-agent-crm/agentcrm@0.12.1 report activity --site acme --days 7 --json
+npx -y @fleox-agent-crm/agentcrm@0.12.1 report pipeline --site acme --json
+npx -y @fleox-agent-crm/agentcrm@0.12.1 report conversion --site acme --json
+npx -y @fleox-agent-crm/agentcrm@0.12.1 tasks list --site acme --overdue --json
 ```
 
 Template and what to compute: references/weekly-report.md.

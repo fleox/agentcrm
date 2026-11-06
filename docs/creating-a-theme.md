@@ -5,7 +5,7 @@ A theme extension packages an AgentCRM look — appearance values plus optional 
 ## Scaffold
 
 ```bash
-npx -y @fleox-agent-crm/agentcrm@0.12.0 ext new theme acme-brand --author "Acme"
+npx -y @fleox-agent-crm/agentcrm@0.12.1 ext new theme acme-brand --author "Acme"
 cd acme-brand
 npm install
 ```
@@ -77,10 +77,10 @@ Variables: `--acc-50` … `--acc-950` (accent scale), `--srf-50` … `--srf-950`
 
 ```bash
 npm run build
-npx -y @fleox-agent-crm/agentcrm@0.12.0 ext check .        # validates the values like Settings → Appearance
-npx -y @fleox-agent-crm/agentcrm@0.12.0 ext pack .         # acme-brand-0.1.0.zip
-npx -y @fleox-agent-crm/agentcrm@0.12.0 ext install . --site acme --yes
-npx -y @fleox-agent-crm/agentcrm@0.12.0 appearance preset acme-brand --site acme --yes
+npx -y @fleox-agent-crm/agentcrm@0.12.1 ext check .        # validates the values like Settings → Appearance
+npx -y @fleox-agent-crm/agentcrm@0.12.1 ext pack .         # acme-brand-0.1.0.zip
+npx -y @fleox-agent-crm/agentcrm@0.12.1 ext install . --site acme --yes
+npx -y @fleox-agent-crm/agentcrm@0.12.1 appearance preset acme-brand --site acme --yes
 ```
 
 Disabling or uninstalling a selected theme falls back to the workspace's own values. With an AI agent: *"Make a theme from our logo (logo.svg) and apply it"* — the agent picks the accent from the logo, scaffolds, checks and installs the theme (asking before installing), or simply sets the values with `appearance set` when no reusable theme is needed.

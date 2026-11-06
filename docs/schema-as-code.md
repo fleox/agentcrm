@@ -3,9 +3,9 @@
 Keep the data model of a CRM — custom objects and fields, pipelines and shared views — in a JSON file under version control, and apply it with one command. Re-applying the same file changes nothing, so the file can be applied after every change, on every environment (a test CRM, then production), by a person, an agent or a CI job.
 
 ```bash
-npx -y @fleox-agent-crm/agentcrm@0.12.0 schema apply crm-schema.json --site acme          # plan: what would change
-npx -y @fleox-agent-crm/agentcrm@0.12.0 schema apply crm-schema.json --site acme --yes    # apply it
-cat crm-schema.json | npx -y @fleox-agent-crm/agentcrm@0.12.0 schema apply - --site acme  # from stdin
+npx -y @fleox-agent-crm/agentcrm@0.12.1 schema apply crm-schema.json --site acme          # plan: what would change
+npx -y @fleox-agent-crm/agentcrm@0.12.1 schema apply crm-schema.json --site acme --yes    # apply it
+cat crm-schema.json | npx -y @fleox-agent-crm/agentcrm@0.12.1 schema apply - --site acme  # from stdin
 ```
 
 Admin only (`schema.write`; pipelines and shared views need the admin role too). Engine: `src/ops/schemaApply.ts` (`parseSchemaSpec`, `applySchema`); the CLI command is `agent/commands/schema.ts`.

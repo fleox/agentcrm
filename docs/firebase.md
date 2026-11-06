@@ -212,10 +212,10 @@ apply to it exactly as to the admin.
 
 ```bash
 # the login, stored in ~/.agentcrm/credentials.json (0600); the user types the password
-npx -y @fleox-agent-crm/agentcrm@0.12.0 credentials set firebase:acme
+npx -y @fleox-agent-crm/agentcrm@0.12.1 credentials set firebase:acme
 # register the CRM (reads config.js from the hosted admin)
-npx -y @fleox-agent-crm/agentcrm@0.12.0 site add acme --admin-url https://crm.example.com/ --data-credential firebase:acme
-npx -y @fleox-agent-crm/agentcrm@0.12.0 doctor --site acme
+npx -y @fleox-agent-crm/agentcrm@0.12.1 site add acme --admin-url https://crm.example.com/ --data-credential firebase:acme
+npx -y @fleox-agent-crm/agentcrm@0.12.1 doctor --site acme
 ```
 
 - Use **Email/Password** accounts (Google accounts can't sign in from the

@@ -8,6 +8,6 @@ AgentCRM has no server, so time-based work (schedule / inactivity automations, i
 
 The workflow stores the credentials with `credentials set … --from-env`, registers the CRM with `site add --runtime`, then runs `automations run --yes` and `forms ingest --yes` every hour. Each run writes only journal segments (no conflict with users editing at the same time).
 
-The same workflow can keep a mirror up to date: add a step that exports the source system's rows to `rows.json`, then `npx -y @fleox-agent-crm/agentcrm@0.12.0 records sync --object <id> --key <keyField> --rows @rows.json --archive-field <boolField> --yes --json` (diff-only: a run with nothing new writes nothing; recipe in the `agentcrm-admin` skill, references/sync.md). Try the command without `--yes` locally first.
+The same workflow can keep a mirror up to date: add a step that exports the source system's rows to `rows.json`, then `npx -y @fleox-agent-crm/agentcrm@0.12.1 records sync --object <id> --key <keyField> --rows @rows.json --archive-field <boolField> --yes --json` (diff-only: a run with nothing new writes nothing; recipe in the `agentcrm-admin` skill, references/sync.md). Try the command without `--yes` locally first.
 
 Keep the passphrase secret strictly in the private repo; anyone with it can read the CRM.
